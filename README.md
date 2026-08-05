@@ -96,6 +96,8 @@ Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed au
 Full methodology and results: [BENCHMARK.md](BENCHMARK.md)
 <!-- bench-summary:end -->
 
+CI numbers come from GitHub's 3-core CPU-only macOS VMs and vary with runner load; on local Apple Silicon with Metal the same suite runs roughly 10× faster (see the [reference run](BENCHMARK.md)). Reproduce on your machine: `vts-extract bench`.
+
 ## Privacy
 
 Everything runs locally. The video never leaves your machine; only the frames the agent chooses to inspect ever enter model context.
