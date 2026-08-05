@@ -25,15 +25,15 @@ frames you choose to read enter context.
 - **update**: fold a new video into an existing generated skill —
   see step 7 below.
 
-## 1. Locate the extractor (requires vts-extract 0.1.0)
+## 1. Locate the extractor (requires vts-extract 0.1.1)
 
 Resolve the binary in this order, then confirm `vts-extract --version`
-reports **0.1.0** — on mismatch, refetch rather than proceeding:
+reports **0.1.1** — on mismatch, refetch rather than proceeding:
 
 1. `bin/vts-extract` or `target/release/vts-extract` beside this file.
 2. Fetch the prebuilt binary (macOS arm64 primary) into `bin/`:
    ```
-   gh release download v0.1.0 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
+   gh release download v0.1.1 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
    shasum -a 256 -c /tmp/vts-dl/vts-extract-macos-arm64.tar.gz.sha256
    mkdir -p bin && tar -xzf /tmp/vts-dl/vts-extract-macos-arm64.tar.gz -C bin
    ```
