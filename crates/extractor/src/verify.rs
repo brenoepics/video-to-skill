@@ -24,7 +24,9 @@ const OUTCOMES: &[&str] = &["pass", "fail", "skipped", "unverifiable"];
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VerificationReport {
     pub schema_version: u32,
-    /// True only when every executed step met its success criteria.
+    /// True only when every executed step met its success criteria AND
+    /// nothing was skipped/unverifiable. When false, the badge derives
+    /// partial (no `fail` outcomes) vs failed from the step outcomes.
     pub verified: bool,
     /// Verify/repair attempts consumed (protocol caps this at 2 repairs).
     pub attempts: u32,
@@ -82,12 +84,22 @@ fn stamp_badge(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
     let skill_md = fs::read_to_string(&path).context("package has no SKILL.md")?;
 
     let counts = |outcome: &str| report.steps.iter().filter(|s| s.outcome == outcome).count();
+    let any_failed = report.steps.iter().any(|s| s.outcome == "fail");
     let body = if report.verified {
         format!(
             "> ✅ **Verified by execution** — {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. Details: [verification.json](verification.json).",
             counts("pass"),
             counts("skipped"),
             counts("unverifiable"),
+        )
+    } else if !any_failed {
+        // Nothing that ran diverged; the skill is only partially exercised.
+        format!(
+            "> 🟡 **Partially verified** — no executed step failed: {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. {}. Details: [verification.json](verification.json).",
+            counts("pass"),
+            counts("skipped"),
+            counts("unverifiable"),
+            report.summary,
         )
     } else {
         format!(

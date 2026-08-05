@@ -85,6 +85,37 @@ fn passing_report() -> VerificationReport {
     }
 }
 
+/// verified == false, but nothing failed: one pass, one unverifiable.
+fn partial_report() -> VerificationReport {
+    VerificationReport {
+        schema_version: 1,
+        verified: false,
+        attempts: 1,
+        summary: "1 passed, 1 unverifiable in a sandbox".into(),
+        steps: vec![
+            StepOutcome {
+                id: "01-first".into(),
+                outcome: "pass".into(),
+                detail: "exit 0, criteria met".into(),
+            },
+            StepOutcome {
+                id: "02-second".into(),
+                outcome: "unverifiable".into(),
+                detail: "needs GUI hardware".into(),
+            },
+        ],
+    }
+}
+
+/// verified == false with an actual failure among the outcomes.
+fn failing_report() -> VerificationReport {
+    let mut report = passing_report();
+    report.verified = false;
+    report.summary = "step 02 diverged: file not created".into();
+    report.steps[1].outcome = "fail".into();
+    report
+}
+
 #[test]
 fn recording_writes_report_and_stamps_a_verified_badge() {
     let dir = scratch("stamp");
@@ -108,18 +139,48 @@ fn recording_writes_report_and_stamps_a_verified_badge() {
 }
 
 #[test]
-fn failed_and_unverifiable_reports_stamp_honest_badges() {
+fn reports_with_a_fail_outcome_stamp_the_not_verified_badge() {
     let dir = scratch("honest");
     let package = compiled_package(&dir);
 
-    let mut failing = passing_report();
-    failing.verified = false;
-    failing.summary = "step 02 diverged: file not created".into();
-    failing.steps[1].outcome = "fail".into();
-    record_verification(&package, &failing).unwrap();
+    record_verification(&package, &failing_report()).unwrap();
     let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
     assert!(skill_md.contains("NOT verified"), "got: {skill_md}");
     assert!(skill_md.contains("step 02 diverged: file not created"));
+    assert!(
+        !skill_md.contains("Partially verified"),
+        "a failure must not read as partial: {skill_md}"
+    );
+}
+
+#[test]
+fn no_failure_partial_reports_stamp_the_partial_badge() {
+    let dir = scratch("partial");
+    let package = compiled_package(&dir);
+
+    record_verification(&package, &partial_report()).unwrap();
+
+    let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
+    assert!(
+        skill_md.contains("🟡 **Partially verified** — no executed step failed"),
+        "partial badge missing: {skill_md}"
+    );
+    assert!(
+        skill_md.contains("1 passed, 0 skipped by safety policy, 1 unverifiable"),
+        "counts missing: {skill_md}"
+    );
+    assert!(
+        skill_md.contains("1 passed, 1 unverifiable in a sandbox"),
+        "summary missing: {skill_md}"
+    );
+    assert!(
+        skill_md.contains("[verification.json](verification.json)"),
+        "details link missing: {skill_md}"
+    );
+    assert!(
+        !skill_md.contains("NOT verified"),
+        "no failures must not read as NOT verified: {skill_md}"
+    );
 }
 
 #[test]
@@ -140,6 +201,49 @@ fn restamping_replaces_the_badge_instead_of_duplicating() {
     );
     assert!(skill_md.contains("Verified by execution"));
     assert!(!skill_md.contains("NOT verified"));
+}
+
+#[test]
+fn restamping_transitions_between_all_three_states() {
+    let dir = scratch("three-state");
+    let package = compiled_package(&dir);
+
+    let assert_single_badge = |wanted: &str, unwanted: [&str; 2]| {
+        let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
+        assert_eq!(
+            skill_md.matches("<!-- verification-badge -->").count(),
+            1,
+            "exactly one badge block: {skill_md}"
+        );
+        assert!(skill_md.contains(wanted), "missing '{wanted}': {skill_md}");
+        for text in unwanted {
+            assert!(!skill_md.contains(text), "stale '{text}': {skill_md}");
+        }
+    };
+
+    record_verification(&package, &passing_report()).unwrap();
+    assert_single_badge(
+        "Verified by execution",
+        ["NOT verified", "Partially verified"],
+    );
+
+    record_verification(&package, &partial_report()).unwrap();
+    assert_single_badge(
+        "Partially verified",
+        ["NOT verified", "Verified by execution"],
+    );
+
+    record_verification(&package, &failing_report()).unwrap();
+    assert_single_badge(
+        "NOT verified",
+        ["Partially verified", "Verified by execution"],
+    );
+
+    record_verification(&package, &passing_report()).unwrap();
+    assert_single_badge(
+        "Verified by execution",
+        ["NOT verified", "Partially verified"],
+    );
 }
 
 #[test]

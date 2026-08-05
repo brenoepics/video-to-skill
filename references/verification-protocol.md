@@ -44,7 +44,7 @@ Write the report (schema v1) and stamp it:
 ```json
 {
   "schema_version": 1,
-  "verified": true,            // only if every EXECUTED step passed
+  "verified": true,            // see "Choosing the verified flag" below
   "attempts": 1,               // 1 + number of repairs
   "summary": "one line",
   "steps": [ { "id": "01-...", "outcome": "pass", "detail": "..." } ]
@@ -55,8 +55,22 @@ Write the report (schema v1) and stamp it:
 vts-extract verify --skill <package-dir> --report <report.json>
 ```
 
-The tool validates step ids against the package and stamps a
-✅ Verified / ⚠ NOT verified badge into the generated SKILL.md.
+The tool validates step ids against the package and stamps a badge
+into the generated SKILL.md: ✅ Verified by execution, 🟡 Partially
+verified, or ⚠ NOT verified.
+
+## Choosing the verified flag
+
+Set `verified: true` only when every EXECUTED step passed AND nothing
+was `skipped` or `unverifiable` — the whole skill was exercised and
+held up. Set `verified: false` in every other case; the badge then
+automatically distinguishes the two sub-cases from the outcomes:
+
+- no `fail` outcome → 🟡 Partially verified (nothing that ran
+  diverged; some steps were skipped or unverifiable), with pass /
+  skipped / unverifiable counts and the summary;
+- at least one `fail` outcome → ⚠ NOT verified, with the summary.
+
 A skill whose executable steps are all `skipped`/`unverifiable` is
-badged verified=false with a summary explaining it is
+therefore badged partially verified, with a summary explaining it is
 unverifiable-by-execution, not failed.
