@@ -39,6 +39,11 @@ jobs:
           bad=0
           while IFS= read -r subject; do
             [ -z "$subject" ] && continue
+            # GitHub-generated commits (security autofix, dependabot
+            # config toggles) carry fixed non-conventional subjects.
+            case "$subject" in
+              "Potential fix for code scanning alert"*|"Set package-ecosystem"*) continue;;
+            esac
             if ! printf '%s' "$subject" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [a-z].{0,49}$'; then
               echo "not conventional or too long: $subject"; bad=1
             fi
