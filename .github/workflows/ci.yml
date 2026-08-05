@@ -17,13 +17,29 @@ jobs:
         with:
           fetch-depth: 0
       - name: Conventional commits
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        # Only the commits this event introduces are checked (merge
+        # commits excluded) — historical or bot-authored noise on other
+        # branches can never poison unrelated runs.
         run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            range="$PR_BASE..$PR_HEAD"
+          elif printf '%s' "$PUSH_BEFORE" | grep -qE '^0+$'; then
+            range="-1"
+          else
+            range="$PUSH_BEFORE..${{ github.sha }}"
+          fi
           bad=0
           while IFS= read -r subject; do
+            [ -z "$subject" ] && continue
             if ! printf '%s' "$subject" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [a-z].{0,49}$'; then
               echo "not conventional or too long: $subject"; bad=1
             fi
-          done < <(git log --format=%s)
+          done < <(git log --no-merges --format=%s $range 2>/dev/null || git log --no-merges --format=%s -1)
           exit $bad
       - uses: dtolnay/rust-toolchain@stable
         with:
