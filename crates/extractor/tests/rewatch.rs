@@ -9,8 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use vts_extract::bundle::ingest;
-use vts_extract::compile::{compile, Evidence, ProcedureIr, SourceRef, Step};
-use vts_extract::rewatch::{clip, frame_at, parse_timestamp};
+use vts_extract::rewatch::{clip, frame_at, frames_at, parse_timestamp};
 use vts_extract::tools::Toolchain;
 
 fn scratch(name: &str) -> PathBuf {
@@ -201,87 +200,45 @@ fn clip_frames_carry_request_unique_basenames() {
     assert_eq!(names.len(), total, "clip basenames must be globally unique");
 }
 
-/// Minimal valid IR whose single step cites the given bundle-relative frames.
-fn ir_citing(frames: Vec<String>) -> ProcedureIr {
-    ProcedureIr {
-        schema_version: 1,
-        skill_name: "color-cuts".into(),
-        title: "Color Cuts".into(),
-        description: "Regression fixture: every cited frame must survive packaging.".into(),
-        overview: "Fixture.".into(),
-        genre: "screencast".into(),
-        source: SourceRef {
-            original: "colors.mp4".into(),
-            title: None,
-            duration_secs: 9.0,
-        },
-        steps: vec![Step {
-            id: "01-watch-colors".into(),
-            goal: "Cite mixed keyframe and re-watch evidence".into(),
-            actions: "Watch the colors change.".into(),
-            success_criteria: "All cited frames land in the package.".into(),
-            confidence: "high".into(),
-            caveats: None,
-            evidence: frames
-                .into_iter()
-                .map(|frame| Evidence {
-                    timestamp_secs: 1.0,
-                    frame: Some(frame),
-                    quote: None,
-                    source: None,
-                })
-                .collect(),
-            scripts: vec![],
-            variants: vec![],
-        }],
-        artifacts: vec![],
-        gaps: vec![],
-        history: vec![],
-    }
+// The compile-packaging regression for re-watch frames lives in
+// tests/rewatch_compile.rs (split to honor the source-file line limit).
+
+#[test]
+fn frames_at_exports_every_timestamp_in_input_order() {
+    let dir = scratch("batch");
+    let bundle = color_bundle(&dir);
+
+    let frames = frames_at(&bundle, &toolchain(), &["1", "4.5", "0:07"]).unwrap();
+
+    assert_eq!(frames.len(), 3, "one frame per requested timestamp");
+    assert_eq!(frames[0].timestamp_secs, 1.0);
+    assert_eq!(frames[1].timestamp_secs, 4.5);
+    assert_eq!(frames[2].timestamp_secs, 7.0);
+    // Same timestamp-derived, globally-unique naming as single exports.
+    assert_eq!(basename(&frames[0].path), "at-000001000.jpg");
+    assert_eq!(basename(&frames[1].path), "at-000004500.jpg");
+    assert_eq!(basename(&frames[2].path), "at-000007000.jpg");
+    assert_eq!(dominant_channel(&frames[0].path), 0, "1s should be red");
+    assert_eq!(dominant_channel(&frames[1].path), 1, "4.5s should be green");
+    assert_eq!(dominant_channel(&frames[2].path), 2, "7s should be blue");
 }
 
-/// Regression for the real-world corruption: two re-watch frames plus a
-/// keyframe must each land byte-for-byte in references/frames/.
 #[test]
-fn compiled_package_keeps_every_distinct_frame_byte_for_byte() {
-    let dir = scratch("compile-mixed");
+fn frames_at_with_any_bad_timestamp_fails_fast_and_writes_nothing() {
+    let dir = scratch("batch-bad");
     let bundle = color_bundle(&dir);
     let tc = toolchain();
-    fs::create_dir_all(bundle.join("frames")).unwrap();
-    fs::write(bundle.join("frames/kf0001.jpg"), b"keyframe-bytes").unwrap();
-    let red = frame_at(&bundle, &tc, "1").unwrap();
-    let blue = frame_at(&bundle, &tc, "7").unwrap();
 
-    let rel = |p: &Path| {
-        p.strip_prefix(&bundle)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_owned()
-    };
-    let ir = ir_citing(vec![
-        "frames/kf0001.jpg".into(),
-        rel(&red.path),
-        rel(&blue.path),
-    ]);
-    let out = dir.join("skill");
-    compile(&ir, &bundle, &out).unwrap();
+    let malformed = frames_at(&bundle, &tc, &["1", "4:xx", "7"]).unwrap_err();
+    let out_of_range = frames_at(&bundle, &tc, &["1", "99"]).unwrap_err();
 
-    let packaged = out.join("references/frames");
-    assert_eq!(
-        fs::read(packaged.join("kf0001.jpg")).unwrap(),
-        b"keyframe-bytes"
+    assert!(malformed.to_string().contains("4:xx"), "got: {malformed}");
+    assert!(
+        out_of_range.to_string().contains("99"),
+        "got: {out_of_range}"
     );
-    for exported in [&red, &blue] {
-        assert_eq!(
-            fs::read(packaged.join(basename(&exported.path))).unwrap(),
-            fs::read(&exported.path).unwrap(),
-            "re-watch frame must survive packaging byte-for-byte"
-        );
-    }
-    assert_eq!(
-        fs::read_dir(&packaged).unwrap().count(),
-        3,
-        "three distinct images expected"
+    assert!(
+        !bundle.join("rewatch").exists(),
+        "a failed batch must not export any frame"
     );
 }

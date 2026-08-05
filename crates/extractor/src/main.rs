@@ -32,13 +32,14 @@ enum Command {
         #[arg(long, default_value = "extraction")]
         out: String,
     },
-    /// Export a single frame at the given timestamp (seconds or MM:SS) for agent inspection
+    /// Export frames at the given timestamps (seconds or MM:SS) for agent inspection
     FrameAt {
         /// Extraction bundle directory
         #[arg(long, default_value = "extraction")]
         bundle: String,
-        /// Timestamp, e.g. "754" or "12:34"
-        timestamp: String,
+        /// One or more timestamps, e.g. "754" or "12:34"
+        #[arg(required = true, num_args(1..))]
+        timestamps: Vec<String>,
     },
     /// Compile a Procedure IR (procedure.json) into an installable skill package
     Compile {
@@ -98,7 +99,7 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Check { fix } => commands::check::run(fix),
         Command::Extract { input, out } => commands::extract::run(&input, &out),
-        Command::FrameAt { bundle, timestamp } => commands::frame::frame_at(&bundle, &timestamp),
+        Command::FrameAt { bundle, timestamps } => commands::frame::frame_at(&bundle, &timestamps),
         Command::Compile { bundle, ir, out } => commands::compile::run(&bundle, &ir, &out),
         Command::Verify { skill, report } => commands::verify::run(&skill, &report),
         Command::Merge {

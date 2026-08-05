@@ -61,30 +61,49 @@ pub fn parse_timestamp(raw: &str) -> Result<f64> {
 
 /// Export the frame at `timestamp` from the source media.
 pub fn frame_at(bundle_dir: &Path, tools: &Toolchain, timestamp: &str) -> Result<ExportedFrame> {
+    let mut frames = frames_at(bundle_dir, tools, &[timestamp])?;
+    frames
+        .pop()
+        .context("internal: one timestamp must yield one frame")
+}
+
+/// Export one frame per timestamp, in input order.
+///
+/// Every timestamp is validated (parse + range) before any export runs:
+/// a single bad value fails the whole request and no files are written.
+pub fn frames_at<S: AsRef<str>>(
+    bundle_dir: &Path,
+    tools: &Toolchain,
+    timestamps: &[S],
+) -> Result<Vec<ExportedFrame>> {
     let manifest = load_manifest(bundle_dir)?;
-    let ts = parse_timestamp(timestamp)?;
-    if ts > manifest.media.duration_secs {
-        bail!(
-            "timestamp {ts:.3}s is beyond the video's end ({:.3}s)",
-            manifest.media.duration_secs
-        );
+    let mut parsed = Vec::with_capacity(timestamps.len());
+    for raw in timestamps {
+        let raw = raw.as_ref();
+        let ts = parse_timestamp(raw)?;
+        if ts > manifest.media.duration_secs {
+            bail!(
+                "timestamp '{raw}' ({ts:.3}s) is beyond the video's end ({:.3}s)",
+                manifest.media.duration_secs
+            );
+        }
+        parsed.push(ts);
     }
-    // Timestamp-derived basename: the skill compiler flattens evidence
-    // frames by basename, so every export must be globally unique.
-    let name = format!("at-{:09}", millis(ts));
-    let dir = request_dir(bundle_dir, &name)?;
-    let path = dir.join(format!("{name}.jpg"));
-    export_frame(
-        tools,
-        Path::new(&manifest.source.media_path),
-        ts,
-        &path,
-        Some(MAX_WIDTH),
-    )?;
-    Ok(ExportedFrame {
-        timestamp_secs: ts,
-        path,
-    })
+    let media = Path::new(&manifest.source.media_path);
+    let mut frames = Vec::with_capacity(parsed.len());
+    for ts in parsed {
+        // Timestamp-derived basename: the skill compiler flattens evidence
+        // frames by basename, so every export must be globally unique.
+        let name = format!("at-{:09}", millis(ts));
+        let dir = request_dir(bundle_dir, &name)?;
+        let path = dir.join(format!("{name}.jpg"));
+        export_frame(tools, media, ts, &path, Some(MAX_WIDTH))?;
+        frames.push(ExportedFrame {
+            timestamp_secs: ts,
+            path,
+        });
+    }
+    Ok(frames)
 }
 
 /// Densely sample `start..end` at `fps` from the source media.

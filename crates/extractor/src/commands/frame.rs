@@ -5,12 +5,15 @@ use vts_extract::deps::Env;
 use vts_extract::rewatch;
 use vts_extract::tools::Toolchain;
 
-/// Export one frame at `timestamp`. Output is machine-readable:
-/// `t=<secs>\t<path>` per line, ready for direct agent consumption.
-pub fn frame_at(bundle: &str, timestamp: &str) -> Result<()> {
+/// Export one frame per timestamp, all validated before any export.
+/// Output is machine-readable: `t=<secs>\t<path>` per line, in input
+/// order, ready for direct agent consumption.
+pub fn frame_at(bundle: &str, timestamps: &[String]) -> Result<()> {
     let tools = Toolchain::resolve(&Env::from_system())?;
-    let frame = rewatch::frame_at(Path::new(bundle), &tools, timestamp)?;
-    println!("t={:.3}\t{}", frame.timestamp_secs, frame.path.display());
+    let frames = rewatch::frames_at(Path::new(bundle), &tools, timestamps)?;
+    for frame in &frames {
+        println!("t={:.3}\t{}", frame.timestamp_secs, frame.path.display());
+    }
     Ok(())
 }
 
