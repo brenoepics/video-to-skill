@@ -16,7 +16,7 @@
 npx skills@latest add brenoepics/video-to-skill
 ```
 
-That's the entire setup. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper weights — all checksum-pinned. No Homebrew, no Python, no accounts, no API keys. Whisper runs Metal-accelerated on Apple Silicon: 12 minutes of 4K video transcribed in 9.9 s on an M5.
+That's the entire setup. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper weights — all checksum-pinned. No Homebrew, no Python, no accounts, no API keys. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
 
 Then:
 
@@ -83,6 +83,14 @@ Two tool families sound similar. Neither does this job:
 | Per-step `[t=MM:SS]` + frame evidence | ❌ | ❌ | ✅ |
 
 Nothing else takes an arbitrary pre-existing video and emits a portable, executable, *verified* skill.
+
+## Benchmarks
+
+Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed automatically by CI — CPU-only whisper, so Apple Silicon with Metal runs substantially faster.
+
+<!-- bench-summary:start -->
+_Automated benchmark summary lands here on the next CI run — see [BENCHMARK.md](BENCHMARK.md)._
+<!-- bench-summary:end -->
 
 ## Privacy
 

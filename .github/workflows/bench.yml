@@ -1,0 +1,51 @@
+name: Bench
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  bench:
+    name: bench + write docs
+    runs-on: macos-latest
+    # Results get committed back to the branch, which needs a writable
+    # token — fork PRs never have one, so only same-repo PRs (or a manual
+    # dispatch) run.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the PR branch itself (not the merge ref) so the
+          # results commit can be pushed back to it.
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install ffmpeg (bench fixture generation)
+        run: brew install ffmpeg
+      - name: Cache whisper weights
+        uses: actions/cache@v4
+        with:
+          path: "~/Library/Application Support/video-to-skill"
+          key: vts-tools-${{ runner.os }}-v1
+      - name: Build
+        run: cargo build --release --locked
+      - name: Bootstrap tools
+        run: ./target/release/vts-extract check --fix
+      - name: Run benchmark suite
+        run: ./target/release/vts-extract bench --write-docs .
+      - name: Commit results if changed
+        run: |
+          git diff --quiet README.md BENCHMARK.md || (
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md BENCHMARK.md
+            git commit -m "chore: update benchmark results"
+            git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}
+          )
