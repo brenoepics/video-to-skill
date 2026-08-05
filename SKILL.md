@@ -14,10 +14,14 @@ frames you choose to read enter context.
 
 ## Modes
 
-- **analyze** (default): extract + inspect + report what the video
-  teaches, step candidates with timestamps, commands seen on screen.
-- **generate**: analyze, then compile an installable skill package —
-  see step 6 below.
+- **generate** (default): the skill's purpose. Analyze the video
+  (steps 2-5), then compile, verify, and install a skill package
+  (steps 6). Invoking this skill with just a video means generate.
+  Exception: a non-procedural video (talk with no procedure, vlog)
+  gets the analysis report plus an explanation of why no skill was
+  generated — never fabricated steps.
+- **analyze**: report only — use when the user asks for an analysis,
+  summary, or report rather than a skill.
 - **update**: fold a new video into an existing generated skill —
   see step 7 below.
 
@@ -110,7 +114,7 @@ to follow it, and every step must be traceable back into the video.
 
 ## 6. Generate (compile a skill package)
 
-When the user wants an installable skill (not just the report):
+In generate mode (the default), continue directly from the analysis:
 
 1. Convert your analysis into a Procedure IR — write
    `<bundle>/procedure.json` per [references/ir-format.md](references/ir-format.md).
