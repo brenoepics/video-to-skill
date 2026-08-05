@@ -89,7 +89,11 @@ Nothing else takes an arbitrary pre-existing video and emits a portable, executa
 Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed automatically by CI — CPU-only whisper, so Apple Silicon with Metal runs substantially faster.
 
 <!-- bench-summary:start -->
-_Automated benchmark summary lands here on the next CI run — see [BENCHMARK.md](BENCHMARK.md)._
+| 2-min 720p extract | transcription | measured on |
+| --- | --- | --- |
+| 3.3s wall · 36.5x realtime | 8.0x realtime | Apple M5 (10 cores) |
+
+Full methodology and results: [BENCHMARK.md](BENCHMARK.md)
 <!-- bench-summary:end -->
 
 ## Privacy
