@@ -80,6 +80,12 @@ enum Command {
         #[arg(long)]
         report: String,
     },
+    /// Run the reproducible benchmark suite and print a results table
+    Bench {
+        /// Splice generated results into <repo-root>/BENCHMARK.md and README.md
+        #[arg(long, value_name = "REPO_ROOT")]
+        write_docs: Option<String>,
+    },
     /// Export densely-sampled frames for a time range (agent "re-watch")
     Clip {
         #[arg(long, default_value = "extraction")]
@@ -109,6 +115,7 @@ fn main() -> Result<()> {
             out,
             dry_run,
         } => commands::merge::run(&skill, &ir, &bundle, &out, dry_run),
+        Command::Bench { write_docs } => commands::bench::run(write_docs.as_deref()),
         Command::Clip {
             bundle,
             start,
