@@ -49,7 +49,7 @@ jobs:
         run: brew install ffmpeg
       - name: Format
         run: cargo fmt --all -- --check
-      - name: Lint
-        run: cargo clippy --all-targets -- -D warnings
-      - name: Test
-        run: cargo test
+      - name: Lint (compiles all targets)
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Test (all unit + integration)
+        run: cargo test --locked
