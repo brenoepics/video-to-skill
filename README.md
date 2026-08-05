@@ -88,6 +88,10 @@ Nothing else takes an arbitrary pre-existing video and emits a portable, executa
 
 Everything runs locally. The video never leaves your machine; only the frames the agent chooses to inspect ever enter model context.
 
+## Security
+
+A video is untrusted input that flows toward executable steps — so the boundaries are explicit. Every download is version-pinned and checksum-verified, with provenance attestations on the extractor binary. On-screen credentials are never transcribed — the compiler rejects secret-shaped strings — and video text addressed to the agent is flagged as suspected prompt injection, never followed. Threat model and download inventory: [SECURITY.md](SECURITY.md).
+
 ## Honest limitations
 
 - Best on screencasts, CLI/GUI tutorials, and talks. Fast physical demos lose motion detail between keyframes.
