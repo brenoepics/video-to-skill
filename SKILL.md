@@ -27,20 +27,36 @@ frames you choose to read enter context.
 
 ## 1. Locate the extractor (requires vts-extract 0.1.1)
 
-Resolve the binary in this order, then confirm `vts-extract --version`
-reports **0.1.1** — on mismatch, refetch rather than proceeding:
+The binary is cached **globally** so every project that carries this
+skill shares one copy. The cache lives in the app data dir — the same
+dir the runtime tools use: `$VTS_DATA_DIR` if set, else the platform
+data dir joined with `video-to-skill` (macOS:
+`~/Library/Application Support/video-to-skill`, Linux:
+`~/.local/share/video-to-skill`).
 
-1. `bin/vts-extract` or `target/release/vts-extract` beside this file.
-2. Fetch the prebuilt binary (macOS arm64 primary) into `bin/`:
+Resolve the binary in this order, then confirm `vts-extract --version`
+reports **0.1.1** — a wrong-version binary is ignored (never deleted;
+versioned filenames let versions coexist), so move to the next
+candidate or refetch rather than proceeding:
+
+1. Global cache: `<data-dir>/bin/vts-extract-0.1.1` (versioned
+   filename).
+2. Dev clones only: `target/release/vts-extract` beside this file.
+3. Fetch the prebuilt binary (macOS arm64 primary) into the global
+   cache:
    ```
+   VTS_BIN="${VTS_DATA_DIR:-$HOME/Library/Application Support/video-to-skill}/bin"
    gh release download v0.1.1 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
    shasum -a 256 -c /tmp/vts-dl/vts-extract-macos-arm64.tar.gz.sha256
-   mkdir -p bin && tar -xzf /tmp/vts-dl/vts-extract-macos-arm64.tar.gz -C bin
+   mkdir -p "$VTS_BIN" && tar -xzf /tmp/vts-dl/vts-extract-macos-arm64.tar.gz -C "$VTS_BIN"
+   mv "$VTS_BIN/vts-extract" "$VTS_BIN/vts-extract-0.1.1"
    ```
-   (Other platforms: substitute `macos-x86_64` / `linux-x86_64`.)
+   (Other platforms: substitute `macos-x86_64` / `linux-x86_64`, and on
+   Linux use the `~/.local/share` default above.)
    The checksum must verify before the binary is executed.
-3. Last resort, build from source: `cargo build --release` in this
-   skill's directory (requires Rust + cmake).
+4. Last resort, build from source: `cargo build --release` in this
+   skill's directory (requires Rust + cmake); the result appears at
+   candidate 2's path.
 
 Then ensure runtime dependencies:
 
@@ -48,9 +64,11 @@ Then ensure runtime dependencies:
 vts-extract check --fix
 ```
 
-`check` is offline; `--fix` downloads ffmpeg/yt-dlp/whisper weights
-(checksum-pinned) into the app data dir on first use. Nothing here
-requires Homebrew, Python, or any account.
+`check` first prints its own identity (`vts-extract <version> — <exe
+path>`) — confirm it matches the binary you resolved. It is offline;
+`--fix` downloads ffmpeg/yt-dlp/whisper weights (checksum-pinned) into
+the app data dir on first use. Nothing here requires Homebrew, Python,
+or any account.
 
 ## 2. Extract
 
@@ -59,6 +77,8 @@ vts-extract extract <file-or-url> --out <workdir>/bundle
 ```
 
 Use a work directory named after the video, e.g. `.vts/<slug>/`.
+When creating it, FIRST write `.vts/.gitignore` containing the single
+line `*` — the dir ignores itself and never dirties the user's VCS.
 This produces the bundle: `manifest.json` (source + media facts +
 notes), `transcript.json` (word-level timestamps), `frames.json`
 (shots + keyframes + motion density), `timeline.json` — and
@@ -73,7 +93,10 @@ density. Then inspect frames *selectively* (never all of them):
 
 - Read each segment's keyframe once — for most videos that is enough.
 - Re-watch a range only when evidence demands it:
-  `vts-extract frame-at --bundle <bundle> <t>` for one moment,
+  `vts-extract frame-at --bundle <bundle> <t>` for one moment
+  (`frame-at` accepts MULTIPLE timestamps in one call:
+  `vts-extract frame-at --bundle <bundle> <t1> <t2> ...` — prefer one
+  batched call over a shell loop),
   `vts-extract clip --bundle <bundle> <t0> <t1> --fps 2` for a range
   (prints `t=<secs>\t<path>` lines; read the paths). Reasons to
   re-watch: speech describes an action the keyframe doesn't show, a
@@ -135,13 +158,21 @@ In generate mode (the default), continue directly from the analysis:
    package carries an honest ✅/⚠ badge.
 4. Install: copy the package to `~/.claude/skills/<skill_name>` (ask
    the user first if overwriting an existing skill). It becomes
-   `/<skill_name>` in their next session.
+   `/<skill_name>` in their next session. In your closing summary,
+   name what was kept — the `.vts/<slug>/` bundle kept for future
+   update-mode folds — and offer to delete it; never delete it
+   silently.
 
 ## 7. Update (fold a new video into an existing skill)
 
 When the user has a generated skill and a new video of the same task:
 
-1. Extract and analyze the new video (steps 2-5), then author its own
+The `.vts/<slug>/` bundle kept at generate time is the fold input for
+the original video's side — its timeline and frames are already on
+disk, so never re-extract the original video.
+
+1. Extract and analyze the new video (steps 2-5) into its own
+   `.vts/<new-slug>/` workdir, then author its own
    Procedure IR as usual — but when the new video covers a step the
    existing skill already has, reuse the existing step id (read them
    from the package's provenance.json); id matches fold most reliably.

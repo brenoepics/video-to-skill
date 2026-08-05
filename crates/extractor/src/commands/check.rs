@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::Result;
 use vts_extract::deps::{self, fetch::HttpFetcher, registry, Env, Presence, Tool, ToolStatus};
 
@@ -5,6 +7,8 @@ use vts_extract::deps::{self, fetch::HttpFetcher, registry, Env, Presence, Tool,
 /// the missing ones into the app data dir (never a system location).
 /// Plain `check` never touches the network.
 pub fn run(fix: bool) -> Result<()> {
+    let exe = std::env::current_exe().ok();
+    println!("{}", identity_line(exe.as_deref()));
     let env = Env::from_system();
     println!("data dir: {}\n", env.data_dir.display());
 
@@ -60,11 +64,42 @@ fn bootstrap(tool: Tool, env: &Env) -> Result<()> {
     Ok(())
 }
 
+/// One-line self identity: name, crate version, and the running executable's
+/// path — printed first so the caller can confirm *which* binary answered.
+fn identity_line(exe: Option<&Path>) -> String {
+    let version = env!("CARGO_PKG_VERSION");
+    let path = exe.map_or_else(|| "<unknown path>".to_string(), |p| p.display().to_string());
+    format!("vts-extract {version} — {path}")
+}
+
 fn label(tool: Tool) -> &'static str {
     match tool {
         Tool::Ffmpeg => "ffmpeg",
         Tool::Ffprobe => "ffprobe",
         Tool::Ytdlp => "yt-dlp",
         Tool::WhisperModel => "whisper model (ggml-base)",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::identity_line;
+    use std::path::Path;
+
+    #[test]
+    fn identity_line_names_binary_version_and_path() {
+        let line = identity_line(Some(Path::new("/opt/tools/vts-extract")));
+        let version = env!("CARGO_PKG_VERSION");
+        assert_eq!(
+            line,
+            format!("vts-extract {version} — /opt/tools/vts-extract")
+        );
+    }
+
+    #[test]
+    fn identity_line_without_path_still_reports_version() {
+        let line = identity_line(None);
+        let version = env!("CARGO_PKG_VERSION");
+        assert_eq!(line, format!("vts-extract {version} — <unknown path>"));
     }
 }
