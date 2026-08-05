@@ -6,7 +6,6 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use sha2::{Digest, Sha256};
 
 use super::{load_manifest, probe_media, save_manifest, Manifest, SourceInfo, Tracks};
 use crate::tools::Toolchain;
@@ -26,7 +25,7 @@ pub fn ingest(input: &Path, bundle_dir: &Path, tools: &Toolchain) -> Result<Inge
         bail!("'{}' not found — check the path", input.display());
     }
     let container = container_of(input)?;
-    let sha256 = sha256_of_file(input)?;
+    let sha256 = crate::hashing::sha256_hex_of_file(input)?;
 
     if bundle_dir.join(super::MANIFEST_FILE).is_file() {
         return reuse_existing(input, bundle_dir, &sha256);
@@ -84,11 +83,4 @@ fn container_of(input: &Path) -> Result<&'static str> {
                 SUPPORTED_CONTAINERS.join(", ")
             )
         })
-}
-
-fn sha256_of_file(path: &Path) -> Result<String> {
-    let mut hasher = Sha256::new();
-    let mut file = fs::File::open(path)?;
-    std::io::copy(&mut file, &mut hasher)?;
-    Ok(format!("{:x}", hasher.finalize()))
 }

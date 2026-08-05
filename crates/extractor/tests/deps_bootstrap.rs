@@ -129,10 +129,7 @@ fn zipped_artifact_is_extracted_to_the_bare_tool() {
     let zip_bytes = fs::read(staging.join("bundle.zip")).unwrap();
     // Zip bytes vary per run (timestamps), so hash the fixture itself; the
     // checksum mechanism is proven independently by the mismatch test above.
-    let zip_sha = {
-        use sha2::{Digest, Sha256};
-        format!("{:x}", Sha256::digest(&zip_bytes))
-    };
+    let zip_sha = vts_extract::hashing::sha256_hex(&zip_bytes);
     let spec = ToolSpec {
         tool: Tool::Ffmpeg,
         url: "https://example.invalid/ffmpeg.zip".into(),

@@ -13,7 +13,7 @@ workspace = true
 anyhow.workspace = true
 hound = "3"
 dirs = "6"
-sha2 = "0.10"
+sha2 = "0.11"
 ureq = "3"
 clap.workspace = true
 serde.workspace = true
@@ -24,7 +24,7 @@ name = "vts-extract"
 path = "src/main.rs"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-whisper-rs = { version = "0.15", features = ["metal"] }
+whisper-rs = { version = "0.16", features = ["metal"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
-whisper-rs = "0.15"
+whisper-rs = "0.16"

@@ -6,7 +6,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
-use sha2::{Digest, Sha256};
 
 use super::{verification_marker, Tool};
 
@@ -68,7 +67,7 @@ fn fetch_verify_promote(
         .fetch(&spec.url, partial)
         .with_context(|| format!("downloading {}", spec.url))?;
 
-    let actual = sha256_of(partial)?;
+    let actual = crate::hashing::sha256_hex_of_file(partial)?;
     if !actual.eq_ignore_ascii_case(&spec.sha256) {
         bail!(
             "checksum mismatch for {}: expected {}, got {actual}",
@@ -91,20 +90,6 @@ fn fetch_verify_promote(
         format!("sha256:{actual}\n"),
     )?;
     Ok(())
-}
-
-fn sha256_of(path: &Path) -> Result<String> {
-    let mut hasher = Sha256::new();
-    let mut file = fs::File::open(path)?;
-    std::io::copy(&mut file, &mut hasher)?;
-    let digest = hasher.finalize();
-    let mut hex = String::with_capacity(64);
-    for byte in digest {
-        use std::fmt::Write;
-        // Writing to a String cannot fail.
-        let _ = write!(hex, "{byte:02x}");
-    }
-    Ok(hex)
 }
 
 /// Replace the zip at `path` with its extracted `member`, in place.

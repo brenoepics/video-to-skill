@@ -25,11 +25,9 @@ impl WhisperEngine {
 
 impl TranscriptionEngine for WhisperEngine {
     fn transcribe(&self, wav: &Path, progress: &mut dyn FnMut(u8)) -> Result<EngineOutput> {
-        let ctx = WhisperContext::new_with_params(
-            &self.model_path.to_string_lossy(),
-            WhisperContextParameters::default(),
-        )
-        .context("loading whisper model")?;
+        let ctx =
+            WhisperContext::new_with_params(&self.model_path, WhisperContextParameters::default())
+                .context("loading whisper model")?;
         let mut state = ctx.create_state().context("creating whisper state")?;
 
         let samples = read_wav_mono_f32(wav)?;
