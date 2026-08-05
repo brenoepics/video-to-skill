@@ -69,8 +69,11 @@ pub fn frame_at(bundle_dir: &Path, tools: &Toolchain, timestamp: &str) -> Result
             manifest.media.duration_secs
         );
     }
-    let dir = request_dir(bundle_dir, &format!("at-{:09}", millis(ts)))?;
-    let path = dir.join("frame.jpg");
+    // Timestamp-derived basename: the skill compiler flattens evidence
+    // frames by basename, so every export must be globally unique.
+    let name = format!("at-{:09}", millis(ts));
+    let dir = request_dir(bundle_dir, &name)?;
+    let path = dir.join(format!("{name}.jpg"));
     export_frame(
         tools,
         Path::new(&manifest.source.media_path),
@@ -117,21 +120,21 @@ pub fn clip(
     let truncated = requested > CLIP_FRAME_CAP;
     let count = requested.min(CLIP_FRAME_CAP);
 
-    let dir = request_dir(
-        bundle_dir,
-        &format!(
-            "clip-{:09}-{:09}-{}",
-            millis(start),
-            millis(end),
-            millis(fps)
-        ),
-    )?;
+    // Request-derived prefix keeps every clip frame's basename globally
+    // unique (the skill compiler flattens evidence frames by basename).
+    let name = format!(
+        "clip-{:09}-{:09}-{}",
+        millis(start),
+        millis(end),
+        millis(fps)
+    );
+    let dir = request_dir(bundle_dir, &name)?;
     let media = Path::new(&manifest.source.media_path);
     let mut frames = Vec::with_capacity(count);
     for i in 0..count {
         #[allow(clippy::cast_precision_loss)] // counts are ≤ CLIP_FRAME_CAP
         let ts = start + i as f64 / fps;
-        let path = dir.join(format!("f{i:03}.jpg"));
+        let path = dir.join(format!("{name}-f{i:03}.jpg"));
         export_frame(tools, media, ts, &path, Some(MAX_WIDTH))?;
         frames.push(ExportedFrame {
             timestamp_secs: ts,

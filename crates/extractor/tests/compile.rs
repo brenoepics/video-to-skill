@@ -5,7 +5,9 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use vts_extract::compile::{compile, Evidence, ProcedureIr, ScriptFile, SourceRef, Step};
+use vts_extract::compile::{
+    compile, Evidence, OnScreenArtifact, ProcedureIr, ScriptFile, SourceRef, Step,
+};
 
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir()
@@ -169,6 +171,54 @@ fn bad_skill_names_and_missing_frames_are_rejected() {
     ghost_frame.steps[0].evidence[0].frame = Some("frames/nope.jpg".into());
     let err = compile(&ghost_frame, &bundle, &dir.join("s2")).unwrap_err();
     assert!(err.to_string().contains("nope.jpg"), "got: {err}");
+}
+
+#[test]
+fn colliding_frame_basenames_are_rejected() {
+    let dir = scratch("collide");
+    let bundle = fake_bundle(&dir);
+    fs::create_dir_all(bundle.join("rewatch/at-a")).unwrap();
+    fs::write(bundle.join("rewatch/at-a/shot009.jpg"), b"other-bytes").unwrap();
+    let mut ir = valid_ir();
+    ir.steps[1].evidence[0].frame = Some("rewatch/at-a/shot009.jpg".into());
+
+    let err = compile(&ir, &bundle, &dir.join("skill")).unwrap_err();
+
+    let msg = err.to_string();
+    assert!(msg.contains("shot009.jpg"), "names the basename: {msg}");
+    assert!(msg.contains("frames/shot009.jpg"), "names one path: {msg}");
+    assert!(
+        msg.contains("rewatch/at-a/shot009.jpg"),
+        "names the other path: {msg}"
+    );
+}
+
+#[test]
+fn artifact_frames_join_the_collision_check() {
+    let dir = scratch("collide-artifact");
+    let bundle = fake_bundle(&dir);
+    fs::create_dir_all(bundle.join("rewatch/at-b")).unwrap();
+    fs::write(bundle.join("rewatch/at-b/shot009.jpg"), b"other-bytes").unwrap();
+    let mut ir = valid_ir();
+    ir.artifacts.push(OnScreenArtifact {
+        text: "npm install -g vim".into(),
+        timestamp_secs: 61.0,
+        frame: Some("rewatch/at-b/shot009.jpg".into()),
+    });
+
+    let err = compile(&ir, &bundle, &dir.join("skill")).unwrap_err();
+
+    assert!(err.to_string().contains("shot009.jpg"), "got: {err}");
+}
+
+#[test]
+fn the_same_frame_cited_twice_is_not_a_collision() {
+    let dir = scratch("same-frame-twice");
+    let bundle = fake_bundle(&dir);
+    let mut ir = valid_ir();
+    ir.steps[1].evidence[0].frame = Some("frames/shot009.jpg".into());
+
+    compile(&ir, &bundle, &dir.join("skill")).unwrap();
 }
 
 #[test]

@@ -162,6 +162,34 @@ fn validate(ir: &ProcedureIr, bundle_dir: &Path) -> Result<()> {
             }
         }
     }
+    reject_frame_basename_collisions(ir)
+}
+
+/// The package flattens every referenced frame into `references/frames/`
+/// by basename, so two different source frames sharing a basename would
+/// silently overwrite each other. Refuse to compile instead.
+fn reject_frame_basename_collisions(ir: &ProcedureIr) -> Result<()> {
+    let referenced = ir
+        .steps
+        .iter()
+        .flat_map(|s| &s.evidence)
+        .filter_map(|e| e.frame.as_deref())
+        .chain(ir.artifacts.iter().filter_map(|a| a.frame.as_deref()));
+    let mut by_basename: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+    for frame in referenced {
+        let name = frame.rsplit('/').next().unwrap_or(frame);
+        match by_basename.get(name) {
+            // The same source frame cited twice is one copy — fine.
+            Some(&first) if first != frame => bail!(
+                "frame basename collision: '{name}' is used by both '{first}' and '{frame}' — \
+                 frames are flattened into references/frames/ by basename, so one would \
+                 overwrite the other"
+            ),
+            _ => {
+                by_basename.insert(name, frame);
+            }
+        }
+    }
     Ok(())
 }
 
