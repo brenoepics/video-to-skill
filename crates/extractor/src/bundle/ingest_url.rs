@@ -103,16 +103,34 @@ impl YtdlpDownloader {
 
 impl VideoDownloader for YtdlpDownloader {
     fn download(&self, url: &str, dest_dir: &Path) -> Result<DownloadedVideo> {
+        // YouTube intermittently 403s merged (separate video+audio)
+        // downloads; a combined single stream usually still works, so
+        // retry with one before giving up.
+        let format_attempts: [Option<&str>; 2] = [None, Some("b[ext=mp4]/b")];
+        let mut last_error = None;
+        for format in format_attempts {
+            match self.attempt(url, dest_dir, format) {
+                Ok(video) => return Ok(video),
+                Err(err) => last_error = Some(err),
+            }
+        }
+        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("yt-dlp produced no output")))
+    }
+}
+
+impl YtdlpDownloader {
+    fn attempt(&self, url: &str, dest_dir: &Path, format: Option<&str>) -> Result<DownloadedVideo> {
         let title_file = dest_dir.join("title.txt");
-        let output = std::process::Command::new(&self.ytdlp)
-            .args(["--no-playlist", "--merge-output-format", "mp4", "-o"])
+        let mut cmd = std::process::Command::new(&self.ytdlp);
+        cmd.args(["--no-playlist", "--merge-output-format", "mp4", "-o"])
             .arg(dest_dir.join("source.%(ext)s"))
             .args(["--print-to-file", "%(title)s"])
             .arg(&title_file)
-            .arg("--no-simulate")
-            .arg(url)
-            .output()
-            .context("running yt-dlp")?;
+            .arg("--no-simulate");
+        if let Some(format) = format {
+            cmd.args(["-f", format]);
+        }
+        let output = cmd.arg(url).output().context("running yt-dlp")?;
         if !output.status.success() {
             bail!(
                 "download failed: {}",

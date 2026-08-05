@@ -170,6 +170,47 @@ fn reingesting_the_same_url_reuses_the_bundle() {
     assert_eq!(first.manifest, second.manifest);
 }
 
+/// YouTube often `403`s merged-stream downloads; the downloader must fall
+/// back to a combined single stream on its own. Fake yt-dlp: fails any
+/// call without an explicit combined `-f`, succeeds with one.
+#[test]
+fn ytdlp_downloader_retries_with_combined_stream_on_failure() {
+    use std::os::unix::fs::PermissionsExt;
+    use vts_extract::bundle::YtdlpDownloader;
+
+    let dir = scratch("fallback");
+    let fake = dir.join("yt-dlp");
+    fs::write(
+        &fake,
+        r#"#!/bin/bash
+out=""; title=""; fmt=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o) out="$2"; shift 2;;
+    --print-to-file) title="$3"; shift 3;;
+    -f) fmt="$2"; shift 2;;
+    *) shift;;
+  esac
+done
+if [[ -z "$fmt" ]]; then
+  echo "ERROR: unable to download video data: HTTP Error 403: Forbidden" >&2
+  exit 1
+fi
+echo "Fallback Video" > "$title"
+echo fake-media > "${out/\%(ext)s/mp4}"
+"#,
+    )
+    .unwrap();
+    fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let media = YtdlpDownloader::new(fake)
+        .download("https://youtube.example/watch?v=x", &dir)
+        .unwrap();
+
+    assert!(media.path.ends_with("source.mp4"));
+    assert_eq!(media.title.as_deref(), Some("Fallback Video"));
+}
+
 /// Real yt-dlp download of the yt-dlp project's own tiny test video.
 /// Run with: `cargo test --test ingest_url -- --ignored`
 #[test]
