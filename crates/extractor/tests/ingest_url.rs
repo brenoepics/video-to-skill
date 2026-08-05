@@ -170,9 +170,10 @@ fn reingesting_the_same_url_reuses_the_bundle() {
     assert_eq!(first.manifest, second.manifest);
 }
 
-/// YouTube often `403`s merged-stream downloads; the downloader must fall
-/// back to a combined single stream on its own. Fake yt-dlp: fails any
-/// call without an explicit combined `-f`, succeeds with one.
+/// YouTube often rejects merged-stream downloads with a 403; the
+/// downloader must fall back to a combined single stream on its own.
+/// Fake `yt-dlp`: fails any call without an explicit `-f`, succeeds
+/// with one.
 #[test]
 fn ytdlp_downloader_retries_with_combined_stream_on_failure() {
     use std::os::unix::fs::PermissionsExt;
