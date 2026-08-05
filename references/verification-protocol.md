@@ -29,6 +29,35 @@ access, and is noted in the outcome detail.
 - Record one outcome per step: `pass` | `fail` | `skipped` |
   `unverifiable`, each with a one-line detail.
 
+## Equivalence substrates
+
+GUI-genre steps (Excel, browsers) often *look* unverifiable in a
+sandbox while their **semantics** are checkable on a scriptable
+substrate. Before marking a step `unverifiable`, ask: can an
+equivalent, scriptable substrate exercise what the step actually
+claims?
+
+| Step genre           | Equivalence substrate                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| Spreadsheet formulas | Scriptable spreadsheet evaluation — e.g. Python with a formula-evaluating library, or LibreOffice headless when present |
+| Web UI flows         | Headless browser                                                                               |
+| Terminal apps        | The terminal itself (already the standard path)                                                |
+
+Rules:
+
+- **(a) Substrate passes are named and scoped.** A substrate pass
+  records outcome `pass` with the substrate NAMED in the step's
+  detail, plus an explicit sentence stating what the substrate did
+  NOT prove (e.g. GUI placement, formula-bar display).
+- **(b) `unverifiable` is reserved.** Use it only for genuinely
+  display-only claims — ones with no checkable semantics on any
+  available substrate (e.g. "the ribbon icon is highlighted").
+- **(c) Substrates never weaken success criteria.** The criteria stay
+  the contract as written; a substrate is a different *place* to check
+  the same claim, never a license to check a lesser one. If the
+  substrate can only check part of a criterion, the unproved remainder
+  must be stated in the detail per rule (a).
+
 ## Repair loop (bounded: max 2 repairs)
 
 On `fail`: diagnose the divergence, fix the Procedure IR (not the
