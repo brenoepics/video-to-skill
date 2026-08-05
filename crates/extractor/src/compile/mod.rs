@@ -3,6 +3,7 @@
 //! agent-skills package. Pure: same IR + bundle → byte-identical output.
 
 mod emit;
+mod safety;
 
 use std::path::Path;
 
@@ -162,6 +163,7 @@ fn validate(ir: &ProcedureIr, bundle_dir: &Path) -> Result<()> {
             }
         }
     }
+    safety::check(ir)?;
     reject_frame_basename_collisions(ir)
 }
 

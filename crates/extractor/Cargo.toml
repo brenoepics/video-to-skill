@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+regex.workspace = true
 hound = "3"
 dirs = "6"
 sha2 = "0.11"
