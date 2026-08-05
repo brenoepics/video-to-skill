@@ -31,4 +31,3 @@ git config core.hooksPath .githooks
 ## Layout
 
 - `crates/extractor` — the `vts-extract` binary (thin `main.rs` over `lib.rs`).
-- `RESEARCH.md` — the research survey and architecture decisions behind the design.
