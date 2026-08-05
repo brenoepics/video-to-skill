@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -44,6 +46,10 @@ jobs:
           NAME=vts-extract-${{ matrix.label }}
           tar -C target/release -czf "$NAME.tar.gz" vts-extract
           shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256" 2>/dev/null || sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: vts-extract-${{ matrix.label }}.tar.gz
       - name: Upload to release
         env:
           GH_TOKEN: ${{ github.token }}
