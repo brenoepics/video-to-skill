@@ -173,6 +173,68 @@ fn missing_frames_yields_transcript_only_timeline_with_gap_note() {
     );
 }
 
+/// One long low-motion scene (~60s single color source), frames only.
+fn long_scene_bundle(dir: &Path) -> PathBuf {
+    let fixture = dir.join("long.mp4");
+    let res = Command::new("ffmpeg")
+        .args([
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=gray:s=160x120:r=5:d=60",
+            "-c:v",
+            "mpeg4",
+        ])
+        .arg(&fixture)
+        .output()
+        .unwrap();
+    assert!(
+        res.status.success(),
+        "{}",
+        String::from_utf8_lossy(&res.stderr)
+    );
+    let bundle = dir.join("long-bundle");
+    ingest(&fixture, &bundle, &toolchain()).unwrap();
+    bundle
+}
+
+#[test]
+fn segments_carry_interior_keyframe_refs_from_the_frame_track() {
+    let dir = scratch("interior");
+    let bundle = long_scene_bundle(&dir);
+    extract_frame_track(&bundle, &toolchain(), &FrameConfig::default()).unwrap();
+
+    let timeline = assemble(&bundle).unwrap();
+
+    assert_eq!(timeline.segments.len(), 1, "one long shot, one segment");
+    let interior = &timeline.segments[0].interior_keyframes;
+    // Mirrors the frame track: 15s-interval keyframes minus the one
+    // deduped against the main (midpoint) keyframe.
+    let times: Vec<f64> = interior.iter().map(|k| k.timestamp_secs).collect();
+    assert_eq!(times, vec![15.0, 45.0], "interior refs: {times:?}");
+    assert_eq!(interior[0].path, "frames/shot000-k01.jpg");
+    assert_eq!(interior[1].path, "frames/shot000-k02.jpg");
+    assert!(
+        interior.iter().all(|k| k.native_path.is_none()),
+        "interior refs carry no native variant"
+    );
+}
+
+#[test]
+fn short_shot_segments_carry_no_interior_keyframe_refs() {
+    let dir = scratch("no-interior");
+    let bundle = two_scene_bundle(&dir);
+    extract_frame_track(&bundle, &toolchain(), &FrameConfig::default()).unwrap();
+
+    let timeline = assemble(&bundle).unwrap();
+
+    assert!(timeline
+        .segments
+        .iter()
+        .all(|s| s.interior_keyframes.is_empty()));
+}
+
 #[test]
 fn timeline_is_deterministic_across_runs() {
     let dir = scratch("determinism");

@@ -192,4 +192,73 @@ fn frame_track_is_deterministic_across_runs() {
     // And the loaded form agrees with itself.
     let track = load_frame_track(&bundle).unwrap();
     assert_eq!(track.schema_version, 1);
+
+    // Interior keyframes (long low-motion shot) are deterministic too.
+    let long_video = long_single_scene_fixture(&dir);
+    let long_bundle = dir.join("long-bundle");
+    ingest(&long_video, &long_bundle, &toolchain()).unwrap();
+    extract_frame_track(&long_bundle, &toolchain(), &FrameConfig::default()).unwrap();
+    let first = fs::read(long_bundle.join(FRAMES_FILE)).unwrap();
+    extract_frame_track(&long_bundle, &toolchain(), &FrameConfig::default()).unwrap();
+    let second = fs::read(long_bundle.join(FRAMES_FILE)).unwrap();
+    assert_eq!(
+        first, second,
+        "interior keyframes must serialize identically"
+    );
+    let long_track = load_frame_track(&long_bundle).unwrap();
+    assert!(
+        !long_track.shots[0].interior_keyframes.is_empty(),
+        "determinism run must actually cover interior keyframes"
+    );
+}
+
+/// One long low-motion scene: ~60 seconds of a single color source —
+/// the shape of a slow screencast where thumbnails barely change.
+fn long_single_scene_fixture(dir: &Path) -> PathBuf {
+    single_source_fixture(dir, "long", "color=c=gray:s=160x120:r=5:d=60")
+}
+
+#[test]
+fn a_long_low_motion_shot_gains_periodic_interior_keyframes() {
+    let dir = scratch("subdivide");
+    let bundle = bundle_for(&dir, &long_single_scene_fixture(&dir));
+
+    let track = extract_frame_track(&bundle, &toolchain(), &FrameConfig::default()).unwrap();
+
+    assert_eq!(track.shots.len(), 1, "subdivision must not add shots");
+    let shot = &track.shots[0];
+    let interior = &shot.interior_keyframes;
+    // 60s shot at the default 15s interval: candidates at 15/30/45s.
+    // The main keyframe sits at the shot midpoint (29s), so the 30s
+    // candidate is within 1s of it and is skipped as a duplicate.
+    let times: Vec<f64> = interior.iter().map(|k| k.timestamp_secs).collect();
+    assert_eq!(times, vec![15.0, 45.0], "interior keyframes: {times:?}");
+    assert_eq!(interior[0].path, "frames/shot000-k01.jpg");
+    assert_eq!(interior[1].path, "frames/shot000-k02.jpg");
+    for kf in interior {
+        assert!(bundle.join(&kf.path).is_file(), "missing {}", kf.path);
+        assert!(
+            kf.native_path.is_none(),
+            "interior frames have no native variant"
+        );
+        assert_eq!(kf.hash.len(), 16, "64-bit hash as hex");
+        assert!(kf.timestamp_secs > shot.start_secs && kf.timestamp_secs < shot.end_secs);
+    }
+}
+
+#[test]
+fn fast_cut_scenes_get_zero_interior_keyframes() {
+    let dir = scratch("no-subdivide");
+    let bundle = bundle_for(&dir, &three_cut_fixture(&dir));
+
+    let track = extract_frame_track(&bundle, &toolchain(), &FrameConfig::default()).unwrap();
+
+    assert_eq!(track.shots.len(), 3);
+    for shot in &track.shots {
+        assert!(
+            shot.interior_keyframes.is_empty(),
+            "3s shots are under the 15s interval: {:?}",
+            shot.interior_keyframes
+        );
+    }
 }

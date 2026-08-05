@@ -4,6 +4,7 @@
 pub mod analyze;
 pub(crate) mod export;
 mod sample;
+mod subdivide;
 
 use std::fs;
 use std::path::Path;
@@ -28,6 +29,9 @@ pub struct FrameConfig {
     /// Width bound for agent-readable keyframes (native stills keep
     /// full resolution).
     pub max_keyframe_width: u32,
+    /// Shots longer than this gain periodic interior keyframes, so
+    /// slow screencasts stay covered by the initial pass.
+    pub subdivision_interval_secs: f64,
 }
 
 impl Default for FrameConfig {
@@ -36,6 +40,7 @@ impl Default for FrameConfig {
             sample_fps: 1.0,
             boundary_threshold: 25.0,
             max_keyframe_width: 1024,
+            subdivision_interval_secs: 15.0,
         }
     }
 }
@@ -55,6 +60,10 @@ pub struct Shot {
     /// flag demos/action worth denser inspection.
     pub motion_density: f64,
     pub keyframe: Keyframe,
+    /// Periodic keyframes inside long shots (one per subdivision
+    /// interval), width-bounded, no native variants.
+    #[serde(default)]
+    pub interior_keyframes: Vec<Keyframe>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -100,6 +109,7 @@ pub fn extract_frame_track(
         }
         let mid = usize::midpoint(start, end.saturating_sub(1));
         let timestamp = sampled[mid].timestamp_secs;
+        let shot_end = end_time(&sampled, end, manifest.media.duration_secs);
         let kf_rel = format!("{FRAMES_DIR}/shot{index:03}.jpg");
         let native_rel = format!("{FRAMES_DIR}/shot{index:03}-native.jpg");
         export::export_frame(
@@ -116,10 +126,23 @@ pub fn extract_frame_track(
             &bundle_dir.join(&native_rel),
             None,
         )?;
+        let interior_keyframes = subdivide::export_interior_keyframes(
+            tools,
+            &media,
+            bundle_dir,
+            &subdivide::ShotSpan {
+                index,
+                start_secs: sampled[start].timestamp_secs,
+                end_secs: shot_end,
+                main_keyframe_secs: timestamp,
+                samples: &sampled[start..end],
+            },
+            config,
+        )?;
         shots.push(Shot {
             index,
             start_secs: sampled[start].timestamp_secs,
-            end_secs: end_time(&sampled, end, manifest.media.duration_secs),
+            end_secs: shot_end,
             motion_density: motion_density(&pixels[start..end]),
             keyframe: Keyframe {
                 timestamp_secs: timestamp,
@@ -130,6 +153,7 @@ pub fn extract_frame_track(
                     analyze::dhash(&analyze::to_gray(&sampled[mid].pixels))
                 ),
             },
+            interior_keyframes,
         });
         start = end;
     }

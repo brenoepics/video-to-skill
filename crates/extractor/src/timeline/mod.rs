@@ -36,6 +36,10 @@ pub struct TimelineSegment {
     pub end_secs: f64,
     pub motion_density: Option<f64>,
     pub keyframe: Option<KeyframeRef>,
+    /// Periodic keyframes inside long shots, straight from the frame
+    /// track so the agent sees them without reading `frames.json`.
+    #[serde(default)]
+    pub interior_keyframes: Vec<KeyframeRef>,
     pub speech: Vec<SpeechSpan>,
 }
 
@@ -90,6 +94,15 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
                     native_path: s.keyframe.native_path.clone(),
                     timestamp_secs: s.keyframe.timestamp_secs,
                 }),
+                interior_keyframes: s
+                    .interior_keyframes
+                    .iter()
+                    .map(|kf| KeyframeRef {
+                        path: kf.path.clone(),
+                        native_path: kf.native_path.clone(),
+                        timestamp_secs: kf.timestamp_secs,
+                    })
+                    .collect(),
                 speech: Vec::new(),
             })
             .collect(),
@@ -99,6 +112,7 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
             end_secs: duration,
             motion_density: None,
             keyframe: None,
+            interior_keyframes: Vec::new(),
             speech: Vec::new(),
         }],
     };

@@ -19,8 +19,10 @@ Classify from the first keyframes + speech style, then apply the row:
 
 Context is the scarce resource. Images cost ~1-2k tokens each.
 
-- **≤ 15 min video**: initial pass = every segment keyframe (deduped
-  shots keep this small). Re-watch allowance: ~1 extra image per
+- **≤ 15 min video**: initial pass = every segment keyframe, plus each
+  long segment's interior keyframes (`interior_keyframes` in the
+  timeline, one per ~15s — slow screencasts are pre-subdivided, so the
+  deduped set stays small). Re-watch allowance: ~1 extra image per
   segment, spent only where triggered (below).
 - **15-60 min**: rank segments by (a) speech mentioning concrete
   actions, (b) motion density, (c) on-screen-text likelihood (genre).
@@ -33,8 +35,13 @@ Context is the scarce resource. Images cost ~1-2k tokens each.
 
 ## Re-watch triggers (spend budget only on these)
 
-1. Speech describes an action ("now click...", "then run...") but the
-   segment keyframe doesn't show its result.
+Before re-watching a long segment, check its interior keyframes
+(frames/shotNNN-kMM.jpg) — the periodic coverage often already shows
+the state change that used to require hand-exporting frames.
+
+1. Speech describes an action ("now click...", "then run...") but
+   neither the segment keyframe nor any interior keyframe shows its
+   result.
 2. Motion-density spike relative to the video's median — something
    happened between keyframes.
 3. On-screen text is present but unreadable at keyframe resolution —
