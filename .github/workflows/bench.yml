@@ -25,22 +25,41 @@ jobs:
           # results commit can be pushed back to it.
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
+      - name: Guard against self-retrigger
+        id: guard
+        # The bot's own "chore: update benchmark results" push re-fires
+        # pull_request:synchronize; timings jitter run-to-run, so without
+        # this the workflow would ping-pong update commits forever.
+        run: |
+          if [ "$(git log -1 --format=%s)" = "chore: update benchmark results" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.guard.outputs.skip != 'true' 
       - uses: Swatinem/rust-cache@v2
+        if: steps.guard.outputs.skip != 'true' 
       - name: Install ffmpeg (bench fixture generation)
+        if: steps.guard.outputs.skip != 'true'
         run: brew install ffmpeg
       - name: Cache whisper weights
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/cache@v4
         with:
           path: "~/Library/Application Support/video-to-skill"
           key: vts-tools-${{ runner.os }}-v1
       - name: Build
+        if: steps.guard.outputs.skip != 'true'
         run: cargo build --release --locked
       - name: Bootstrap tools
+        if: steps.guard.outputs.skip != 'true'
         run: ./target/release/vts-extract check --fix
       - name: Run benchmark suite
+        if: steps.guard.outputs.skip != 'true'
         run: ./target/release/vts-extract bench --write-docs .
       - name: Commit results if changed
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git diff --quiet README.md BENCHMARK.md || (
             git config user.name "github-actions[bot]"
