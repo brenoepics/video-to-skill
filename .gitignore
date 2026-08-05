@@ -1,0 +1,24 @@
+# Rust
+/target/
+
+# Extraction bundles (large media artifacts, never committed)
+extraction/
+*.mp4
+*.mkv
+*.webm
+*.mov
+
+# Node (npx skills cache artifacts)
+node_modules/
+
+# OS
+.DS_Store
+
+# Fetched prebuilt extractor
+bin/
+
+# Dev-local: third-party skills, agent symlinks, project management
+.agents/
+.claude/
+skills-lock.json
+.scratch/

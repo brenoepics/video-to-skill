@@ -1,0 +1,30 @@
+[package]
+name = "vts-extract"
+description = "Local extraction engine for video-to-skill: ingest, scene/slide detection, keyframe dedup, timestamped ASR"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+hound = "3"
+dirs = "6"
+sha2 = "0.10"
+ureq = "3"
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[[bin]]
+name = "vts-extract"
+path = "src/main.rs"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.15", features = ["metal"] }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+whisper-rs = "0.15"

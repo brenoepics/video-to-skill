@@ -1,0 +1,154 @@
+---
+name: video-to-skill
+description: Convert a video (local file or YouTube/URL) into structured, evidence-grounded knowledge — and ultimately into an installable agent skill. Use when the user provides a video file or video URL and wants it analyzed, summarized into steps, or turned into a skill; triggers include "watch this video", "learn from this tutorial", "video to skill", or a path/URL to .mp4/.mkv/.webm/.mov or youtube.com/youtu.be.
+---
+
+# Video to Skill
+
+Turn a video into knowledge an agent can act on. A local Rust extractor
+(`vts-extract`) does the deterministic work — download, transcription,
+shot detection, keyframes — entirely on the user's machine. You do the
+intelligence: read the timeline, inspect frames selectively, and produce
+evidence-grounded output. The video never leaves the machine; only the
+frames you choose to read enter context.
+
+## Modes
+
+- **analyze** (default): extract + inspect + report what the video
+  teaches, step candidates with timestamps, commands seen on screen.
+- **generate**: analyze, then compile an installable skill package —
+  see step 6 below.
+- **update**: fold a new video into an existing generated skill —
+  see step 7 below.
+
+## 1. Locate the extractor (requires vts-extract 0.1.0)
+
+Resolve the binary in this order, then confirm `vts-extract --version`
+reports **0.1.0** — on mismatch, refetch rather than proceeding:
+
+1. `bin/vts-extract` or `target/release/vts-extract` beside this file.
+2. Fetch the prebuilt binary (macOS arm64 primary) into `bin/`:
+   ```
+   gh release download v0.1.0 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
+   shasum -a 256 -c /tmp/vts-dl/vts-extract-macos-arm64.tar.gz.sha256
+   mkdir -p bin && tar -xzf /tmp/vts-dl/vts-extract-macos-arm64.tar.gz -C bin
+   ```
+   (Other platforms: substitute `macos-x86_64` / `linux-x86_64`.)
+   The checksum must verify before the binary is executed.
+3. Last resort, build from source: `cargo build --release` in this
+   skill's directory (requires Rust + cmake).
+
+Then ensure runtime dependencies:
+
+```
+vts-extract check --fix
+```
+
+`check` is offline; `--fix` downloads ffmpeg/yt-dlp/whisper weights
+(checksum-pinned) into the app data dir on first use. Nothing here
+requires Homebrew, Python, or any account.
+
+## 2. Extract
+
+```
+vts-extract extract <file-or-url> --out <workdir>/bundle
+```
+
+Use a work directory named after the video, e.g. `.vts/<slug>/`.
+This produces the bundle: `manifest.json` (source + media facts +
+notes), `transcript.json` (word-level timestamps), `frames.json`
+(shots + keyframes + motion density), `timeline.json` — and
+`frames/*.jpg`. Extraction is deterministic and idempotent; a partial
+bundle (e.g. no speech) is normal and noted, not an error.
+
+## 3. Read the timeline, then look closer
+
+Read `timeline.json` first — it is the token-lean digest: one segment
+per shot with time range, speech spans, keyframe path, and motion
+density. Then inspect frames *selectively* (never all of them):
+
+- Read each segment's keyframe once — for most videos that is enough.
+- Re-watch a range only when evidence demands it:
+  `vts-extract frame-at --bundle <bundle> <t>` for one moment,
+  `vts-extract clip --bundle <bundle> <t0> <t1> --fps 2` for a range
+  (prints `t=<secs>\t<path>` lines; read the paths). Reasons to
+  re-watch: speech describes an action the keyframe doesn't show, a
+  motion-density spike, or on-screen text you need to read exactly.
+- Budget: for videos under 15 min, at most ~2 images per segment
+  across all passes. For longer videos, triage segments by speech
+  relevance and motion first. Details: [references/analysis-method.md](references/analysis-method.md).
+
+## 4. Evidence rules (non-negotiable)
+
+- Every claim cites a timestamp `[t=MM:SS]` and, where visual, the
+  frame path it came from.
+- Narration says *why*; frames say *what actually happened*; on-screen
+  text (commands, flags, versions, UI labels) outranks both — read it
+  from the frame exactly, never paraphrase a command.
+- On conflict between transcript and pixels, trust pixels and note the
+  discrepancy.
+- Mark anything you could not verify visually as low-confidence rather
+  than omitting or asserting it.
+
+## 5. Report (analyze mode)
+
+Classify the genre first (screencast/CLI, GUI walkthrough, slides/talk,
+physical task — see the routing table in
+[references/analysis-method.md](references/analysis-method.md)), then write the report:
+
+1. **Overview** — what the video teaches, genre, duration, language.
+2. **Steps** — ordered step candidates: goal, exact actions/commands
+   (verbatim from frames where visual), success signal, `[t=..]` +
+   frame evidence, confidence (high/medium/low).
+3. **On-screen artifacts** — commands, code, URLs, filenames seen in
+   frames, each with timestamp.
+4. **Gaps** — segments not inspected, unverifiable claims, transcript
+   errors noticed.
+
+Keep the report self-contained: a reader without the video must be able
+to follow it, and every step must be traceable back into the video.
+
+## 6. Generate (compile a skill package)
+
+When the user wants an installable skill (not just the report):
+
+1. Convert your analysis into a Procedure IR — write
+   `<bundle>/procedure.json` per [references/ir-format.md](references/ir-format.md).
+   Same steps, same evidence, same confidence as the report; commands
+   verbatim from pixels. If the video taught no procedure, say so and
+   stop — never fabricate steps.
+2. Compile:
+   `vts-extract compile --bundle <bundle> --ir <bundle>/procedure.json --out <dir>`
+   The compiler validates (evidence required per step, kebab-case
+   names, frames must exist) and emits: SKILL.md + steps/ + scripts/ +
+   references/frames/ + provenance.json, with low-confidence steps
+   visibly flagged.
+3. Verify (recommended): follow
+   [references/verification-protocol.md](references/verification-protocol.md) — a fresh sandboxed
+   sub-agent, seeing only the package, executes the steps against their
+   success criteria; bounded repair loop; then record the outcome with
+   `vts-extract verify --skill <dir> --report <report.json>` so the
+   package carries an honest ✅/⚠ badge.
+4. Install: copy the package to `~/.claude/skills/<skill_name>` (ask
+   the user first if overwriting an existing skill). It becomes
+   `/<skill_name>` in their next session.
+
+## 7. Update (fold a new video into an existing skill)
+
+When the user has a generated skill and a new video of the same task:
+
+1. Extract and analyze the new video (steps 2-5), then author its own
+   Procedure IR as usual — but when the new video covers a step the
+   existing skill already has, reuse the existing step id (read them
+   from the package's provenance.json); id matches fold most reliably.
+2. Preview the fold:
+   `vts-extract merge --skill <installed-package> --ir <new-ir> --bundle <new-bundle> --dry-run`
+   — each existing step is classified confirm / variant / keep, and new
+   steps as add. Show this plan to the user before writing.
+3. Apply with the same command minus `--dry-run` (plus `--out <dir>`).
+   Semantics: confirmations add a second provenance reference and bump
+   confidence; conflicting actions become explicit variants citing both
+   videos (never overwrites); the package's Sources section records the
+   fold history.
+4. The fold invalidates any verification badge — re-run the
+   verification protocol, then install.
