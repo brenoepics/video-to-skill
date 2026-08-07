@@ -1,12 +1,20 @@
+<div align="center">
+  <a href="https://v2s.dev">
+    <img src="https://v2s.dev/icon-192.png" alt="V2S logo" width="120px">
+  </a>
+
 # video-to-skill
 
-[![Downloads](https://img.shields.io/github/downloads/brenoepics/video-to-skill/total)](https://github.com/brenoepics/video-to-skill/releases)
-[![Release](https://img.shields.io/github/v/release/brenoepics/video-to-skill)](https://github.com/brenoepics/video-to-skill/releases/latest)
-[![CI](https://github.com/brenoepics/video-to-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/brenoepics/video-to-skill/actions/workflows/ci.yml)
+_Teach your AI from any video — turn tutorials into installable, **verified** agent skills._
 
-> A whisper model transcribed an Excel tutorial and heard **"some."**
-> The pixels on screen read **`=SUM(B3:B10)`.**
-> Which one do you want your agent to learn?
+[![Downloads](https://img.shields.io/github/downloads/brenoepics/video-to-skill/total?logo=github)](https://github.com/brenoepics/video-to-skill/releases)
+[![Release](https://img.shields.io/github/v/release/brenoepics/video-to-skill?sort=semver&logo=github)](https://github.com/brenoepics/video-to-skill/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/brenoepics/video-to-skill/ci.yml?logo=github&label=CI)](https://github.com/brenoepics/video-to-skill/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/brenoepics/video-to-skill)](LICENSE)
+
+**[v2s.dev](https://v2s.dev)** · [Install](#install) · [Why](#why-not-just-the-transcript) · [How it works](#how-it-works) · [Benchmarks](BENCHMARK.md) · [Security](SECURITY.md)
+
+</div>
 
 **video-to-skill** turns any video — a YouTube URL or a local file — into an installable agent skill. It listens, but it *reads the screen*: every step cites the frame it came from, and the badge is earned by executing the steps in a sandbox.
 
@@ -16,7 +24,8 @@
 npx skills@latest add brenoepics/video-to-skill
 ```
 
-That's the entire setup. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper weights — all checksum-pinned. No Homebrew, no Python, no accounts, no API keys. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
+> [!TIP]
+> That's the entire setup. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper weights — all checksum-pinned. No Homebrew, no Python, no accounts, no API keys. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
 
 Then:
 
@@ -27,7 +36,7 @@ Then:
 
 ## Why not just the transcript
 
-Real failures from real runs:
+A whisper model transcribed an Excel tutorial and heard **"some"** — the pixels on screen read **`=SUM(B3:B10)`**. Real failures from real runs:
 
 | Whisper / narration said | The frame reads | What ships |
 |---|---|---|
@@ -41,7 +50,8 @@ Transcript-only tools ship the left column. Here, on-screen text outranks narrat
 
 A fresh sandboxed sub-agent — seeing only the generated package, not the video — runs each step against its success criteria before the badge is written.
 
-Case in point: one tutorial's paste step compiled to `"+P`, which pastes from Vim's *internal* register, not the clipboard. The sandbox executed it, the criterion failed, the repair loop corrected it to `"+p` and re-verified against the real macOS pasteboard. Steps that would be unsafe to execute are skipped by policy and say so — no silent green.
+> [!NOTE]
+> Case in point: one tutorial's paste step compiled to `"+P`, which pastes from Vim's *internal* register, not the clipboard. The sandbox executed it, the criterion failed, the repair loop corrected it to `"+p` and re-verified against the real macOS pasteboard. Steps that would be unsafe to execute are skipped by policy and say so — no silent green.
 
 ## What a generated skill looks like
 
@@ -82,7 +92,11 @@ Two tool families sound similar. Neither does this job:
 | Steps verified by actually running them | ❌ | ❌ | ✅ |
 | Per-step `[t=MM:SS]` + frame evidence | ❌ | ❌ | ✅ |
 
-Nothing else takes an arbitrary pre-existing video and emits a portable, executable, *verified* skill.
+<div align="center">
+
+_Nothing else takes an arbitrary pre-existing video and emits a portable, executable, **verified** skill._
+
+</div>
 
 ## Benchmarks
 
@@ -104,7 +118,8 @@ Everything runs locally. The video never leaves your machine; only the frames th
 
 ## Security
 
-A video is untrusted input that flows toward executable steps — so the boundaries are explicit. Every download is version-pinned and checksum-verified, with provenance attestations on the extractor binary. On-screen credentials are never transcribed — the compiler rejects secret-shaped strings — and video text addressed to the agent is flagged as suspected prompt injection, never followed. Threat model and download inventory: [SECURITY.md](SECURITY.md).
+> [!IMPORTANT]
+> A video is untrusted input that flows toward executable steps — so the boundaries are explicit. Every download is version-pinned and checksum-verified, with provenance attestations on the extractor binary. On-screen credentials are never transcribed — the compiler rejects secret-shaped strings — and video text addressed to the agent is flagged as suspected prompt injection, never followed. Threat model and download inventory: [SECURITY.md](SECURITY.md).
 
 ## Honest limitations
 
@@ -114,3 +129,9 @@ A video is untrusted input that flows toward executable steps — so the boundar
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) — TDD, conventional commits, and a 300-line file limit, all enforced. [MIT](LICENSE) licensed.
+
+<div align="center">
+
+Made with care · **[v2s.dev](https://v2s.dev)**
+
+</div>
