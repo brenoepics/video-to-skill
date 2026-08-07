@@ -25,7 +25,7 @@ frames you choose to read enter context.
 - **update**: fold a new video into an existing generated skill —
   see step 7 below.
 
-## 1. Locate the extractor (requires vts-extract 0.2.1)
+## 1. Locate the extractor (requires vts-extract 0.2.2)
 
 The binary is cached **globally** so every project that carries this
 skill shares one copy. The cache lives in the app data dir — the same
@@ -35,21 +35,21 @@ data dir joined with `video-to-skill` (macOS:
 `~/.local/share/video-to-skill`).
 
 Resolve the binary in this order, then confirm `vts-extract --version`
-reports **0.2.1** — a wrong-version binary is ignored (never deleted;
+reports **0.2.2** — a wrong-version binary is ignored (never deleted;
 versioned filenames let versions coexist), so move to the next
 candidate or refetch rather than proceeding:
 
-1. Global cache: `<data-dir>/bin/vts-extract-0.2.1` (versioned
+1. Global cache: `<data-dir>/bin/vts-extract-0.2.2` (versioned
    filename).
 2. Dev clones only: `target/release/vts-extract` beside this file.
 3. Fetch the prebuilt binary (macOS arm64 primary) into the global
    cache:
    ```
    VTS_BIN="${VTS_DATA_DIR:-$HOME/Library/Application Support/video-to-skill}/bin"
-   gh release download v0.2.1 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
+   gh release download v0.2.2 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
    shasum -a 256 -c /tmp/vts-dl/vts-extract-macos-arm64.tar.gz.sha256
    mkdir -p "$VTS_BIN" && tar -xzf /tmp/vts-dl/vts-extract-macos-arm64.tar.gz -C "$VTS_BIN"
-   mv "$VTS_BIN/vts-extract" "$VTS_BIN/vts-extract-0.2.1"
+   mv "$VTS_BIN/vts-extract" "$VTS_BIN/vts-extract-0.2.2"
    ```
    (Other platforms: substitute `macos-x86_64` / `linux-x86_64`, and on
    Linux use the `~/.local/share` default above.)
@@ -179,12 +179,27 @@ In generate mode (the default), continue directly from the analysis:
    success criteria; bounded repair loop; then record the outcome with
    `vts-extract verify --skill <dir> --report <report.json>` so the
    package carries an honest ✅/⚠ badge.
-4. Install: copy the package to `~/.claude/skills/<skill_name>` (ask
-   the user first if overwriting an existing skill). It becomes
-   `/<skill_name>` in their next session. In your closing summary,
-   name what was kept — the `.vts/<slug>/` bundle kept for future
-   update-mode folds — and offer to delete it; never delete it
-   silently.
+4. Install for **every** agent on the machine — never hand-copy into
+   one agent's directory:
+   ```
+   vts-extract install --package <dir>
+   ```
+   It detects which agents are actually installed (a skills root that
+   exists is the signal; one is never created), puts the real package
+   in the canonical root — the universal `~/.agents/skills`, else
+   `~/.claude/skills` — and points every other detected agent
+   (Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode,
+   Amp) at it with a relative symlink, so one source of truth serves
+   them all. Add `--dry-run` to show the user the exact plan first,
+   `--force` to replace a skill of that name that already exists
+   (without it, a conflict is reported and nothing is written — ask
+   the user before forcing), `--scope project` to install into the
+   current repo instead of the home dir, and `--only <agent,agent>`
+   to narrow the set. Relay the report: it names the canonical path,
+   every agent that got the skill, and the `/<skill_name>` command it
+   becomes in their next session. In your closing summary, name what
+   was kept — the `.vts/<slug>/` bundle kept for future update-mode
+   folds — and offer to delete it; never delete it silently.
 
 ## 7. Update (fold a new video into an existing skill)
 
@@ -209,4 +224,9 @@ disk, so never re-extract the original video.
    videos (never overwrites); the package's Sources section records the
    fold history.
 4. The fold invalidates any verification badge — re-run the
-   verification protocol, then install.
+   verification protocol, then reinstall over the previous version with
+   `vts-extract install --package <merged-dir> --force`. Because every
+   agent points at one canonical copy, the fold reaches all of them at
+   once. `--skill <installed-package>` in step 2 should be that
+   canonical path (the install report printed it; a symlinked agent
+   path resolves to the same package).

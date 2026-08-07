@@ -34,6 +34,9 @@ Then:
 /vim-basics                                       → your agent now knows what the video taught
 ```
 
+> [!NOTE]
+> The generated skill is installed for **every** agent detected on your machine, not just the one that made it: one real copy in the universal `~/.agents/skills`, and a relative symlink from each of Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode, and Amp that is actually installed. One source of truth, so a later fold reaches all of them. Preview it with `vts-extract install --package <dir> --dry-run`.
+
 ## Why not just the transcript
 
 A whisper model transcribed an Excel tutorial and heard **"some"** — the pixels on screen read **`=SUM(B3:B10)`**. Real failures from real runs:
@@ -71,7 +74,7 @@ flowchart LR
     C --> D[agent inspects<br/>keyframes selectively]
     D --> E["skill package<br/>steps + frames + timestamp provenance"]
     E --> F[fresh sandboxed sub-agent<br/>executes steps]
-    F -->|pass| G["✅ badge → ~/.claude/skills"]
+    F -->|pass| G["✅ badge → installed for every<br/>agent detected on the machine"]
     F -->|fail| H[repair → re-verify]
     F -->|unverifiable| I["⚠ labeled honestly"]
 ```

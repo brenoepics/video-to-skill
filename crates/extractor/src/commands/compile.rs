@@ -22,9 +22,6 @@ pub fn run(bundle: &str, ir_path: &str, out: &str) -> Result<()> {
             ""
         }
     );
-    println!(
-        "install: move or copy it into ~/.claude/skills/{}",
-        ir.skill_name
-    );
+    println!("install: vts-extract install --package {out}");
     Ok(())
 }
