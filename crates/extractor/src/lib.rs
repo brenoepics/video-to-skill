@@ -10,6 +10,7 @@ pub mod deps;
 pub mod frames;
 pub mod guardrails;
 pub mod hashing;
+pub mod install;
 pub mod merge;
 pub mod rewatch;
 pub mod timeline;

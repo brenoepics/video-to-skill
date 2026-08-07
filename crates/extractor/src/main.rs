@@ -71,6 +71,24 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Install a compiled skill package for every AI agent on this machine
+    Install {
+        /// Compiled skill package directory (must contain SKILL.md)
+        #[arg(long)]
+        package: String,
+        /// Install for the whole user account or just this project
+        #[arg(long, value_enum, default_value_t = commands::install::Scope::Global)]
+        scope: commands::install::Scope,
+        /// Restrict to these agents, e.g. "claude,codex" (default: all detected)
+        #[arg(long, value_delimiter = ',')]
+        only: Vec<String>,
+        /// Replace a skill of the same name that is already installed
+        #[arg(long)]
+        force: bool,
+        /// Print the exact plan without writing anything
+        #[arg(long)]
+        dry_run: bool,
+    },
     /// Record a verification report against a generated skill package
     Verify {
         /// Generated skill package directory
@@ -107,6 +125,13 @@ fn main() -> Result<()> {
         Command::Extract { input, out } => commands::extract::run(&input, &out),
         Command::FrameAt { bundle, timestamps } => commands::frame::frame_at(&bundle, &timestamps),
         Command::Compile { bundle, ir, out } => commands::compile::run(&bundle, &ir, &out),
+        Command::Install {
+            package,
+            scope,
+            only,
+            force,
+            dry_run,
+        } => commands::install::run(&package, scope, &only, force, dry_run),
         Command::Verify { skill, report } => commands::verify::run(&skill, &report),
         Command::Merge {
             skill,
