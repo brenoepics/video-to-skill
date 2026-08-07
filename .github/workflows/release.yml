@@ -3,11 +3,19 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and release"
+        required: true
 
 permissions:
   contents: write
   id-token: write
   attestations: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 jobs:
   build:
@@ -33,6 +41,8 @@ jobs:
             optional: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build
@@ -42,7 +52,6 @@ jobs:
         run: codesign -s - --force target/release/vts-extract
       - name: Package
         run: |
-          BIN=target/release/vts-extract
           NAME=vts-extract-${{ matrix.label }}
           tar -C target/release -czf "$NAME.tar.gz" vts-extract
           shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256" 2>/dev/null || sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
@@ -50,9 +59,33 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: vts-extract-${{ matrix.label }}.tar.gz
-      - name: Upload to release
+      # Immutable releases reject post-publish uploads, so every artifact is
+      # staged here and attached in one release-creation call downstream.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.label }}
+          path: |
+            vts-extract-${{ matrix.label }}.tar.gz
+            vts-extract-${{ matrix.label }}.tar.gz.sha256
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: build
+    # The primary target must have produced artifacts; optional legs may fail.
+    if: always() && needs.build.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+      - name: Create release with all assets
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "${{ github.ref_name }}" --verify-tag --generate-notes 2>/dev/null || true
-          gh release upload "${{ github.ref_name }}" vts-extract-${{ matrix.label }}.tar.gz vts-extract-${{ matrix.label }}.tar.gz.sha256 --clobber
+          ls -la dist
+          gh release delete "$TAG" --yes --cleanup-tag=false 2>/dev/null || true
+          gh release create "$TAG" --verify-tag --generate-notes --title "$TAG" dist/*
