@@ -25,7 +25,7 @@ frames you choose to read enter context.
 - **update**: fold a new video into an existing generated skill —
   see step 7 below.
 
-## 1. Locate the extractor (requires vts-extract 0.2.2)
+## 1. Locate the extractor (requires vts-extract 0.2.3)
 
 The binary is cached **globally** so every project that carries this
 skill shares one copy. The cache lives in the app data dir — the same
@@ -35,21 +35,21 @@ data dir joined with `video-to-skill` (macOS:
 `~/.local/share/video-to-skill`).
 
 Resolve the binary in this order, then confirm `vts-extract --version`
-reports **0.2.2** — a wrong-version binary is ignored (never deleted;
+reports **0.2.3** — a wrong-version binary is ignored (never deleted;
 versioned filenames let versions coexist), so move to the next
 candidate or refetch rather than proceeding:
 
-1. Global cache: `<data-dir>/bin/vts-extract-0.2.2` (versioned
+1. Global cache: `<data-dir>/bin/vts-extract-0.2.3` (versioned
    filename).
 2. Dev clones only: `target/release/vts-extract` beside this file.
 3. Fetch the prebuilt binary (macOS arm64 primary) into the global
    cache:
    ```
    VTS_BIN="${VTS_DATA_DIR:-$HOME/Library/Application Support/video-to-skill}/bin"
-   gh release download v0.2.2 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
+   gh release download v0.2.3 -R brenoepics/video-to-skill -p "vts-extract-macos-arm64*" -D /tmp/vts-dl
    shasum -a 256 -c /tmp/vts-dl/vts-extract-macos-arm64.tar.gz.sha256
    mkdir -p "$VTS_BIN" && tar -xzf /tmp/vts-dl/vts-extract-macos-arm64.tar.gz -C "$VTS_BIN"
-   mv "$VTS_BIN/vts-extract" "$VTS_BIN/vts-extract-0.2.2"
+   mv "$VTS_BIN/vts-extract" "$VTS_BIN/vts-extract-0.2.3"
    ```
    (Other platforms: substitute `macos-x86_64` / `linux-x86_64`, and on
    Linux use the `~/.local/share` default above.)
