@@ -29,7 +29,7 @@ impl Toolchain {
                 .map_or_else(
                     || {
                         bail!(
-                            "{} is missing — run `vts-extract check --fix` first",
+                            "{} is missing — run `vts-extract check --fix --yes` first",
                             tool.file_name()
                         )
                     },

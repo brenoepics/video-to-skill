@@ -54,7 +54,7 @@ jobs:
         run: cargo build --release --locked
       - name: Bootstrap tools
         if: steps.guard.outputs.skip != 'true'
-        run: ./target/release/vts-extract check --fix
+        run: ./target/release/vts-extract check --fix --yes
       - name: Run benchmark suite
         if: steps.guard.outputs.skip != 'true'
         run: ./target/release/vts-extract bench --write-docs .

@@ -75,7 +75,7 @@ pub fn run_suite(progress: &mut dyn FnMut(&str)) -> Result<SuiteOutcome> {
     let model = tools
         .whisper_model
         .clone()
-        .context("whisper model weights are missing — run `vts-extract check --fix` first")?;
+        .context("whisper model weights are missing — run `vts-extract check --fix --yes` first")?;
     let work = scratch_dir()?;
 
     let mut results = Vec::new();

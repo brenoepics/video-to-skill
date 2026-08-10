@@ -181,7 +181,7 @@ fn real_whisper_transcribes_generated_speech() {
         .into_iter()
         .find(|s| s.tool == Tool::WhisperModel && s.presence == Presence::Installed)
         .and_then(|s| s.location)
-        .expect("run `vts-extract check --fix` first");
+        .expect("run `vts-extract check --fix --yes` first");
 
     let dir = scratch("real-whisper");
     let aiff = dir.join("speech.aiff");

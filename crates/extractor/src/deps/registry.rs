@@ -58,6 +58,14 @@ pub fn spec_for(tool: Tool) -> Option<ToolSpec> {
     }
 }
 
+/// Every artifact this platform could fetch, in a stable order — the
+/// inventory a user is shown before approving any download, and the
+/// answer to "what does this thing pull off the internet?".
+#[must_use]
+pub fn inventory() -> Vec<ToolSpec> {
+    Tool::ALL.iter().copied().filter_map(spec_for).collect()
+}
+
 fn macos() -> bool {
     cfg!(target_os = "macos")
 }
@@ -69,6 +77,17 @@ fn macos_arm64() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_inventory_covers_every_fetchable_tool() {
+        let inventory = inventory();
+        let fetchable = Tool::ALL.iter().filter(|&&t| spec_for(t).is_some()).count();
+        assert_eq!(
+            inventory.len(),
+            fetchable,
+            "the disclosed inventory must not omit anything the tool can download"
+        );
+    }
 
     #[test]
     fn every_available_spec_is_pinned_and_verifiable() {

@@ -224,7 +224,7 @@ fn real_youtube_download_end_to_end() {
         .into_iter()
         .find(|s| s.tool == Tool::Ytdlp && s.presence != Presence::Missing)
         .and_then(|s| s.location)
-        .expect("run `vts-extract check --fix` first");
+        .expect("run `vts-extract check --fix --yes` first");
 
     let dir = scratch("real-yt");
     let bundle = dir.join("bundle");

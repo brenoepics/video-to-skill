@@ -20,9 +20,15 @@ struct Cli {
 enum Command {
     /// Verify local dependencies (ffmpeg, yt-dlp, whisper weights) and report what's missing
     Check {
-        /// Download missing dependencies into the app data dir
+        /// Show what would be downloaded to satisfy missing dependencies
         #[arg(long)]
         fix: bool,
+        /// Approve the disclosed downloads and actually fetch them
+        #[arg(long)]
+        yes: bool,
+        /// List every artifact this platform could download, then exit
+        #[arg(long)]
+        print_downloads: bool,
     },
     /// Run the full extraction pipeline on a video file or URL
     Extract {
@@ -88,6 +94,9 @@ enum Command {
         /// Print the exact plan without writing anything
         #[arg(long)]
         dry_run: bool,
+        /// Approve the printed plan and actually install
+        #[arg(long)]
+        yes: bool,
     },
     /// Record a verification report against a generated skill package
     Verify {
@@ -103,6 +112,19 @@ enum Command {
         /// Splice generated results into <repo-root>/BENCHMARK.md and README.md
         #[arg(long, value_name = "REPO_ROOT")]
         write_docs: Option<String>,
+    },
+    /// Run a command under OS confinement — no network, writes confined to
+    /// the workspace. Verification executes video-derived steps only in here.
+    Sandbox {
+        /// Throwaway workspace: the only writable tree
+        #[arg(long)]
+        workspace: String,
+        /// Print the exact policy that would be applied, then exit
+        #[arg(long)]
+        print_policy: bool,
+        /// Command to run, after `--`
+        #[arg(last = true)]
+        command: Vec<String>,
     },
     /// Export densely-sampled frames for a time range (agent "re-watch")
     Clip {
@@ -121,7 +143,11 @@ enum Command {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Check { fix } => commands::check::run(fix),
+        Command::Check {
+            fix,
+            yes,
+            print_downloads,
+        } => commands::check::run(fix, yes, print_downloads),
         Command::Extract { input, out } => commands::extract::run(&input, &out),
         Command::FrameAt { bundle, timestamps } => commands::frame::frame_at(&bundle, &timestamps),
         Command::Compile { bundle, ir, out } => commands::compile::run(&bundle, &ir, &out),
@@ -131,7 +157,8 @@ fn main() -> Result<()> {
             only,
             force,
             dry_run,
-        } => commands::install::run(&package, scope, &only, force, dry_run),
+            yes,
+        } => commands::install::run(&package, scope, &only, force, dry_run, yes),
         Command::Verify { skill, report } => commands::verify::run(&skill, &report),
         Command::Merge {
             skill,
@@ -141,6 +168,11 @@ fn main() -> Result<()> {
             dry_run,
         } => commands::merge::run(&skill, &ir, &bundle, &out, dry_run),
         Command::Bench { write_docs } => commands::bench::run(write_docs.as_deref()),
+        Command::Sandbox {
+            workspace,
+            print_policy,
+            command,
+        } => commands::sandbox::run(&workspace, &command, print_policy),
         Command::Clip {
             bundle,
             start,

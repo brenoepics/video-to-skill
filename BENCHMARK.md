@@ -26,7 +26,7 @@ npx skills@latest add brenoepics/video-to-skill
 cargo build --release --locked
 
 # then
-vts-extract check --fix   # bootstraps ffmpeg, yt-dlp, whisper weights — checksum-pinned
+vts-extract check --fix --yes   # bootstraps ffmpeg, yt-dlp, whisper weights — checksum-pinned
 vts-extract bench         # prints the results table
 ```
 

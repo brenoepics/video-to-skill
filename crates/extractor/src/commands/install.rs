@@ -19,7 +19,19 @@ pub enum Scope {
 /// Install a compiled skill package for every agent detected on the
 /// machine: one real copy in the canonical root, relative symlinks
 /// elsewhere.
-pub fn run(package: &str, scope: Scope, only: &[String], force: bool, dry_run: bool) -> Result<()> {
+///
+/// Writing is consent-gated. Installing a video-derived skill into
+/// every agent on the machine is exactly the "transitive installation"
+/// a marketplace audit flagged, so the default is to show the plan and
+/// write nothing; `--yes` is the user's approval of that plan.
+pub fn run(
+    package: &str,
+    scope: Scope,
+    only: &[String],
+    force: bool,
+    dry_run: bool,
+    yes: bool,
+) -> Result<()> {
     let unknown = unknown_agents(only);
     if !unknown.is_empty() {
         bail!(
@@ -34,15 +46,23 @@ pub fn run(package: &str, scope: Scope, only: &[String], force: bool, dry_run: b
     let base = base_dir(scope)?;
     let states = detect(&base, &skill_name, only);
     let plan = plan_install(&skill_name, &states, force)?;
+    let approved = yes && !dry_run;
     let report = apply(
         &plan,
         package,
         ApplyOptions {
             symlinks: true,
-            dry_run,
+            dry_run: !approved,
         },
     )?;
     println!("{report}");
+    if !approved && !dry_run {
+        println!(
+            "\nNothing was written. Show this plan to the user — it installs a skill \
+             built from a video\ninto every agent listed above — then re-run with \
+             `--yes` to apply it."
+        );
+    }
     Ok(())
 }
 

@@ -84,7 +84,7 @@ impl bundle::VideoDownloader for LazyYtdlp {
             .into_iter()
             .find(|s| s.tool == Tool::Ytdlp && s.presence != Presence::Missing)
             .and_then(|s| s.location)
-            .context("yt-dlp is missing — run `vts-extract check --fix` first")?;
+            .context("yt-dlp is missing — run `vts-extract check --fix --yes` first")?;
         YtdlpDownloader::new(ytdlp).download(url, dest_dir)
     }
 }
@@ -94,7 +94,7 @@ impl bundle::VideoDownloader for LazyYtdlp {
 fn transcribe_stage(bundle_dir: &Path, tools: &Toolchain) {
     let Some(model) = tools.whisper_model.clone() else {
         println!(
-            "! whisper model missing — skipping transcription (run `vts-extract check --fix`)"
+            "! whisper model missing — skipping transcription (run `vts-extract check --fix --yes`)"
         );
         return;
     };

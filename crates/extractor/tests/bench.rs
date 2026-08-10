@@ -3,7 +3,7 @@
 //! through real whisper weights, taking minutes.
 //!
 //! Prerequisites: ffmpeg/ffprobe on PATH and bootstrapped whisper
-//! weights (`vts-extract check --fix`). Run with:
+//! weights (`vts-extract check --fix --yes`). Run with:
 //!
 //!   cargo test --test bench -- --ignored
 
@@ -13,7 +13,7 @@
 use vts_extract::bench;
 
 #[test]
-#[ignore = "runs the full 120s benchmark; needs ffmpeg + whisper weights (vts-extract check --fix)"]
+#[ignore = "runs the full 120s benchmark; needs ffmpeg + whisper weights (vts-extract check --fix --yes)"]
 fn suite_measures_the_contracted_benchmarks() {
     let mut progress_lines = Vec::new();
 

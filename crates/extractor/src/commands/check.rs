@@ -6,11 +6,20 @@ use vts_extract::deps::{self, fetch::HttpFetcher, registry, Env, Presence, Tool,
 /// Dependency doctor: report every managed tool, and with `fix` bootstrap
 /// the missing ones into the app data dir (never a system location).
 /// Plain `check` never touches the network.
-pub fn run(fix: bool) -> Result<()> {
+///
+/// Downloading is consent-gated: `--fix` alone discloses exactly what
+/// would be fetched and stops. Nothing leaves or enters the machine
+/// until the user has seen the inventory and `--yes` is passed.
+pub fn run(fix: bool, yes: bool, print_downloads: bool) -> Result<()> {
     let exe = std::env::current_exe().ok();
     println!("{}", identity_line(exe.as_deref()));
     let env = Env::from_system();
     println!("data dir: {}\n", env.data_dir.display());
+
+    if print_downloads {
+        print_inventory(&registry::inventory());
+        return Ok(());
+    }
 
     let mut missing: Vec<ToolStatus> = Vec::new();
     for status in deps::probe(&env) {
@@ -25,7 +34,22 @@ pub fn run(fix: bool) -> Result<()> {
         return Ok(());
     }
     if !fix {
-        println!("\nRun `vts-extract check --fix` to download the missing ones.");
+        println!("\nRun `vts-extract check --fix` to see what it would download.");
+        return Ok(());
+    }
+
+    let pending: Vec<_> = missing
+        .iter()
+        .filter_map(|s| registry::spec_for(s.tool))
+        .collect();
+    if !yes {
+        println!("\n{} would be downloaded:\n", plural(pending.len()));
+        print_inventory(&pending);
+        println!(
+            "\nNothing was downloaded. Show this list to the user, then re-run with\n\
+             `vts-extract check --fix --yes` to approve it. Tools already on PATH are\n\
+             never downloaded — installing ffmpeg/yt-dlp yourself avoids them entirely."
+        );
         return Ok(());
     }
 
@@ -34,6 +58,25 @@ pub fn run(fix: bool) -> Result<()> {
     }
     println!("\nAll dependencies ready.");
     Ok(())
+}
+
+fn plural(n: usize) -> String {
+    if n == 1 {
+        "1 artifact".to_string()
+    } else {
+        format!("{n} artifacts")
+    }
+}
+
+/// Disclose each artifact's exact origin and pinned digest. Integrity
+/// does not depend on trusting the host: a compromised origin cannot
+/// change the bytes without failing this checksum.
+fn print_inventory(specs: &[deps::bootstrap::ToolSpec]) {
+    for spec in specs {
+        println!("  {}", label(spec.tool));
+        println!("    url    {}", spec.url);
+        println!("    sha256 {}", spec.sha256);
+    }
 }
 
 fn report(status: &ToolStatus) {
