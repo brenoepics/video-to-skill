@@ -13,6 +13,7 @@ pub mod hashing;
 pub mod install;
 pub mod merge;
 pub mod rewatch;
+pub mod sandbox;
 pub mod timeline;
 pub mod tools;
 pub mod verify;
