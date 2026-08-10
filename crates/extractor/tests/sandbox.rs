@@ -92,8 +92,7 @@ fn the_network_is_unreachable() {
     let reachable = Command::new("/usr/bin/curl")
         .args(["-s", "-m", "8", "-o", "/dev/null", "https://example.com"])
         .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+        .is_ok_and(|s| s.success());
     if !reachable {
         eprintln!("host has no network — skipping the confinement half");
         return;
