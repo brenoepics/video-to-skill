@@ -179,7 +179,8 @@ physical task — see the routing table in
 
 1. **Overview** — what the video teaches, genre, duration, language.
 2. **Steps** — ordered step candidates: goal, exact actions/commands
-   (verbatim from frames where visual), success signal, `[t=..]` +
+   (verbatim from frames where visual — credentials redacted per
+   evidence rule 1), success signal, `[t=..]` +
    frame evidence, confidence (high/medium/low).
 3. **On-screen artifacts** — commands, code, URLs, filenames seen in
    frames, each with timestamp.
@@ -196,7 +197,8 @@ In generate mode (the default), continue directly from the analysis:
 1. Convert your analysis into a Procedure IR — write
    `<bundle>/procedure.json` per [references/ir-format.md](references/ir-format.md).
    Same steps, same evidence, same confidence as the report; commands
-   verbatim from pixels. If the video taught no procedure, say so and
+   verbatim from pixels, credentials redacted per evidence rule 1.
+   If the video taught no procedure, say so and
    stop — never fabricate steps.
 2. Compile:
    `vts-extract compile --bundle <bundle> --ir <bundle>/procedure.json --out <dir>`

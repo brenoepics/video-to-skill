@@ -9,7 +9,7 @@ Classify from the first keyframes + speech style, then apply the row:
 
 | Genre | Tell-tale signs | Inspection strategy | Step extraction focus |
 |---|---|---|---|
-| Screencast / CLI | terminal text, editors, monospace | OCR-read every distinct screen state; commands must be verbatim | exact commands, flags, file paths, outputs as success signals |
+| Screencast / CLI | terminal text, editors, monospace | OCR-read every distinct screen state; commands must be verbatim (never credentials — redact those) | exact commands, flags, file paths, outputs as success signals |
 | GUI walkthrough | cursor, menus, dialogs | keyframes at each screen change; re-watch around clicks (motion spikes) | intent-level steps: "open X pane, enable Y" — never coordinates |
 | Slides / talk | static slides, low motion, speech-dense | one keyframe per slide; transcript carries most content | concepts, claims, definitions; slide text confirms terminology |
 | Physical task | hands, objects, camera motion | densest inspection: clip at 2fps around each action described | goal + technique + cautions; flag that execution can't be verified |
