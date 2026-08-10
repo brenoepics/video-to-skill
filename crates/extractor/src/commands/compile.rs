@@ -22,6 +22,8 @@ pub fn run(bundle: &str, ir_path: &str, out: &str) -> Result<()> {
             ""
         }
     );
-    println!("install: vts-extract install --package {out}");
+    println!(
+        "install: vts-extract install --package {out}   # prints the plan; add --yes to apply"
+    );
     Ok(())
 }
