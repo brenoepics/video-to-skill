@@ -35,7 +35,7 @@ Then:
 ```
 
 > [!NOTE]
-> The generated skill is installed for **every** agent detected on your machine, not just the one that made it: one real copy in the universal `~/.agents/skills`, and a relative symlink from each of Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode, and Amp that is actually installed. One source of truth, so a later fold reaches all of them. Preview it with `vts-extract install --package <dir> --dry-run`.
+> The generated skill is installed for **every** agent detected on your machine, not just the one that made it: one real copy in the universal `~/.agents/skills`, and a relative symlink from each of Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode, and Amp that is actually installed. One source of truth, so a later fold reaches all of them. Installing is consent-gated: `vts-extract install --package <dir>` prints the exact plan and writes nothing until you re-run it with `--yes`.
 
 ## Why not just the transcript
 
@@ -51,7 +51,7 @@ Transcript-only tools ship the left column. Here, on-screen text outranks narrat
 
 ## Verification is execution, not vibes
 
-A fresh sandboxed sub-agent — seeing only the generated package, not the video — runs each step against its success criteria before the badge is written.
+A fresh sub-agent — seeing only the generated package, not the video — runs each step against its success criteria before the badge is written. It runs them inside an OS sandbox: no network, writes confined to a throwaway workspace, credential stores unreadable. Where the machine offers no sandbox, execution is refused and the steps are badged honestly rather than run unconfined.
 
 > [!NOTE]
 > Case in point: one tutorial's paste step compiled to `"+P`, which pastes from Vim's *internal* register, not the clipboard. The sandbox executed it, the criterion failed, the repair loop corrected it to `"+p` and re-verified against the real macOS pasteboard. Steps that would be unsafe to execute are skipped by policy and say so — no silent green.
@@ -122,7 +122,9 @@ Everything runs locally. The video never leaves your machine; only the frames th
 ## Security
 
 > [!IMPORTANT]
-> A video is untrusted input that flows toward executable steps — so the boundaries are explicit. Every download is version-pinned and checksum-verified, with provenance attestations on the extractor binary. On-screen credentials are never transcribed — the compiler rejects secret-shaped strings — and video text addressed to the agent is flagged as suspected prompt injection, never followed. Threat model and download inventory: [SECURITY.md](SECURITY.md).
+> A video is untrusted input that flows toward executable steps — so the boundaries are explicit, and enforced by the kernel where it counts. Verification executes video-derived commands under an OS sandbox with **no network**, writes confined to a throwaway workspace, and credential stores unreadable; where no sandbox exists the run is refused, not downgraded. On-screen credentials are never transcribed — the compiler *refuses* IRs carrying secret-shaped text in any field — and video text addressed to the agent is flagged as suspected prompt injection, never followed. Nothing downloads or installs without showing you the plan first. Every download is version-pinned and checksum-verified, with provenance attestations on the extractor binary.
+>
+> Full threat model, download inventory, and a **point-by-point response to every marketplace audit finding**: [SECURITY.md](SECURITY.md).
 
 ## Honest limitations
 
