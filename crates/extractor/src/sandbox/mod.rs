@@ -200,9 +200,13 @@ mod tests {
     }
 
     #[test]
-    fn this_machine_has_a_mechanism() {
-        // macOS and mainstream Linux CI both satisfy this; if it ever
-        // fails the refusal path above is what users would hit.
-        assert!(detect().is_some(), "no sandbox mechanism detected");
+    fn macos_always_has_a_mechanism() {
+        // sandbox-exec ships with macOS, so the primary platform can
+        // never silently fall through to the refusal path. Linux is
+        // deliberately not asserted: bwrap is a package, and a
+        // contributor without it should see skips, not failures.
+        if cfg!(target_os = "macos") {
+            assert_eq!(detect(), Some(Mechanism::Seatbelt));
+        }
     }
 }
