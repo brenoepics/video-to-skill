@@ -22,9 +22,10 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
     // Namespace the incoming frames by fold sequence so two videos'
     // `shot000.jpg` never collide inside one package.
     let prefix = format!("s{}-", existing.history.len() + 2);
-    rewrite_frames(&mut incoming, &prefix);
+    rewrite_frames(&mut incoming, &prefix)?;
 
-    let result = merge(&existing, &incoming, &today());
+    let date = vts_extract::calendar::today_utc().context("reading the system clock")?;
+    let result = merge(&existing, &incoming, &date);
 
     println!(
         "fold plan for {} <- {}:",
@@ -62,21 +63,23 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
 }
 
 /// Prefix every frame reference in the incoming IR.
-fn rewrite_frames(ir: &mut ProcedureIr, prefix: &str) {
-    let rename = |frame: &mut Option<String>| {
+fn rewrite_frames(ir: &mut ProcedureIr, prefix: &str) -> Result<()> {
+    let rename = |frame: &mut Option<String>| -> Result<()> {
         if let Some(f) = frame {
-            let name = f.rsplit('/').next().unwrap_or(f).to_string();
+            let name = vts_extract::safe_path::portable_basename(f)?.to_string();
             *f = format!("frames/{prefix}{name}");
         }
+        Ok(())
     };
     for step in &mut ir.steps {
         for evidence in &mut step.evidence {
-            rename(&mut evidence.frame);
+            rename(&mut evidence.frame)?;
         }
     }
     for artifact in &mut ir.artifacts {
-        rename(&mut artifact.frame);
+        rename(&mut artifact.frame)?;
     }
+    Ok(())
 }
 
 /// Build a staging dir where both videos' frames resolve under `frames/`.
@@ -105,22 +108,11 @@ fn stage_frames(
         .filter_map(|e| e.frame.as_ref())
         .chain(incoming.artifacts.iter().filter_map(|a| a.frame.as_ref()))
     {
-        let name = frame.rsplit('/').next().unwrap_or(frame);
+        let name = vts_extract::safe_path::portable_basename(frame)?;
         let original = name.strip_prefix(prefix).unwrap_or(name);
         let source = incoming_bundle.join("frames").join(original);
         fs::copy(&source, frames.join(name))
             .with_context(|| format!("staging incoming frame {}", source.display()))?;
     }
     Ok(staging)
-}
-
-fn today() -> String {
-    std::process::Command::new("date")
-        .arg("+%F")
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "unknown-date".to_string())
 }

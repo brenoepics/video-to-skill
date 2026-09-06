@@ -25,7 +25,20 @@ npx skills@latest add brenoepics/video-to-skill
 ```
 
 > [!TIP]
-> That's the entire setup. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper weights — all checksum-pinned. No Homebrew, no Python, no accounts, no API keys. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
+> That's the entire setup. Windows 10/11 x64, macOS, and Linux are supported. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper weights where a pinned build is available. Existing ffmpeg/ffprobe executables and yt-dlp builds that accept the required hardening flags are reused from `PATH`. No Homebrew, Python, account, or API key is required. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
+
+On Windows, the extractor and managed tools live under
+`%LOCALAPPDATA%\video-to-skill` by default. Releases include
+`vts-extract-windows-x86_64.zip`; source builds use the MSVC target and require
+Rust 1.89+, CMake 3.15+, Ninja, LLVM/libclang, and the Visual Studio C++ Build Tools.
+From PowerShell, run `. .\.github\scripts\setup-msvc.ps1` before Cargo; the
+script selects a complete x64 toolset, configures `LIBCLANG_PATH`, and keeps
+whisper.cpp on the portable x86-64 CPU baseline instead of the build machine's ISA.
+Verification uses the
+Windows AppContainer security boundary and does not depend on the optional
+Windows Sandbox feature. Some hardened Windows policies deny child-process
+creation inside LPAC; those steps are reported as unverifiable and are never
+retried outside the sandbox.
 
 Then:
 
@@ -35,7 +48,7 @@ Then:
 ```
 
 > [!NOTE]
-> The generated skill is installed for **every** agent detected on your machine, not just the one that made it: one real copy in the universal `~/.agents/skills`, and a relative symlink from each of Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, OpenCode, and Amp that is actually installed. One source of truth, so a later fold reaches all of them. Installing is consent-gated: `vts-extract install --package <dir>` prints the exact plan and writes nothing until you re-run it with `--yes`.
+> The generated skill is installed for **every** agent detected on your machine, not just the one that made it: one real copy in the universal `~/.agents/skills`, and a relative symlink from each supported agent that is actually installed. If Windows policy denies symlink creation, installation falls back to a full copy and reports that choice; re-run `install --force --yes` after a later fold to refresh those copies. Installing is consent-gated: `vts-extract install --package <dir>` prints the exact plan and writes nothing until you re-run it with `--yes`.
 
 ## Why not just the transcript
 
@@ -51,7 +64,7 @@ Transcript-only tools ship the left column. Here, on-screen text outranks narrat
 
 ## Verification is execution, not vibes
 
-A fresh sub-agent — seeing only the generated package, not the video — runs each step against its success criteria before the badge is written. It runs them inside an OS sandbox: no network, writes confined to a throwaway workspace, credential stores unreadable. Where the machine offers no sandbox, execution is refused and the steps are badged honestly rather than run unconfined.
+A fresh sub-agent — seeing only the generated package, not the video — runs each step against its success criteria before the badge is written. It runs them inside an OS sandbox: Windows LPAC/AppContainer, macOS Seatbelt, or Linux bubblewrap. Each backend denies network access and confines writable data to a throwaway workspace and an ephemeral private profile. Where the machine offers no supported sandbox, execution is refused and the steps are badged honestly rather than run unconfined.
 
 > [!NOTE]
 > Case in point: one tutorial's paste step compiled to `"+P`, which pastes from Vim's *internal* register, not the clipboard. The sandbox executed it, the criterion failed, the repair loop corrected it to `"+p` and re-verified against the real macOS pasteboard. Steps that would be unsafe to execute are skipped by policy and say so — no silent green.

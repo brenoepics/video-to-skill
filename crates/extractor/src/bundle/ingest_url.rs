@@ -92,12 +92,13 @@ fn download_then_ingest(
 /// Production downloader: shells out to the bootstrapped yt-dlp.
 pub struct YtdlpDownloader {
     ytdlp: PathBuf,
+    ffmpeg: PathBuf,
 }
 
 impl YtdlpDownloader {
     #[must_use]
-    pub fn new(ytdlp: PathBuf) -> YtdlpDownloader {
-        YtdlpDownloader { ytdlp }
+    pub fn new(ytdlp: PathBuf, ffmpeg: PathBuf) -> YtdlpDownloader {
+        YtdlpDownloader { ytdlp, ffmpeg }
     }
 }
 
@@ -122,11 +123,21 @@ impl YtdlpDownloader {
     fn attempt(&self, url: &str, dest_dir: &Path, format: Option<&str>) -> Result<DownloadedVideo> {
         let title_file = dest_dir.join("title.txt");
         let mut cmd = std::process::Command::new(&self.ytdlp);
-        cmd.args(["--no-playlist", "--merge-output-format", "mp4", "-o"])
-            .arg(dest_dir.join("source.%(ext)s"))
-            .args(["--print-to-file", "%(title)s"])
-            .arg(&title_file)
-            .arg("--no-simulate");
+        cmd.args([
+            "--ignore-config",
+            "--no-plugin-dirs",
+            "--no-remote-components",
+            "--no-playlist",
+            "--merge-output-format",
+            "mp4",
+            "-o",
+        ])
+        .arg(dest_dir.join("source.%(ext)s"))
+        .arg("--ffmpeg-location")
+        .arg(&self.ffmpeg)
+        .args(["--print-to-file", "%(title)s"])
+        .arg(&title_file)
+        .arg("--no-simulate");
         if let Some(format) = format {
             cmd.args(["-f", format]);
         }

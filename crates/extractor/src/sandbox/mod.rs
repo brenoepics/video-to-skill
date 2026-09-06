@@ -12,6 +12,8 @@
 
 pub mod bubblewrap;
 pub mod profile;
+#[cfg(windows)]
+mod windows;
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,6 +29,8 @@ pub enum Mechanism {
     Seatbelt,
     /// Linux `bwrap` (bubblewrap).
     Bubblewrap,
+    /// Windows Less-Privileged `AppContainer` plus a kill-on-close Job Object.
+    WindowsAppContainer,
 }
 
 impl Mechanism {
@@ -35,6 +39,7 @@ impl Mechanism {
         match self {
             Self::Seatbelt => "macOS seatbelt (sandbox-exec)",
             Self::Bubblewrap => "bubblewrap (bwrap)",
+            Self::WindowsAppContainer => "Windows Less-Privileged AppContainer (LPAC)",
         }
     }
 }
@@ -42,10 +47,17 @@ impl Mechanism {
 /// The mechanism this machine can use, if any.
 #[must_use]
 pub fn detect() -> Option<Mechanism> {
-    if cfg!(target_os = "macos") && which("sandbox-exec").is_some() {
-        return Some(Mechanism::Seatbelt);
+    #[cfg(windows)]
+    {
+        Some(Mechanism::WindowsAppContainer)
     }
-    which("bwrap").map(|_| Mechanism::Bubblewrap)
+    #[cfg(not(windows))]
+    {
+        if cfg!(target_os = "macos") && which("sandbox-exec").is_some() {
+            return Some(Mechanism::Seatbelt);
+        }
+        which("bwrap").map(|_| Mechanism::Bubblewrap)
+    }
 }
 
 /// Run `command` confined to `workspace`, returning its exit code.
@@ -74,6 +86,12 @@ pub fn run(workspace: &Path, command: &[String]) -> Result<i32> {
     let status = match mechanism {
         Mechanism::Seatbelt => run_seatbelt(&confinement, command),
         Mechanism::Bubblewrap => run_bwrap(&confinement, command),
+        #[cfg(windows)]
+        Mechanism::WindowsAppContainer => windows::run(&workspace, command),
+        #[cfg(not(windows))]
+        Mechanism::WindowsAppContainer => {
+            bail!("the Windows AppContainer backend is unavailable on this platform")
+        }
     }?;
     Ok(status)
 }
@@ -88,6 +106,8 @@ pub fn policy_text(workspace: &Path) -> Result<String> {
         tmp: &tmp,
     };
     match detect() {
+        #[cfg(windows)]
+        Some(Mechanism::WindowsAppContainer) => windows::policy_text(&workspace),
         Some(Mechanism::Bubblewrap) => Ok(bubblewrap::bwrap_args(&c, &["<command>".into()])?
             .join(" ")
             .replace(" --", "\n  --")),
@@ -144,7 +164,7 @@ fn run_bwrap(c: &Confinement, command: &[String]) -> Result<i32> {
 /// 128 + signal is the shell convention for a signalled child; without
 /// it a killed command would report success.
 fn exit_code(status: std::process::ExitStatus) -> i32 {
-    status.code().unwrap_or_else(|| {
+    status.code().unwrap_or({
         #[cfg(unix)]
         {
             use std::os::unix::process::ExitStatusExt;
@@ -158,12 +178,21 @@ fn exit_code(status: std::process::ExitStatus) -> i32 {
 }
 
 fn home_dir() -> Result<PathBuf> {
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute());
-    home.context("HOME is not set to an absolute path; cannot build a sandbox policy")
+    #[cfg(windows)]
+    {
+        dirs::home_dir()
+            .context("Windows user profile directory is unavailable; cannot build a sandbox policy")
+    }
+    #[cfg(not(windows))]
+    {
+        let home = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute());
+        home.context("HOME is not set to an absolute path; cannot build a sandbox policy")
+    }
 }
 
+#[cfg(any(not(windows), test))]
 fn which(name: &str) -> Option<PathBuf> {
     let path = std::env::var_os("PATH")?;
     std::env::split_paths(&path)
@@ -178,7 +207,7 @@ fn is_executable(path: &Path) -> bool {
         .is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
 }
 
-#[cfg(not(unix))]
+#[cfg(all(not(unix), any(not(windows), test)))]
 fn is_executable(path: &Path) -> bool {
     path.is_file()
 }
@@ -195,7 +224,10 @@ mod tests {
 
     #[test]
     fn which_finds_a_ubiquitous_binary() {
+        #[cfg(unix)]
         assert!(which("sh").is_some());
+        #[cfg(windows)]
+        assert!(which("cmd.exe").is_some());
         assert!(which("definitely-not-a-real-binary-xyzzy").is_none());
     }
 

@@ -70,7 +70,7 @@ pub fn bwrap_args(c: &Confinement, command: &[String]) -> Result<Vec<String>> {
     Ok(args)
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

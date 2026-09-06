@@ -56,7 +56,7 @@ fn realtime_cell(result: &BenchResult) -> String {
 }
 
 fn write_docs_into(root: &Path, report: &BenchReport) -> Result<()> {
-    let date = today();
+    let date = vts_extract::calendar::today_utc().context("reading the system clock")?;
     splice_file(
         &root.join("BENCHMARK.md"),
         report::RESULTS_BEGIN,
@@ -83,15 +83,4 @@ fn splice_file(path: &Path, begin: &str, end: &str, replacement: &str) -> Result
     let updated = splice(&document, begin, end, replacement)
         .with_context(|| format!("{} has no usable bench markers", path.display()))?;
     fs::write(path, updated).with_context(|| format!("writing {}", path.display()))
-}
-
-fn today() -> String {
-    std::process::Command::new("date")
-        .arg("+%F")
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "unknown-date".to_string())
 }

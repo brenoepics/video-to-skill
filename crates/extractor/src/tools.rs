@@ -20,12 +20,11 @@ impl Toolchain {
     /// Resolve from PATH + app data dir; errors name what's missing and
     /// how to fix it.
     pub fn resolve(env: &Env) -> Result<Toolchain> {
-        let statuses = deps::probe(env);
         let locate = |tool: Tool| -> Result<PathBuf> {
-            statuses
-                .iter()
-                .find(|s| s.tool == tool && s.presence != Presence::Missing)
-                .and_then(|s| s.location.clone())
+            let status = deps::status(tool, env);
+            status
+                .location
+                .filter(|_| status.presence != Presence::Missing)
                 .map_or_else(
                     || {
                         bail!(

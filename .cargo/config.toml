@@ -1,0 +1,13 @@
+[target.'cfg(all(windows, target_env = "msvc"))']
+# Release archives must run on a clean Windows 10/11 installation without a
+# separately installed Visual C++ Redistributable. Cargo exposes this target
+# feature to native build scripts, so whisper.cpp is compiled with /MT too.
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[env]
+# whisper-rs-sys forwards CMAKE_* variables to its vendored CMake build. The
+# policy enables CMake's supported runtime-library abstraction before the
+# project selects MSVC; without it, CMake's Release defaults append /MD after
+# the /MT inferred from Cargo and the final link mixes two C runtimes.
+CMAKE_POLICY_DEFAULT_CMP0091 = { value = "NEW", force = true }
+CMAKE_MSVC_RUNTIME_LIBRARY = { value = "MultiThreaded", force = true }

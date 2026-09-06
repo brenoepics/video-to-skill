@@ -23,24 +23,37 @@ pub fn skill_name_of(package: &Path) -> Result<String> {
     }
     let text =
         fs::read_to_string(&manifest).with_context(|| format!("reading {}", manifest.display()))?;
-    if let Some(name) = frontmatter_name(&text) {
-        return Ok(name);
-    }
-    package
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(ToString::to_string)
-        .with_context(|| format!("cannot name a skill from {}", package.display()))
+    let name = frontmatter_name(&text)
+        .or_else(|| {
+            package
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(ToString::to_string)
+        })
+        .with_context(|| format!("cannot name a skill from {}", package.display()))?;
+    crate::safe_path::validate_skill_name(&name)?;
+    Ok(name)
 }
 
 /// `name:` from a leading `---` frontmatter block, if there is one.
 fn frontmatter_name(text: &str) -> Option<String> {
-    let body = text.strip_prefix("---\n")?;
-    let block = body.split("\n---").next()?;
-    block.lines().find_map(|line| {
-        let value = line.strip_prefix("name:")?.trim();
-        (!value.is_empty()).then(|| value.to_string())
-    })
+    let mut lines = text.lines();
+    if lines.next()?.trim_end_matches('\r') != "---" {
+        return None;
+    }
+    let mut name = None;
+    for raw in lines {
+        let line = raw.trim_end_matches('\r');
+        if line == "---" {
+            return name;
+        }
+        if let Some(value) = line.strip_prefix("name:").map(str::trim) {
+            if !value.is_empty() {
+                name = Some(value.to_string());
+            }
+        }
+    }
+    None
 }
 
 /// Recursively copy `from` into `to`, creating `to` and preserving the

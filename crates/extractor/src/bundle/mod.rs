@@ -80,9 +80,8 @@ pub fn load_manifest(bundle_dir: &Path) -> Result<Manifest> {
 /// leave a half-written manifest behind.
 pub fn save_manifest(bundle_dir: &Path, manifest: &Manifest) -> Result<()> {
     fs::create_dir_all(bundle_dir)?;
-    let tmp = bundle_dir.join(format!("{MANIFEST_FILE}.tmp"));
-    fs::write(&tmp, serde_json::to_string_pretty(manifest)?)?;
-    fs::rename(&tmp, bundle_dir.join(MANIFEST_FILE))?;
+    let path = bundle_dir.join(MANIFEST_FILE);
+    crate::fsx::write_atomic(&path, &serde_json::to_vec_pretty(manifest)?)?;
     Ok(())
 }
 
