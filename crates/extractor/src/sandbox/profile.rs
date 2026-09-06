@@ -146,7 +146,7 @@ fn sbpl(path: &Path) -> Result<String> {
     Ok(format!("\"{escaped}\""))
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 

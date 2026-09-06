@@ -3,6 +3,7 @@ name = "vts-extract"
 description = "Local extraction engine for video-to-skill: ingest, scene/slide detection, keyframe dedup, timestamped ASR"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
@@ -19,6 +20,7 @@ ureq = "3"
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2"] }
 
 [[bin]]
 name = "vts-extract"
@@ -29,3 +31,17 @@ whisper-rs = { version = "0.16", features = ["metal"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 whisper-rs = "0.16"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Security_Isolation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_JobObjects",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_System_WindowsProgramming",
+] }

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use vts_extract::deps::{self, fetch::HttpFetcher, registry, Env, Presence, Tool, ToolStatus};
 
 /// Dependency doctor: report every managed tool, and with `fix` bootstrap
@@ -38,26 +38,64 @@ pub fn run(fix: bool, yes: bool, print_downloads: bool) -> Result<()> {
         return Ok(());
     }
 
-    let pending: Vec<_> = missing
-        .iter()
-        .filter_map(|s| registry::spec_for(s.tool))
-        .collect();
+    let missing_tools = missing.iter().map(|status| status.tool).collect::<Vec<_>>();
+    let pending = registry::inventory_for(&missing_tools);
     if !yes {
         println!("\n{} would be downloaded:\n", plural(pending.len()));
         print_inventory(&pending);
+        for tool in missing_tools
+            .iter()
+            .copied()
+            .filter(|tool| registry::spec_for(*tool).is_none())
+        {
+            println!("  {} requires a manual platform install", label(tool));
+        }
         println!(
             "\nNothing was downloaded. Show this list to the user, then re-run with\n\
-             `vts-extract check --fix --yes` to approve it. Tools already on PATH are\n\
-             never downloaded — installing ffmpeg/yt-dlp yourself avoids them entirely."
+             `vts-extract check --fix --yes` to approve it. Existing ffmpeg/ffprobe\n\
+             executables and yt-dlp builds with the required hardening flags on PATH\n\
+             are never downloaded."
         );
         return Ok(());
     }
 
-    for status in missing {
-        bootstrap(status.tool, &env)?;
+    let mut failures = missing_tools
+        .iter()
+        .copied()
+        .filter(|tool| registry::spec_for(*tool).is_none())
+        .map(|tool| {
+            format!(
+                "{}: no pinned download on this platform; install it manually",
+                label(tool)
+            )
+        })
+        .collect::<Vec<_>>();
+    for spec in &pending {
+        if let Err(error) = bootstrap(spec, &env) {
+            failures.push(format!("{}: {error:#}", provided_label(spec)));
+        }
     }
+    if !failures.is_empty() {
+        bail!(
+            "dependency setup incomplete:\n  - {}",
+            failures.join("\n  - ")
+        );
+    }
+    ensure_ready(&deps::probe(&env))?;
     println!("\nAll dependencies ready.");
     Ok(())
+}
+
+fn ensure_ready(statuses: &[ToolStatus]) -> Result<()> {
+    let missing = statuses
+        .iter()
+        .filter(|status| status.presence == Presence::Missing)
+        .map(|status| label(status.tool))
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        return Ok(());
+    }
+    bail!("dependencies still missing: {}", missing.join(", "))
 }
 
 fn plural(n: usize) -> String {
@@ -73,10 +111,18 @@ fn plural(n: usize) -> String {
 /// change the bytes without failing this checksum.
 fn print_inventory(specs: &[deps::bootstrap::ToolSpec]) {
     for spec in specs {
-        println!("  {}", label(spec.tool));
+        println!("  {}", provided_label(spec));
         println!("    url    {}", spec.url);
         println!("    sha256 {}", spec.sha256);
     }
+}
+
+fn provided_label(spec: &deps::bootstrap::ToolSpec) -> String {
+    spec.provided_tools()
+        .into_iter()
+        .map(label)
+        .collect::<Vec<_>>()
+        .join(" + ")
 }
 
 fn report(status: &ToolStatus) {
@@ -93,17 +139,11 @@ fn report(status: &ToolStatus) {
     println!("{mark} {} ({note}){location}", label(status.tool));
 }
 
-fn bootstrap(tool: Tool, env: &Env) -> Result<()> {
-    let Some(spec) = registry::spec_for(tool) else {
-        println!(
-            "! no pinned download for {} on this platform — please install it manually",
-            label(tool)
-        );
-        return Ok(());
-    };
-    println!("\ndownloading {} …", label(tool));
-    let installed = deps::bootstrap::install(&spec, &HttpFetcher, &env.data_dir)?;
-    println!("✓ {} installed — {}", label(tool), installed.display());
+fn bootstrap(spec: &deps::bootstrap::ToolSpec, env: &Env) -> Result<()> {
+    let provided = provided_label(spec);
+    println!("\ndownloading {provided} …");
+    let installed = deps::bootstrap::install(spec, &HttpFetcher, &env.data_dir)?;
+    println!("✓ {provided} installed — {}", installed.display());
     Ok(())
 }
 
@@ -126,8 +166,9 @@ fn label(tool: Tool) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::identity_line;
+    use super::{ensure_ready, identity_line};
     use std::path::Path;
+    use vts_extract::deps::{Presence, Tool, ToolStatus};
 
     #[test]
     fn identity_line_names_binary_version_and_path() {
@@ -144,5 +185,19 @@ mod tests {
         let line = identity_line(None);
         let version = env!("CARGO_PKG_VERSION");
         assert_eq!(line, format!("vts-extract {version} — <unknown path>"));
+    }
+
+    #[test]
+    fn readiness_rejects_dependencies_that_remain_missing() {
+        let statuses = [ToolStatus {
+            tool: Tool::Ffmpeg,
+            presence: Presence::Missing,
+            location: None,
+        }];
+
+        let error = ensure_ready(&statuses).unwrap_err().to_string();
+
+        assert!(error.contains("ffmpeg"), "{error}");
+        assert!(error.contains("still missing"), "{error}");
     }
 }

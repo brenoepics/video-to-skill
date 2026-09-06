@@ -1,5 +1,6 @@
 # Rust
 /target/
+/.target-windows-sandbox*/
 
 # Extraction bundles (large media artifacts, never committed)
 extraction/

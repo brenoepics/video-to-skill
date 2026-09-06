@@ -171,6 +171,7 @@ fn speechless_audio_gets_a_no_speech_note() {
 /// Ignored by default (needs `say`, ffmpeg, and the bootstrapped model);
 /// run with: cargo test --test asr -- --ignored
 #[test]
+#[cfg(target_os = "macos")]
 #[ignore = "requires whisper model weights and macOS `say`"]
 fn real_whisper_transcribes_generated_speech() {
     use vts_extract::asr::whisper::WhisperEngine;

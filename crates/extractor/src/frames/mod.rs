@@ -162,9 +162,8 @@ pub fn extract_frame_track(
         schema_version: 1,
         shots,
     };
-    let tmp = bundle_dir.join(format!("{FRAMES_FILE}.tmp"));
-    fs::write(&tmp, serde_json::to_string_pretty(&track)?)?;
-    fs::rename(&tmp, bundle_dir.join(FRAMES_FILE))?;
+    let path = bundle_dir.join(FRAMES_FILE);
+    crate::fsx::write_atomic(&path, &serde_json::to_vec_pretty(&track)?)?;
     manifest.tracks.frames = Some(FRAMES_FILE.to_string());
     save_manifest(bundle_dir, &manifest)?;
     Ok(track)

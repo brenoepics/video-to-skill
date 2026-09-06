@@ -19,7 +19,7 @@ jobs:
     # dispatch) run.
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           # Check out the PR branch itself (not the merge ref) so the
           # results commit can be pushed back to it.
@@ -36,16 +36,18 @@ jobs:
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master 2026-09-06
         if: steps.guard.outputs.skip != 'true' 
-      - uses: Swatinem/rust-cache@v2
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         if: steps.guard.outputs.skip != 'true' 
       - name: Install ffmpeg (bench fixture generation)
         if: steps.guard.outputs.skip != 'true'
         run: brew install ffmpeg
       - name: Cache whisper weights
         if: steps.guard.outputs.skip != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: "~/Library/Application Support/video-to-skill"
           key: vts-tools-${{ runner.os }}-v1
