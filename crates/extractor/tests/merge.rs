@@ -178,7 +178,7 @@ fn history_records_the_fold_with_date_and_classification() {
     assert_eq!(record.date, "2026-08-05");
     assert_eq!(record.confirmed, vec!["01-quit"]);
     assert_eq!(record.added, vec!["05-macros"]);
-    assert!(record.variants.is_empty());
+    assert!(record.variants.is_empty(), "the fold recorded no variants");
 }
 
 #[test]
