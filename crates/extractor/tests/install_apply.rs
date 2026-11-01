@@ -178,7 +178,10 @@ fn a_root_already_linked_is_left_alone_on_a_forced_reinstall() {
 
     let report = apply(&planned(&base, true), &source, real()).unwrap();
 
-    assert!(report.links.is_empty());
+    assert!(
+        report.links.is_empty(),
+        "an already-linked root is skipped, not relinked"
+    );
     assert!(
         report
             .skips

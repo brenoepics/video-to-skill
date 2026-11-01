@@ -30,9 +30,9 @@ pub fn sample_tiny(tools: &Toolchain, media: &Path, fps: f64) -> Result<Vec<Samp
     if output.stdout.len() % TINY_RGB_LEN != 0 {
         bail!("frame sampler produced a truncated stream");
     }
-    Ok(output
-        .stdout
-        .chunks_exact(TINY_RGB_LEN)
+    let (frames, _) = output.stdout.as_chunks::<TINY_RGB_LEN>();
+    Ok(frames
+        .iter()
         .enumerate()
         .map(|(i, chunk)| SampledFrame {
             #[allow(clippy::cast_precision_loss)] // frame counts are small
