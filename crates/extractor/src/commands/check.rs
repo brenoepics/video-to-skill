@@ -161,6 +161,7 @@ fn label(tool: Tool) -> &'static str {
         Tool::Ffprobe => "ffprobe",
         Tool::Ytdlp => "yt-dlp",
         Tool::WhisperModel => "whisper model (ggml-base)",
+        Tool::WhisperVad => "voice activity model (ggml-silero-v5.1.2)",
     }
 }
 

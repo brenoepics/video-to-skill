@@ -25,7 +25,7 @@ npx skills@latest add brenoepics/video-to-skill
 ```
 
 > [!TIP]
-> That's the entire setup. Windows 10/11 x64, macOS, and Linux are supported. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper weights where a pinned build is available. Existing ffmpeg/ffprobe executables and yt-dlp builds that accept the required hardening flags are reused from `PATH`. No Homebrew, Python, account, or API key is required. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
+> That's the entire setup. Windows 10/11 x64, macOS, and Linux are supported. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper + Silero VAD weights where a pinned build is available. Existing ffmpeg/ffprobe executables and yt-dlp builds that accept the required hardening flags are reused from `PATH`. No Homebrew, Python, account, or API key is required. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
 
 On Windows, the extractor and managed tools live under
 `%LOCALAPPDATA%\video-to-skill` by default. Releases include
@@ -121,7 +121,7 @@ Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed au
 <!-- bench-summary:start -->
 | 2-min 720p extract | transcription | measured on |
 | --- | --- | --- |
-| 11.4s wall · 10.5x realtime | 2.7x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
+| 5.6s wall · 21.4x realtime | 2.3x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
 
 Full methodology and results: [BENCHMARK.md](BENCHMARK.md)
 <!-- bench-summary:end -->

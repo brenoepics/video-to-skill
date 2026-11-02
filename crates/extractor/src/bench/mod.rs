@@ -91,11 +91,8 @@ pub struct SuiteOutcome {
 /// receives one human-readable line per long-running step.
 pub fn run_suite(progress: &mut dyn FnMut(&str)) -> Result<SuiteOutcome> {
     let tools = Toolchain::resolve(&Env::from_system())?;
-    let model = tools
-        .whisper_model
-        .clone()
+    let engine = WhisperEngine::from_toolchain(&tools)
         .context("whisper model weights are missing — run `vts-extract check --fix --yes` first")?;
-    let engine = WhisperEngine::new(model);
     let work = scratch_dir()?;
 
     let mut results = Vec::new();

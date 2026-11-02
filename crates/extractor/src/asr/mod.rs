@@ -5,6 +5,8 @@
 //! production implementation.
 
 mod demux;
+pub mod segments;
+pub mod vad;
 pub mod whisper;
 
 use std::path::Path;
