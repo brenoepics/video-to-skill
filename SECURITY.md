@@ -49,7 +49,7 @@ Everything the skill can download, with exactly where it comes from and how it i
 
 | Artifact | Source | Integrity |
 |---|---|---|
-| `vts-extract` binary | [github.com/brenoepics/video-to-skill](https://github.com/brenoepics/video-to-skill/releases) releases | Built by GitHub Actions from tagged source; checksum-verified before execution; provenance attestations verifiable with `gh attestation verify <archive> -R brenoepics/video-to-skill` |
+| `vts-extract` binary | [github.com/brenoepics/video-to-skill](https://github.com/brenoepics/video-to-skill/releases) releases | Built by GitHub Actions from tagged source with `cargo auditable`; checksum-verified before execution; SLSA Build Level 2 provenance verifiable with `gh attestation verify <archive> -R brenoepics/video-to-skill` — see "Build provenance" below |
 | yt-dlp | Official GitHub release | Pinned version + sha256 from the release's published SHA2-256SUMS |
 | ffmpeg / ffprobe | Platform build linked by ffmpeg.org: Gyan on Windows, Martin Riedl on macOS arm64 | Pinned build + sha256 cross-verified against the publisher's sidecar; see "On download origins" above |
 | whisper `ggml-base` model | ggerganov/whisper.cpp on Hugging Face | sha256 from the repo's git-lfs pointer |
@@ -58,6 +58,18 @@ Everything the skill can download, with exactly where it comes from and how it i
 **Existing ffmpeg/ffprobe executables and yt-dlp builds that accept the required hardening flags are preferred from PATH and never downloaded.** A user who installs current ffmpeg/yt-dlp versions via their package manager fully avoids the third-party downloads above; only the whisper and VAD models are data-dir-only.
 
 **Build-from-source escape hatch:** `cargo build --release` in the skill's directory (requires Rust + cmake) replaces the prebuilt `vts-extract` entirely.
+
+### Build provenance
+
+Each release archive is attested by the release workflow with [GitHub artifact attestations](https://docs.github.com/en/actions/concepts/security/artifact-attestations): a SLSA v1.0 provenance statement, signed through Sigstore and recorded in the public Rekor transparency log, that names the repository, the workflow file, the tag and the commit that produced the bytes. That is SLSA Build Level 2. Releases after v0.3.0 attest the `.sha256` sidecar as well. Verify an archive before running it:
+
+```
+gh attestation verify vts-extract-macos-arm64.tar.gz -R brenoepics/video-to-skill
+```
+
+A pass means GitHub built exactly these bytes from this repository's `.github/workflows/release.yml` on a GitHub-hosted runner. An archive replaced after the fact fails with `HTTP 404: Not Found`, even when its `.sha256` was replaced to match, because no signed statement carries the new digest. To pin harder, add `--signer-workflow brenoepics/video-to-skill/.github/workflows/release.yml` and `--source-ref refs/tags/v<version>`; `--format json` prints the full statement. The command needs an authenticated `gh`, since it looks the attestation up through the GitHub API; the checksum check in [SKILL.md](SKILL.md) runs regardless. Provenance says where the bytes came from, not that they are safe — the threat model above covers the rest.
+
+Release binaries are built with [`cargo auditable`](https://github.com/rust-secure-code/cargo-auditable), which embeds the resolved dependency list in the executable (linker section `.dep-v0`). `cargo audit bin vts-extract` scans a release against the RustSec advisory database with no source checkout, and `rust-audit-info vts-extract` prints the list. CI runs `cargo deny` over advisories, licences, bans and sources on every change ([`deny.toml`](deny.toml)).
 
 ## No telemetry
 
