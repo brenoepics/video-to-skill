@@ -1,0 +1,49 @@
+# cargo-deny: advisories, licences, bans and sources for the vts-extract
+# dependency graph. `cargo deny check` runs the same checks locally as the
+# CI job. Reference: https://embarkstudios.github.io/cargo-deny/
+[graph]
+# The four release targets. Dependencies that only exist for other platforms
+# are never shipped and are not evaluated here.
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+]
+all-features = true
+
+[advisories]
+# RustSec advisory database. A yanked crate or an open advisory fails the check.
+yanked = "deny"
+ignore = []
+
+[licenses]
+# Permissive licences the dependency graph actually uses (`cargo deny list`).
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.93
+exceptions = [
+    # option-ext (via dirs) is MPL-2.0: file-level copyleft, used unmodified.
+    { crate = "option-ext", allow = ["MPL-2.0"] },
+    # webpki-roots ships Mozilla's CA bundle under its CDLA-Permissive-2.0
+    # data licence.
+    { crate = "webpki-roots", allow = ["CDLA-Permissive-2.0"] },
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
