@@ -6,6 +6,11 @@
 //! second the at-most-few-frames shift in which picture lands on a tick
 //! is invisible to shot detection. It cuts the full-decode pass by
 //! 1.2–1.6x on B-frame-heavy h264 and is ignored by decoders without it.
+//!
+//! Thumbnail-derived values (keyframe hashes, motion density, boundary
+//! timestamps) stay identical across runs of one version, but on
+//! B-frame content they can differ slightly from bundles made before
+//! this flag — a different nearby picture may have landed on a tick.
 
 use std::path::Path;
 

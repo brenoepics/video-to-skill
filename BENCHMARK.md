@@ -14,7 +14,8 @@ commits.
 
 Every run also records the machine: chip (macOS: `sysctl -n
 machdep.cpu.brand_string`; Linux: first `model name` from `/proc/cpuinfo`;
-otherwise `unknown`), logical cores, OS, and the `vts-extract` version.
+otherwise `unknown`), logical cores, OS, whether whisper ran on the GPU or
+the CPU, and the `vts-extract` version.
 
 ## Reproduce it yourself
 
