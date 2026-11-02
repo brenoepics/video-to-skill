@@ -3,6 +3,8 @@
 //! and for words. Real whisper + Silero weights, so ignored by default;
 //! run with `cargo test --test asr_vad -- --ignored`.
 
+// The fixture is spoken by macOS `say`, so nothing here compiles elsewhere.
+#![cfg(target_os = "macos")]
 // Integration-test file: everything here is test code, where unwrap is fine.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -78,7 +80,6 @@ fn heard(transcript: &Transcript) -> String {
 }
 
 #[test]
-#[cfg(target_os = "macos")]
 #[ignore = "requires whisper + VAD model weights and macOS `say`"]
 fn speech_after_a_long_pause_keeps_absolute_timestamps_with_vad() {
     let tools = Toolchain::resolve(&Env::from_system()).unwrap();

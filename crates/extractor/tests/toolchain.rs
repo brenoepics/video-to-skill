@@ -4,9 +4,14 @@
 #![allow(clippy::unwrap_used)]
 
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
-use vts_extract::deps::{registry, Env, Tool};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
+use vts_extract::deps::Env;
+#[cfg(unix)]
+use vts_extract::deps::{registry, Tool};
 use vts_extract::tools::Toolchain;
 
 fn scratch(name: &str) -> PathBuf {
@@ -20,6 +25,10 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
+/// A stand-in ffmpeg/ffprobe that passes the PATH compatibility probe: on
+/// Unix any executable script that exits 0 does. Windows needs a real
+/// executable image, which `deps_probe/windows.rs` exercises instead.
+#[cfg(unix)]
 fn fake_executable(dir: &Path, name: &str) {
     let path = dir.join(name);
     fs::write(&path, "#!/bin/sh\n").unwrap();
@@ -28,6 +37,7 @@ fn fake_executable(dir: &Path, name: &str) {
 
 /// A model file with the marker a checksum-verified install of the
 /// currently pinned artifact would leave beside it.
+#[cfg(unix)]
 fn verified_model(models: &Path, tool: Tool) -> PathBuf {
     fs::create_dir_all(models).unwrap();
     let path = models.join(tool.file_name());
@@ -41,6 +51,7 @@ fn verified_model(models: &Path, tool: Tool) -> PathBuf {
     path
 }
 
+#[cfg(unix)]
 #[test]
 fn resolve_picks_up_the_vad_model_beside_the_whisper_weights() {
     let bin = scratch("vad-bin");
@@ -60,6 +71,7 @@ fn resolve_picks_up_the_vad_model_beside_the_whisper_weights() {
     assert_eq!(tools.whisper_vad, Some(vad));
 }
 
+#[cfg(unix)]
 #[test]
 fn resolve_leaves_vad_unset_when_only_whisper_weights_are_installed() {
     let bin = scratch("novad-bin");
