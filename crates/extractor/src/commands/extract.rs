@@ -99,13 +99,13 @@ fn transcribe_stage(bundle_dir: &Path, tools: &Toolchain) {
         return;
     };
     let started = Instant::now();
-    println!("transcribing …");
-    let result =
-        asr::extract_audio_track(bundle_dir, tools, &WhisperEngine::new(model), &mut |pct| {
-            if pct > 0 {
-                println!("  … {pct}%");
-            }
-        });
+    let engine = WhisperEngine::new(model);
+    println!("transcribing ({}) …", engine.device());
+    let result = asr::extract_audio_track(bundle_dir, tools, &engine, &mut |pct| {
+        if pct > 0 {
+            println!("  … {pct}%");
+        }
+    });
     match result {
         Ok(t) => match (t.segments.len(), t.language.as_deref().unwrap_or("unknown")) {
             (0, _) => println!("  no speech found (see manifest notes)"),

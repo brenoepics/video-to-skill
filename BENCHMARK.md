@@ -36,9 +36,14 @@ runs.
 
 ## Caveats
 
-- The automated results below come from GitHub-hosted macOS runners, where
-  whisper runs **CPU-only — no Metal**. Local Apple Silicon is substantially
-  faster than anything in the table.
+- The automated results below come from GitHub-hosted macOS runners, which
+  are virtual machines. A VM only sees a paravirtual GPU whose Metal lacks
+  simdgroup reductions and matrix multiply, and ggml's fallback kernels
+  there run tens of times slower than the CPU — so `vts-extract` detects
+  the hypervisor (`sysctl kern.hv_vmm_present`, or an Apple "(Virtual)"
+  brand string) and keeps whisper on the **CPU**. The machine line records
+  which device a run used. Local Apple Silicon with real Metal is
+  substantially faster than anything in the table.
 - Local reference (M5, Metal): 12 minutes of 4K video transcribed in 9.9 s.
   That is a one-off local measurement kept as an anecdote — it is **not**
   part of the automated suite.

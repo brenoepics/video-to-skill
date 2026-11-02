@@ -44,8 +44,12 @@ fn print_table(report: &BenchReport) {
         }
     }
     println!(
-        "\nmachine: {} · {} logical cores · {} · vts-extract {}",
-        report.machine.chip, report.machine.logical_cores, report.machine.os, report.version
+        "\nmachine: {} · {} logical cores · {} · whisper on {} · vts-extract {}",
+        report.machine.chip,
+        report.machine.logical_cores,
+        report.machine.os,
+        report.machine.whisper_device,
+        report.version
     );
 }
 

@@ -103,7 +103,7 @@ _Nothing else takes an arbitrary pre-existing video and emits a portable, execut
 
 ## Benchmarks
 
-Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed automatically by CI — CPU-only whisper, so Apple Silicon with Metal runs substantially faster.
+Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed automatically by CI. Runners are VMs with only a paravirtual GPU, so whisper deliberately stays on the CPU there; Apple Silicon with real Metal runs substantially faster.
 
 <!-- bench-summary:start -->
 | 2-min 720p extract | transcription | measured on |
@@ -113,7 +113,7 @@ Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed au
 Full methodology and results: [BENCHMARK.md](BENCHMARK.md)
 <!-- bench-summary:end -->
 
-CI numbers come from GitHub's 3-core CPU-only macOS VMs and vary with runner load; on local Apple Silicon with Metal the same suite runs roughly 10× faster (see the [reference run](BENCHMARK.md)). Reproduce on your machine: `vts-extract bench`.
+CI numbers come from GitHub's 3-core macOS VMs and vary with runner load; on local Apple Silicon with Metal the same suite runs many times faster (see the [reference run](BENCHMARK.md)). Reproduce on your machine: `vts-extract bench`.
 
 ## Privacy
 
