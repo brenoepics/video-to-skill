@@ -105,7 +105,12 @@ foreach ($option in $portableCpuOptions.GetEnumerator()) {
     Export-BuildVariable -Name $option.Key -Value $option.Value
 }
 
-$cmake = Get-Command cmake.exe -CommandType Application -ErrorAction SilentlyContinue
+# The runner image carries several cmake.exe (its own, Strawberry Perl's, and
+# Visual Studio's). Get-Command returns every match, so take the first — the
+# one PATH resolution hands the build — instead of splicing all of them into
+# one unusable command name.
+$cmake = Get-Command cmake.exe -CommandType Application -ErrorAction SilentlyContinue |
+    Select-Object -First 1
 if (-not $cmake) {
     throw 'CMake 3.15 or newer is required for the static MSVC runtime build'
 }
