@@ -50,7 +50,9 @@ fn three_cut_bframe_fixture(dir: &Path) -> PathBuf {
         .args(["-f", "lavfi", "-i", "color=c=green:s=320x240:r=30:d=3"])
         .args(["-f", "lavfi", "-i", "color=c=blue:s=320x240:r=30:d=3"])
         .args(["-filter_complex", "[0][1][2]concat=n=3"])
-        .args(["-c:v", "libx264", "-preset", "veryfast", "-bf", "3", "-g", "30"])
+        .args([
+            "-c:v", "libx264", "-preset", "veryfast", "-bf", "3", "-g", "30",
+        ])
         .args(["-pix_fmt", "yuv420p"])
         .arg(&out)
         .output()
