@@ -3,6 +3,7 @@
 //! pure; only [`detect`] touches the running system.
 
 use super::Machine;
+use crate::host::command_stdout;
 
 /// Identify the machine the benchmark is running on. Detection is
 /// best-effort: an undetectable chip reports as "unknown". The whisper
@@ -59,17 +60,6 @@ pub fn parse_cpuinfo_model(cpuinfo: &str) -> Option<String> {
             .then(|| value.trim().to_string())
             .filter(|v| !v.is_empty())
     })
-}
-
-fn command_stdout(program: &str, args: &[&str]) -> Option<String> {
-    let output = std::process::Command::new(program)
-        .args(args)
-        .output()
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 #[cfg(test)]

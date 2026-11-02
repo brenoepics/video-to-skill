@@ -29,6 +29,28 @@ pub struct FrameRequest {
     pub max_width: Option<u32>,
 }
 
+impl FrameRequest {
+    /// An agent-readable export, width-bounded to `max_width`.
+    #[must_use]
+    pub fn bounded(timestamp_secs: f64, dest: PathBuf, max_width: u32) -> FrameRequest {
+        FrameRequest {
+            timestamp_secs,
+            dest,
+            max_width: Some(max_width),
+        }
+    }
+
+    /// A native-resolution still.
+    #[must_use]
+    pub fn native(timestamp_secs: f64, dest: PathBuf) -> FrameRequest {
+        FrameRequest {
+            timestamp_secs,
+            dest,
+            max_width: None,
+        }
+    }
+}
+
 /// Export one frame at `timestamp` to `dest`. `max_width` bounds the
 /// output (aspect preserved, never upscaled); `None` keeps native size.
 pub fn export_frame(

@@ -116,16 +116,15 @@ pub fn extract_frame_track(
         let shot_end = end_time(&sampled, end, manifest.media.duration_secs);
         let kf_rel = format!("{FRAMES_DIR}/shot{index:03}.jpg");
         let native_rel = format!("{FRAMES_DIR}/shot{index:03}-native.jpg");
-        requests.push(FrameRequest {
-            timestamp_secs: timestamp,
-            dest: bundle_dir.join(&kf_rel),
-            max_width: Some(config.max_keyframe_width),
-        });
-        requests.push(FrameRequest {
-            timestamp_secs: sampled[start].timestamp_secs,
-            dest: bundle_dir.join(&native_rel),
-            max_width: None,
-        });
+        requests.push(FrameRequest::bounded(
+            timestamp,
+            bundle_dir.join(&kf_rel),
+            config.max_keyframe_width,
+        ));
+        requests.push(FrameRequest::native(
+            sampled[start].timestamp_secs,
+            bundle_dir.join(&native_rel),
+        ));
         let interior_keyframes = subdivide::plan_interior_keyframes(
             &subdivide::ShotSpan {
                 index,
@@ -136,10 +135,12 @@ pub fn extract_frame_track(
             },
             config,
         );
-        requests.extend(interior_keyframes.iter().map(|kf| FrameRequest {
-            timestamp_secs: kf.timestamp_secs,
-            dest: bundle_dir.join(&kf.path),
-            max_width: Some(config.max_keyframe_width),
+        requests.extend(interior_keyframes.iter().map(|kf| {
+            FrameRequest::bounded(
+                kf.timestamp_secs,
+                bundle_dir.join(&kf.path),
+                config.max_keyframe_width,
+            )
         }));
         shots.push(Shot {
             index,

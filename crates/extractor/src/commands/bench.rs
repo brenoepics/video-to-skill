@@ -43,14 +43,7 @@ fn print_table(report: &BenchReport) {
             println!("{:<16} {stages}", "");
         }
     }
-    println!(
-        "\nmachine: {} · {} logical cores · {} · whisper on {} · vts-extract {}",
-        report.machine.chip,
-        report.machine.logical_cores,
-        report.machine.os,
-        report.machine.whisper_device,
-        report.version
-    );
+    println!("\nmachine: {}", report.machine_line());
 }
 
 fn realtime_cell(result: &BenchResult) -> String {

@@ -109,11 +109,7 @@ pub fn frames_at<S: AsRef<str>>(
 fn requests_for(frames: &[ExportedFrame]) -> Vec<FrameRequest> {
     frames
         .iter()
-        .map(|f| FrameRequest {
-            timestamp_secs: f.timestamp_secs,
-            dest: f.path.clone(),
-            max_width: Some(MAX_WIDTH),
-        })
+        .map(|f| FrameRequest::bounded(f.timestamp_secs, f.path.clone(), MAX_WIDTH))
         .collect()
 }
 

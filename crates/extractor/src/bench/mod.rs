@@ -35,6 +35,22 @@ pub struct BenchReport {
     pub results: Vec<BenchResult>,
 }
 
+impl BenchReport {
+    /// Where the numbers came from, as one line shared by the console
+    /// table and the markdown results.
+    #[must_use]
+    pub fn machine_line(&self) -> String {
+        format!(
+            "{} · {} logical cores · {} · whisper on {} · vts-extract {}",
+            self.machine.chip,
+            self.machine.logical_cores,
+            self.machine.os,
+            self.machine.whisper_device,
+            self.version
+        )
+    }
+}
+
 /// The hardware and OS the benchmark ran on.
 #[derive(Debug, Clone, Serialize)]
 pub struct Machine {

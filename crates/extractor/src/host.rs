@@ -26,8 +26,13 @@ pub fn virtualized_from(hv_vmm_present: Option<&str>, cpu_brand: Option<&str>) -
 }
 
 fn sysctl(key: &str) -> Option<String> {
-    let output = std::process::Command::new("sysctl")
-        .args(["-n", key])
+    command_stdout("sysctl", &["-n", key])
+}
+
+/// Stdout of `program args`, or `None` when it cannot run or fails.
+pub(crate) fn command_stdout(program: &str, args: &[&str]) -> Option<String> {
+    let output = std::process::Command::new(program)
+        .args(args)
         .output()
         .ok()?;
     output
