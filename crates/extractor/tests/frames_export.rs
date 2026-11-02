@@ -8,7 +8,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use vts_extract::frames::export::{export_frames, worker_count, FrameRequest};
+use vts_extract::frames::export::{export_frames, worker_count, CropRect, FrameRequest};
 use vts_extract::tools::Toolchain;
 
 fn scratch(name: &str) -> PathBuf {
@@ -66,11 +66,54 @@ fn three_cut_fixture(dir: &Path) -> PathBuf {
 }
 
 fn request(timestamp_secs: f64, dest: &Path, max_width: Option<u32>) -> FrameRequest {
-    FrameRequest {
-        timestamp_secs,
-        dest: dest.to_path_buf(),
-        max_width,
+    match max_width {
+        Some(width) => FrameRequest::bounded(timestamp_secs, dest.to_path_buf(), width),
+        None => FrameRequest::native(timestamp_secs, dest.to_path_buf()),
     }
+}
+
+/// Pixel size of an exported image, from its stream header.
+fn image_size(path: &Path) -> (u32, u32) {
+    let out = Command::new("ffprobe")
+        .args(["-v", "error", "-select_streams", "v:0"])
+        .args(["-show_entries", "stream=width,height", "-of", "csv=p=0"])
+        .arg(path)
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut parts = text.trim().split(',');
+    (
+        parts.next().unwrap().parse().unwrap(),
+        parts.next().unwrap().parse().unwrap(),
+    )
+}
+
+#[test]
+fn a_crop_request_exports_exactly_that_rectangle_at_native_size() {
+    let dir = scratch("crop");
+    let media = three_cut_fixture(&dir);
+    let rect = CropRect {
+        x: 100,
+        y: 40,
+        width: 120,
+        height: 80,
+    };
+
+    let dest = dir.join("crop.jpg");
+    export_frames(
+        &toolchain(),
+        &media,
+        &[FrameRequest::crop(1.0, dest.clone(), rect)],
+    )
+    .unwrap();
+
+    assert_eq!(image_size(&dest), (120, 80), "the crop keeps native pixels");
+    let whole = dir.join("whole.jpg");
+    export_frames(&toolchain(), &media, &[request(1.0, &whole, None)]).unwrap();
+    assert!(
+        fs::metadata(&dest).unwrap().len() < fs::metadata(&whole).unwrap().len(),
+        "a crop is a part of the frame, not the frame"
+    );
 }
 
 #[test]
