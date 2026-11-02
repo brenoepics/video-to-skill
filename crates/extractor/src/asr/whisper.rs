@@ -1,5 +1,10 @@
 //! Production engine: whisper.cpp via the whisper-rs bindings
-//! (Metal-accelerated on Apple Silicon).
+//! (Metal-accelerated on Apple Silicon bare metal).
+//!
+//! Inside a virtual machine the only GPU is a paravirtual device whose
+//! Metal lacks simdgroup reductions and matrix multiply; ggml's fallback
+//! kernels there run tens of times slower than the CPU path, so the
+//! engine stays on the CPU whenever the host looks virtualized.
 
 use std::path::{Path, PathBuf};
 
@@ -8,26 +13,50 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 
 use super::{EngineOutput, TranscriptionEngine};
 use crate::bundle::{Segment, Word};
+use crate::host;
 
 pub struct WhisperEngine {
     model_path: PathBuf,
+    use_gpu: bool,
 }
 
 impl WhisperEngine {
+    /// Engine over `model_path`, on the GPU unless the host is a virtual
+    /// machine (see the module docs).
     #[must_use]
     pub fn new(model_path: PathBuf) -> WhisperEngine {
+        WhisperEngine::with_gpu(model_path, !host::is_virtual_machine())
+    }
+
+    /// Engine with the compute device chosen explicitly.
+    #[must_use]
+    pub fn with_gpu(model_path: PathBuf, use_gpu: bool) -> WhisperEngine {
         // Route whisper.cpp/ggml chatter through the `log` crate; with no
         // logger installed it is silenced instead of spamming stderr.
         whisper_rs::install_logging_hooks();
-        WhisperEngine { model_path }
+        WhisperEngine {
+            model_path,
+            use_gpu,
+        }
+    }
+
+    /// Where inference runs: "gpu" or "cpu".
+    #[must_use]
+    pub fn device(&self) -> &'static str {
+        if self.use_gpu {
+            "gpu"
+        } else {
+            "cpu"
+        }
     }
 }
 
 impl TranscriptionEngine for WhisperEngine {
     fn transcribe(&self, wav: &Path, progress: &mut dyn FnMut(u8)) -> Result<EngineOutput> {
-        let ctx =
-            WhisperContext::new_with_params(&self.model_path, WhisperContextParameters::default())
-                .context("loading whisper model")?;
+        let mut ctx_params = WhisperContextParameters::default();
+        ctx_params.use_gpu(self.use_gpu);
+        let ctx = WhisperContext::new_with_params(&self.model_path, ctx_params)
+            .context("loading whisper model")?;
         let mut state = ctx.create_state().context("creating whisper state")?;
 
         let samples = read_wav_mono_f32(wav)?;

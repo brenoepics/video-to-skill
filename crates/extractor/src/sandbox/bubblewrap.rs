@@ -71,6 +71,7 @@ pub fn bwrap_args(c: &Confinement, command: &[String]) -> Result<Vec<String>> {
 }
 
 #[cfg(test)]
+#[cfg(unix)] // the fixtures below are Unix absolute paths
 mod tests {
     use super::*;
 

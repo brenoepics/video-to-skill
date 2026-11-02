@@ -15,7 +15,9 @@ pub const TINY_RGB_LEN: usize = TINY_W * TINY_H * 3;
 /// BT.601 luma of an rgb24 thumbnail.
 #[must_use]
 pub fn to_gray(rgb: &[u8]) -> Vec<u8> {
-    rgb.chunks_exact(3)
+    let (pixels, _) = rgb.as_chunks::<3>();
+    pixels
+        .iter()
         .map(|px| {
             let y =
                 (299 * u32::from(px[0]) + 587 * u32::from(px[1]) + 114 * u32::from(px[2])) / 1000;
@@ -154,6 +156,9 @@ mod tests {
     #[test]
     fn static_content_has_no_boundaries() {
         let frames = vec![flat_gray(90); 6];
-        assert!(segment(&frames, 25.0).is_empty());
+        assert!(
+            segment(&frames, 25.0).is_empty(),
+            "static content has no shot boundaries"
+        );
     }
 }

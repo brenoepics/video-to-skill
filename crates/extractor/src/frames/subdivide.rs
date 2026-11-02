@@ -1,14 +1,10 @@
 //! Periodic interior keyframes for long low-motion shots, so the
 //! initial keyframe pass covers slow screencasts (typing barely moves
 //! tiny thumbnails, leaving multi-minute shots behind one keyframe).
-
-use std::path::Path;
-
-use anyhow::Result;
+//! Pure planning: the caller exports the planned frames in one batch.
 
 use super::sample::SampledFrame;
-use super::{analyze, export, FrameConfig, Keyframe};
-use crate::tools::Toolchain;
+use super::{analyze, FrameConfig, Keyframe};
 
 /// Interior candidates closer than this to the shot's main keyframe
 /// are duplicates and are skipped.
@@ -25,24 +21,19 @@ pub struct ShotSpan<'a> {
     pub samples: &'a [SampledFrame],
 }
 
-/// Export width-bounded interior keyframes at `start + k * interval`
+/// Plan width-bounded interior keyframes at `start + k * interval`
 /// (k = 1, 2, ...) strictly inside the shot — no native variants.
-/// Returns them in timestamp order; empty when the shot fits within
-/// one interval.
-pub fn export_interior_keyframes(
-    tools: &Toolchain,
-    media: &Path,
-    bundle_dir: &Path,
-    shot: &ShotSpan,
-    config: &FrameConfig,
-) -> Result<Vec<Keyframe>> {
+/// Returns them in timestamp order with bundle-relative paths; empty
+/// when the shot fits within one interval.
+#[must_use]
+pub fn plan_interior_keyframes(shot: &ShotSpan, config: &FrameConfig) -> Vec<Keyframe> {
     let interval = config.subdivision_interval_secs;
     let mut keyframes = Vec::new();
     if interval <= 0.0 {
-        return Ok(keyframes);
+        return keyframes;
     }
     let Some(last_sampled) = shot.samples.last().map(|f| f.timestamp_secs) else {
-        return Ok(keyframes);
+        return keyframes;
     };
     for k in 1u32.. {
         let timestamp = shot.start_secs + f64::from(k) * interval;
@@ -60,13 +51,6 @@ pub fn export_interior_keyframes(
             shot.index,
             keyframes.len() + 1
         );
-        export::export_frame(
-            tools,
-            media,
-            timestamp,
-            &bundle_dir.join(&rel),
-            Some(config.max_keyframe_width),
-        )?;
         keyframes.push(Keyframe {
             timestamp_secs: timestamp,
             path: rel,
@@ -74,7 +58,7 @@ pub fn export_interior_keyframes(
             hash: nearest_sample_hash(shot.samples, timestamp),
         });
     }
-    Ok(keyframes)
+    keyframes
 }
 
 /// Perceptual hash of the sampled thumbnail nearest to `timestamp` —
