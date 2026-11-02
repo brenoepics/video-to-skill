@@ -6,11 +6,14 @@
 //! keyframe is the first sample after the change where the picture
 //! holds still — the terminal after its output, the dialog once open —
 //! rather than the midpoint of the stretch. See [`analyze`] for the
-//! rule and [`scroll`] for why scrolling is not a state change.
+//! rule, [`scroll`] for why scrolling is not a state change, and
+//! [`region`] for the native-resolution crop of what changed.
 
 pub mod analyze;
 pub mod export;
+mod hash;
 mod plan;
+pub mod region;
 mod sample;
 mod scroll;
 mod ssim;
@@ -82,6 +85,24 @@ pub struct Shot {
     /// interval), width-bounded, no native variants.
     #[serde(default)]
     pub interior_keyframes: Vec<Keyframe>,
+    /// The part of the keyframe's moment that changed since the
+    /// previous state, at native resolution; none for the first state
+    /// or when the whole screen changed (the native still shows it).
+    #[serde(default)]
+    pub changed_region: Option<ChangedRegion>,
+}
+
+/// A native-resolution crop of where the screen changed, taken at the
+/// shot's keyframe moment, so small text is read at native pixel size.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangedRegion {
+    /// Bundle-relative path of the crop.
+    pub path: String,
+    /// The crop's rectangle on the native frame, in pixels.
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -123,13 +144,8 @@ pub fn extract_frame_track(
 
     // Plan every frame first, then export them all in one concurrent
     // batch: exports are independent and dominate this stage's time.
-    let (shots, requests) = plan::plan_shots(
-        &states,
-        &sampled,
-        manifest.media.duration_secs,
-        bundle_dir,
-        config,
-    );
+    let (shots, requests) =
+        plan::plan_shots(&states, &sampled, &manifest.media, bundle_dir, config);
     export::export_frames(tools, &media, &requests)?;
 
     let track = FrameTrack {

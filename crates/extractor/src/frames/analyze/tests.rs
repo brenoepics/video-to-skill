@@ -1,6 +1,7 @@
 //! Screen-state segmentation on drawn thumbnails: each expectation
 //! follows from what was drawn, never from the implementation.
 
+use super::super::sample::{THUMB_H, THUMB_W};
 use super::*;
 
 const RULE: StateRule = StateRule {
@@ -175,20 +176,55 @@ fn a_presenter_who_pauses_and_moves_again_does_not_start_a_state() {
 }
 
 #[test]
-fn thumbnail_hash_sees_gradients_and_ignores_brightness() {
-    let flat_dim = vec![10u8; THUMB_W * THUMB_H];
-    let flat_bright = vec![200u8; THUMB_W * THUMB_H];
-    let ramp: Vec<u8> = (0..THUMB_H)
-        .flat_map(|_| (0..THUMB_W).map(|x| u8::try_from(255 - x).unwrap()))
-        .collect();
-    assert_eq!(thumbnail_hash(&flat_dim), thumbnail_hash(&flat_bright));
-    assert_ne!(thumbnail_hash(&ramp), thumbnail_hash(&flat_dim));
-    assert_eq!(thumbnail_hash(&ramp), 0xffff_ffff_ffff_ffff);
-}
-
-#[test]
 fn motion_density_is_zero_for_a_still_screen_and_positive_for_a_scroll() {
     assert!(motion_density(&frames(&[screen(4, 0), screen(4, 0)])).abs() < f64::EPSILON);
     assert!(motion_density(&frames(&[screen(18, 0), screen(18, 6)])) > 0.01);
     assert!(motion_density(&frames(&[screen(4, 0)])).abs() < f64::EPSILON);
+}
+
+/// The region of state `index`, as `(x, y, width, height)`.
+fn region_of(lumas: &[Vec<u8>], index: usize) -> Option<(usize, usize, usize, usize)> {
+    segment_states(&frames(lumas), &RULE)[index]
+        .region
+        .map(|r| (r.x, r.y, r.width, r.height))
+}
+
+#[test]
+fn a_new_line_s_region_is_where_the_line_is() {
+    let lumas = [screen(4, 0), screen(4, 0), screen(5, 0), screen(5, 0)];
+    assert_eq!(region_of(&lumas, 0), None, "nothing came before the first");
+    // Line 4 occupies rows 20..23 and columns 0..92 (60 + 92 % 60).
+    let (x, y, width, height) = region_of(&lumas, 1).unwrap();
+    assert!(x == 0 && x + width >= 92, "{x}..{}", x + width);
+    assert!(y <= 20 && y + height >= 23, "{y}..{}", y + height);
+    assert!(
+        height < THUMB_H / 2 && width < THUMB_W,
+        "a line is not the screen"
+    );
+}
+
+#[test]
+fn a_cut_to_another_screen_has_no_region() {
+    let light = vec![230u8; THUMB_W * THUMB_H];
+    let lumas = [screen(6, 0), screen(6, 0), light.clone(), light];
+    assert_eq!(region_of(&lumas, 1), None);
+}
+
+#[test]
+fn a_state_after_a_scroll_is_measured_against_the_scrolled_screen() {
+    let lumas = [
+        screen(18, 0),
+        screen(18, 0),
+        screen(18, 6),
+        screen(18, 12),
+        screen(18, 12),
+        screen(19, 12), // line 18 appears at rows 90-12=78..81
+        screen(19, 12),
+    ];
+    let (_, y, _, height) = region_of(&lumas, 1).unwrap();
+    assert!(y <= 78 && y + height >= 81, "{y}..{}", y + height);
+    assert!(
+        height < THUMB_H / 2,
+        "only the new line changed: {height} rows"
+    );
 }

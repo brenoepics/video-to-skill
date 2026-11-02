@@ -14,14 +14,25 @@
 
 use super::sample::{SampledFrame, CHROMA_H, CHROMA_W, THUMB_H, THUMB_W};
 
-const WINDOW: usize = 8;
-const STEP: usize = 4;
+/// Window side and step, in pixels of the plane.
+pub const WINDOW: usize = 8;
+pub const STEP: usize = 4;
 const C1: f64 = (0.01 * 255.0) * (0.01 * 255.0);
 const C2: f64 = (0.03 * 255.0) * (0.03 * 255.0);
 
-const fn windows_in(width: usize, height: usize) -> usize {
-    ((width - WINDOW) / STEP + 1) * ((height - WINDOW) / STEP + 1)
+const fn windows_across(length: usize) -> usize {
+    (length - WINDOW) / STEP + 1
 }
+
+const fn windows_in(width: usize, height: usize) -> usize {
+    windows_across(width) * windows_across(height)
+}
+
+/// The luma windows form a grid, row-major, at the head of the list:
+/// window (row r, column c) covers luma pixels x in [STEP·c, STEP·c +
+/// WINDOW) and y in [STEP·r, STEP·r + WINDOW).
+pub const LUMA_COLS: usize = windows_across(THUMB_W);
+pub const LUMA_ROWS: usize = windows_across(THUMB_H);
 
 /// Windows per frame: luma first, then U, then V.
 pub const WINDOWS: usize = windows_in(THUMB_W, THUMB_H) + 2 * windows_in(CHROMA_W, CHROMA_H);
@@ -149,5 +160,13 @@ mod tests {
             .count();
         assert!(changed * 10 > WINDOWS, "{changed} of {WINDOWS} windows");
         assert_eq!(WINDOWS, 819 + 2 * 190);
+    }
+
+    #[test]
+    fn the_luma_windows_are_a_grid_at_the_head_of_the_list() {
+        assert_eq!((LUMA_COLS, LUMA_ROWS), (39, 21));
+        assert_eq!(LUMA_COLS * LUMA_ROWS, 819);
+        // The last column's window ends at the plane's right edge.
+        assert_eq!(STEP * (LUMA_COLS - 1) + WINDOW, THUMB_W);
     }
 }
