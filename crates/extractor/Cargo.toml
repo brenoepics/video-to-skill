@@ -14,7 +14,7 @@ workspace = true
 anyhow.workspace = true
 regex.workspace = true
 hound = "3"
-dirs = "6"
+dirs = "7"
 sha2 = "0.11"
 ureq = "3"
 # zip's `deflate-flate2` pulls flate2 in with no backend selected, so the ZIP
