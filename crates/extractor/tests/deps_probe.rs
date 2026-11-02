@@ -36,6 +36,17 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
+/// A stub that is found and executable but still fails the compatibility
+/// probe on every platform: on Unix it exits non-zero, and on Windows the
+/// content is not a valid executable image, so the spawn itself fails.
+fn incompatible_executable(dir: &Path, name: &str) {
+    fs::create_dir_all(dir).unwrap();
+    let path = dir.join(name);
+    fs::write(&path, "#!/bin/sh\nexit 2\n").unwrap();
+    #[cfg(unix)]
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+}
+
 fn fake_executable(dir: &Path, name: &str) {
     fs::create_dir_all(dir).unwrap();
     let path = dir.join(name);
@@ -191,11 +202,7 @@ fn write_current_marker(tool: Tool, installed: &Path) {
 fn legacy_ytdlp_on_path_is_not_reported_ready() {
     let bin = scratch("legacy-ytdlp-bin");
     let data = scratch("legacy-ytdlp-data");
-    fs::create_dir_all(&bin).unwrap();
-    let path = bin.join(YTDLP_FILE_NAME);
-    fs::write(&path, "#!/bin/sh\nexit 2\n").unwrap();
-    #[cfg(unix)]
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+    incompatible_executable(&bin, YTDLP_FILE_NAME);
 
     let statuses = probe(&env_with(vec![bin], data));
 
@@ -236,7 +243,7 @@ fn compatible_ytdlp_on_path_is_reported_ready() {
 fn verified_managed_ytdlp_is_used_when_path_copy_is_incompatible() {
     let bin = scratch("fallback-ytdlp-bin");
     let data = scratch("fallback-ytdlp-data");
-    fake_executable(&bin, YTDLP_FILE_NAME);
+    incompatible_executable(&bin, YTDLP_FILE_NAME);
     let managed = data.join("tools");
     fake_executable(&managed, YTDLP_FILE_NAME);
     write_current_marker(Tool::Ytdlp, &managed.join(YTDLP_FILE_NAME));
