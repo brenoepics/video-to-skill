@@ -36,8 +36,7 @@ fn has_libx264() -> bool {
     Command::new("ffmpeg")
         .args(["-hide_banner", "-encoders"])
         .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).contains(" libx264 "))
-        .unwrap_or(false)
+        .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).contains(" libx264 "))
 }
 
 /// Three solid colors, 3 s each, as h264 with three B-frames between
