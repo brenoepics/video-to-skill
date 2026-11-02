@@ -11,6 +11,17 @@ fn token(text: &str, t0: i64, t1: i64) -> Token {
     }
 }
 
+/// A decoded segment whisper is sure holds speech.
+fn decoded<'a>(text: &'a str, start_cs: i64, end_cs: i64, tokens: &'a [Token]) -> Decoded<'a> {
+    Decoded {
+        text,
+        start_cs,
+        end_cs,
+        no_speech_prob: 0.01,
+        tokens,
+    }
+}
+
 fn special(text: &str, t: i64) -> Token {
     Token {
         text: text.into(),
@@ -57,7 +68,7 @@ fn across_the_pause() -> Vec<Token> {
 fn a_decoded_segment_is_split_where_vad_removed_a_pause() {
     let text = " Welcome to the tutorial, now open.";
 
-    let segments = segments_for(text, 0, 350, &across_the_pause(), &pause_map());
+    let segments = segments_for(&decoded(text, 0, 350, &across_the_pause()), &pause_map());
 
     assert_eq!(segments.len(), 2, "{segments:#?}");
     assert_eq!(segments[0].text, "Welcome to the tutorial");
@@ -83,7 +94,7 @@ fn without_a_removed_pause_the_decoded_text_is_kept_verbatim() {
         special("[_TT_60]", 60),
     ];
 
-    let segments = segments_for("  Hello there ", 0, 60, &tokens, &pause_map());
+    let segments = segments_for(&decoded("  Hello there ", 0, 60, &tokens), &pause_map());
 
     assert_eq!(segments.len(), 1);
     assert_eq!(segments[0].text, "Hello there");
@@ -95,7 +106,7 @@ fn without_a_removed_pause_the_decoded_text_is_kept_verbatim() {
 fn plain_whisper_never_splits_even_across_long_silences() {
     let tokens = vec![token(" one", 0, 50), token(" two", 4000, 4050)];
 
-    let segments = segments_for(" one two", 0, 4050, &tokens, &TimeMap::identity());
+    let segments = segments_for(&decoded(" one two", 0, 4050, &tokens), &TimeMap::identity());
 
     assert_eq!(
         segments.len(),
@@ -115,7 +126,7 @@ fn a_split_piece_with_no_text_is_dropped() {
         special("[_TT_350]", 350),
     ];
 
-    let segments = segments_for(" Welcome", 0, 350, &tokens, &pause_map());
+    let segments = segments_for(&decoded(" Welcome", 0, 350, &tokens), &pause_map());
 
     assert_eq!(segments.len(), 1, "{segments:#?}");
     assert_eq!(segments[0].text, "Welcome");
@@ -154,7 +165,7 @@ fn a_word_starts_where_the_previous_word_s_dtw_alignment_ends() {
         token_dtw(" open", 170, 190, 176),
     ];
 
-    let segments = segments_for(" now open", 156, 190, &tokens, &pause_map());
+    let segments = segments_for(&decoded(" now open", 156, 190, &tokens), &pause_map());
 
     let words = &segments[0].words;
     assert_eq!(
@@ -173,7 +184,7 @@ fn a_word_starts_where_the_previous_word_s_dtw_alignment_ends() {
 fn a_token_without_a_dtw_time_keeps_its_heuristic_bounds() {
     let tokens = vec![token(" now", 156, 170), token(" open", 170, 190)];
 
-    let segments = segments_for(" now open", 156, 190, &tokens, &pause_map());
+    let segments = segments_for(&decoded(" now open", 156, 190, &tokens), &pause_map());
 
     let words = &segments[0].words;
     assert_eq!((words[1].start_secs, words[1].end_secs), (41.5, 41.7));
@@ -183,7 +194,7 @@ fn a_token_without_a_dtw_time_keeps_its_heuristic_bounds() {
 fn a_word_never_ends_before_it_starts() {
     let tokens = vec![token_dtw(" now", 156, 170, 150)];
 
-    let segments = segments_for(" now", 156, 170, &tokens, &pause_map());
+    let segments = segments_for(&decoded(" now", 156, 170, &tokens), &pause_map());
 
     let word = &segments[0].words[0];
     assert_eq!((word.start_secs, word.end_secs), (41.4, 41.4));
@@ -198,7 +209,10 @@ fn a_removed_pause_hands_the_next_word_back_to_whisper_s_onset() {
         token_dtw(" now", 156, 170, 165),
     ];
 
-    let segments = segments_for(" tutorial now", 75, 170, &tokens, &short_pause_map());
+    let segments = segments_for(
+        &decoded(" tutorial now", 75, 170, &tokens),
+        &short_pause_map(),
+    );
 
     assert_eq!(
         segments.len(),
@@ -211,4 +225,29 @@ fn a_removed_pause_hands_the_next_word_back_to_whisper_s_onset() {
         words[1].start_secs, 1.9,
         "not 1.26 s, inside the phrase before the pause"
     );
+}
+
+#[test]
+fn a_segment_whisper_takes_for_silence_yields_nothing() {
+    let tokens = vec![token(" Thank", 0, 30), token(" you", 30, 60)];
+    let hallucinated = Decoded {
+        no_speech_prob: 0.9,
+        ..decoded(" Thank you", 0, 60, &tokens)
+    };
+
+    assert_eq!(
+        segments_for(&hallucinated, &TimeMap::identity()),
+        Vec::new()
+    );
+}
+
+#[test]
+fn the_no_speech_threshold_itself_still_passes() {
+    let tokens = vec![token(" Thank", 0, 30), token(" you", 30, 60)];
+    let doubtful = Decoded {
+        no_speech_prob: NO_SPEECH_THOLD,
+        ..decoded(" Thank you", 0, 60, &tokens)
+    };
+
+    assert_eq!(segments_for(&doubtful, &TimeMap::identity()).len(), 1);
 }

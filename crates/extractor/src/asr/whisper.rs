@@ -13,11 +13,22 @@ use whisper_rs::{
     DtwMode, DtwParameters, FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters,
 };
 
-use super::segments::{segments_for, Token};
+use super::segments::{segments_for, Decoded, Token};
 use super::vad::{self, TimeMap};
 use super::{dtw, prompt, EngineOutput, Hints, TranscriptionEngine};
 use crate::host;
 use crate::tools::Toolchain;
+
+/// Below this entropy over a window's decoded tokens whisper retries at
+/// a higher temperature: repetition loops score low. whisper.cpp's
+/// default is 2.4; 2.8 is the maintainers' advice against hallucinated
+/// repeats (ggml-org/whisper.cpp#1507).
+const ENTROPY_THOLD: f32 = 2.8;
+/// How many tokens of earlier transcript condition the next window.
+/// whisper.cpp's default keeps all 224 the model allows, and a window
+/// then readily continues a hallucination from the one before; the same
+/// advice caps it at 64.
+const MAX_TEXT_CTX: i32 = 64;
 
 pub struct WhisperEngine {
     model_path: PathBuf,
@@ -126,6 +137,8 @@ impl TranscriptionEngine for WhisperEngine {
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
         params.set_language(Some("auto"));
         params.set_token_timestamps(true);
+        params.set_entropy_thold(ENTROPY_THOLD);
+        params.set_n_max_text_ctx(MAX_TEXT_CTX);
         // The decoder reads the prompt as transcript so far, and takes
         // the media's name as a cue for spelling and subject.
         let glossary = prompt::glossary(hints.title.as_deref(), &[]);
@@ -162,13 +175,14 @@ impl TranscriptionEngine for WhisperEngine {
                     special: token.token_id() >= eot,
                 });
             }
-            segments.extend(segments_for(
-                &text,
-                whisper_segment.start_timestamp(),
-                whisper_segment.end_timestamp(),
-                &tokens,
-                &times,
-            ));
+            let decoded = Decoded {
+                text: &text,
+                start_cs: whisper_segment.start_timestamp(),
+                end_cs: whisper_segment.end_timestamp(),
+                no_speech_prob: whisper_segment.no_speech_probability(),
+                tokens: &tokens,
+            };
+            segments.extend(segments_for(&decoded, &times));
         }
         let language = whisper_rs::get_lang_str(state.full_lang_id_from_state())
             .map(std::string::ToString::to_string);

@@ -23,23 +23,46 @@ pub struct Token {
     pub special: bool,
 }
 
+/// One segment as whisper decoded it, timestamps in decoded centiseconds.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Decoded<'a> {
+    pub text: &'a str,
+    pub start_cs: i64,
+    pub end_cs: i64,
+    /// whisper's probability that the 30 s window this came from held no
+    /// speech, judged at the window's first decoding step.
+    pub no_speech_prob: f32,
+    pub tokens: &'a [Token],
+}
+
 /// A removed pause at least this long (centiseconds of original audio)
 /// splits the decoded segment it falls inside. Shorter gaps are ordinary
 /// phrasing, where whisper's own segmentation stands.
 pub const SPLIT_PAUSE_CS: i64 = 100;
 
+/// Above this no-speech probability a decoded segment is dropped as a
+/// hallucination. It is whisper.cpp's own `no_speech_thold`, which that
+/// decoder only acts on together with a low average log-probability;
+/// here VAD has already cut the silence a window could legitimately
+/// hold, so what the decoder still rates likelier silent than spoken is
+/// noise or music it would invent words over.
+pub const NO_SPEECH_THOLD: f32 = 0.6;
+
 /// Transcript segments for one decoded segment, in absolute media time.
-/// `text` is whisper's own text for it and `start_cs`/`end_cs` its decoded
-/// bounds. Without a removed pause inside, the result is that segment
-/// verbatim; otherwise one segment per stretch of continuous speech.
+/// Without a removed pause inside, the result is that segment verbatim;
+/// otherwise one segment per stretch of continuous speech.
 #[must_use]
-pub fn segments_for(
-    text: &str,
-    start_cs: i64,
-    end_cs: i64,
-    tokens: &[Token],
-    times: &TimeMap,
-) -> Vec<Segment> {
+pub fn segments_for(decoded: &Decoded, times: &TimeMap) -> Vec<Segment> {
+    if decoded.no_speech_prob > NO_SPEECH_THOLD {
+        return Vec::new();
+    }
+    let Decoded {
+        text,
+        start_cs,
+        end_cs,
+        tokens,
+        ..
+    } = *decoded;
     let pieces = split_at_pauses(tokens, times);
     if pieces.len() == 1 {
         return vec![Segment {
