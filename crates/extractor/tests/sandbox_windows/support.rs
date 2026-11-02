@@ -53,13 +53,24 @@ pub(super) fn system_executable(name: &str) -> PathBuf {
         .join(name)
 }
 
-pub(super) fn dacl(path: &Path) -> Vec<u8> {
+/// The access a path grants, with Windows' own record of where each ACE came
+/// from removed.
+///
+/// `icacls` prints `(I)` on an ACE the system derived from the parent
+/// directory. Restoring an *unprotected* DACL hands inheritance recomputation
+/// back to Windows, which re-derives ACEs identical in trustee, rights and
+/// propagation and marks them inherited; that bit cannot be dictated while
+/// the DACL stays unprotected. Dropping it keeps the assertion on what the
+/// sandbox is answerable for — the same trustees holding the same rights, and
+/// no surviving `AppContainer` grant — while any added, removed or altered ACE
+/// still shows up as a difference.
+pub(super) fn effective_dacl(path: &Path) -> String {
     let output = Command::new(system_executable("icacls.exe"))
         .arg(path)
         .output()
         .unwrap_or_else(|error| panic!("inspect workspace DACL: {error}"));
     assert!(output.status.success(), "icacls failed");
-    output.stdout
+    String::from_utf8_lossy(&output.stdout).replace(":(I)", ":")
 }
 
 pub(super) fn protect_dacl(path: &Path) {

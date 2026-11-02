@@ -13,7 +13,7 @@ use vts_extract::sandbox::{self, Mechanism};
 mod support;
 
 use support::{
-    child_test_command, command, dacl, protect_dacl, system_executable, wait_for_process,
+    child_test_command, command, effective_dacl, protect_dacl, system_executable, wait_for_process,
     EnvironmentVariable, Junction, Workspace,
 };
 
@@ -38,9 +38,9 @@ fn confined_command_writes_inside_and_preserves_exit_code() {
     {
         assert!(policy.contains(promise), "policy omitted {promise}");
     }
-    let original_dacl = dacl(&workspace.0);
-    let original_nested_dacl = dacl(&nested);
-    let original_file_dacl = dacl(&existing);
+    let original_dacl = effective_dacl(&workspace.0);
+    let original_nested_dacl = effective_dacl(&nested);
+    let original_file_dacl = effective_dacl(&existing);
     let write = command(r"echo hello>existing\inside.txt");
     let code = sandbox::run(&workspace.0, &write).expect("run write command");
     assert_eq!(code, 0);
@@ -48,14 +48,18 @@ fn confined_command_writes_inside_and_preserves_exit_code() {
     assert_eq!(output, "hello\r\n");
     let code = sandbox::run(&workspace.0, &command("exit /b 37")).expect("run exit");
     assert_eq!(code, 37);
-    assert_eq!(dacl(&workspace.0), original_dacl, "DACL was not restored");
     assert_eq!(
-        dacl(&nested),
+        effective_dacl(&workspace.0),
+        original_dacl,
+        "DACL was not restored"
+    );
+    assert_eq!(
+        effective_dacl(&nested),
         original_nested_dacl,
         "nested directory DACL was not restored"
     );
     assert_eq!(
-        dacl(&existing),
+        effective_dacl(&existing),
         original_file_dacl,
         "existing file DACL was not restored"
     );
