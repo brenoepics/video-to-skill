@@ -24,6 +24,11 @@ fn suite_measures_the_contracted_benchmarks() {
     assert_eq!(report.version, env!("CARGO_PKG_VERSION"));
     assert!(report.machine.logical_cores > 0);
     assert!(
+        matches!(report.machine.whisper_device.as_str(), "cpu" | "gpu"),
+        "device: {}",
+        report.machine.whisper_device
+    );
+    assert!(
         !report.machine.chip.is_empty(),
         "the chip must be identified"
     );
@@ -72,4 +77,13 @@ fn suite_measures_the_contracted_benchmarks() {
             outcome.skipped
         );
     }
+}
+
+#[test]
+fn machine_detection_records_the_whisper_device_it_is_told() {
+    let machine = bench::machine::detect("cpu");
+
+    assert_eq!(machine.whisper_device, "cpu");
+    assert!(machine.logical_cores > 0);
+    assert!(machine.os.contains('/'), "os/arch: {}", machine.os);
 }
