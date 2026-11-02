@@ -89,6 +89,9 @@ mod tests {
         let error = copy_bounded(&mut source, &mut destination, None, 4).unwrap_err();
 
         assert!(error.to_string().contains("safety limit"));
-        assert!(destination.is_empty());
+        assert!(
+            destination.is_empty(),
+            "the limit is enforced before anything is written"
+        );
     }
 }
