@@ -116,7 +116,8 @@ pub struct OnScreenArtifact {
 /// references against `bundle_dir`.
 pub fn compile(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
     validate(ir, bundle_dir)?;
-    emit::emit(ir, bundle_dir, out_dir)
+    let ir = safety::flag(ir)?;
+    emit::emit(&ir, bundle_dir, out_dir)
 }
 
 fn validate(ir: &ProcedureIr, bundle_dir: &Path) -> Result<()> {
