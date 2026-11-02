@@ -22,7 +22,8 @@ _Teach your AI from any video — turn tutorials into installable, **verified** 
 
 Paste this into your AI assistant (Claude Code, Codex, Cursor, Copilot, …):
 
-> Install the video-to-skill skill: run `npx skills@latest add brenoepics/video-to-skill`, then follow the installed SKILL.md to set up `vts-extract`. Show me what it wants to download before approving with `--yes`.
+> [!TIP]
+> Install the video-to-skill skill: run `npx skills@latest add brenoepics/video-to-skill`, then follow the installed SKILL.md to set up `vts-extract`.
 
 Or run it yourself:
 
@@ -30,7 +31,7 @@ Or run it yourself:
 npx skills@latest add brenoepics/video-to-skill
 ```
 
-> [!TIP]
+> [!IMPORTANT]
 > That is the whole setup, on macOS, Windows 10/11 and Linux. The first time you use it, it fetches a few helper tools it needs (a small extractor program, ffmpeg, yt-dlp, and the speech models). You see the list before anything is downloaded, and every file is checked against a known fingerprint. No Homebrew, Python, account, or API key is needed. Tools you already have installed are reused.
 
 ## Use it
