@@ -17,9 +17,9 @@ const WINDOWS_FFMPEG_SHA256: &str =
     "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec";
 const WINDOWS_FFMPEG_ROOT: &str = "ffmpeg-8.1.2-essentials_build/bin";
 const WINDOWS_YTDLP_URL: &str =
-    "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp.exe";
+    "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp.exe";
 const WINDOWS_YTDLP_SHA256: &str =
-    "52fe3c26dcf71fbdc85b528589020bb0b8e383155cfa81b64dd447bbe35e24b8";
+    "f5389d3698ecde4ef06f4e6b1ce0294fe9ac1396228c8990b8d3416d6d177a7d";
 const WHISPER_BASE_REVISION: &str = "5359861c739e955e79d9a303bcbc70fb988958b1";
 const SILERO_VAD_REVISION: &str = "9ffd54a1e1ee413ddf265af9913beaf518d1639b";
 
@@ -147,8 +147,8 @@ fn zipped_tool(tool: Tool, url: &str, sha256: &str) -> ToolSpec {
 fn macos_ytdlp(tool: Tool) -> ToolSpec {
     ToolSpec {
         tool,
-        url: "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp_macos".into(),
-        sha256: "498bd0dae17855c599d371d68ec5bafc439a9d8640e838be25c765a9792f261b".into(),
+        url: "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp_macos".into(),
+        sha256: "0f922c15ccc0b83eefa1c8bc9104e434318c4bf16e408e1ee93b7745a6efe0aa".into(),
         archive: Archive::None,
     }
 }
