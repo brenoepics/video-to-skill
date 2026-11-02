@@ -151,7 +151,9 @@ When creating it, FIRST write `.vts/.gitignore` containing the single
 line `*` — the dir ignores itself and never dirties the user's VCS.
 This produces the bundle: `manifest.json` (source + media facts +
 notes), `transcript.json` (word-level timestamps), `frames.json`
-(shots + keyframes + motion density), `timeline.json` — and
+(shots + keyframes + motion density), `screen_text.json` (on-screen
+text OCR'd from the keyframes — macOS and Windows only; elsewhere the
+manifest notes why it is absent), `timeline.json` — and
 `frames/*.jpg`. Extraction is deterministic and idempotent; a partial
 bundle (e.g. no speech) is normal and noted, not an error.
 
@@ -162,6 +164,13 @@ per shot with time range, speech spans, keyframe path, and motion
 density. Then inspect frames *selectively* (never all of them):
 
 - Read each segment's keyframe once — for most videos that is enough.
+- Grep the text track before re-watching to read on-screen text:
+  `vts-extract text --bundle <bundle> --grep <pattern>` prints
+  `t=<secs>\t<frame>\t<text>` for every OCR line matching the
+  case-insensitive regex (omit `--grep` for the whole track), so you
+  can jump straight to the frame that shows a command. OCR is a hint
+  with a confidence, not evidence: pixels stay authoritative (rules 2
+  and 4 below), so read the frame it names before copying anything.
 - Re-watch a range only when evidence demands it:
   `vts-extract frame-at --bundle <bundle> <t>` for one moment
   (`frame-at` accepts MULTIPLE timestamps in one call:
