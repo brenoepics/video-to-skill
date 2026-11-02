@@ -36,8 +36,14 @@ jobs:
             range="$PUSH_BEFORE..${{ github.sha }}"
           fi
           bad=0
-          while IFS= read -r subject; do
+          while IFS=$'\t' read -r author subject; do
             [ -z "$subject" ] && continue
+            # Dependabot writes its own subjects ("bump X from A to B in the
+            # cargo group across 1 directory") and dependabot.yml can only
+            # change their prefix and scope, never shorten them. Exempt its
+            # commits by author; a human who types the same text is still
+            # held to the limit below.
+            [ "$author" = "dependabot[bot]" ] && continue
             # GitHub-generated commits (security autofix, dependabot
             # config toggles) carry fixed non-conventional subjects.
             case "$subject" in
@@ -52,7 +58,7 @@ jobs:
             if ! printf '%s' "$authored" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [a-z].{0,49}$'; then
               echo "not conventional or too long: $subject"; bad=1
             fi
-          done < <(git log --no-merges --format=%s $range 2>/dev/null || git log --no-merges --format=%s -1)
+          done < <(git log --no-merges --format=%an%x09%s $range 2>/dev/null || git log --no-merges --format=%an%x09%s -1)
           exit $bad
 
   msrv:
