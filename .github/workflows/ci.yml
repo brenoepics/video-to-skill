@@ -38,10 +38,18 @@ jobs:
           bad=0
           while IFS= read -r subject; do
             [ -z "$subject" ] && continue
+            # GitHub-generated commits (security autofix, dependabot
+            # config toggles) carry fixed non-conventional subjects.
             case "$subject" in
               "Potential fix for code scanning alert"*|"Set package-ecosystem"*) continue;;
             esac
-            if ! printf '%s' "$subject" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [a-z].{0,49}$'; then
+            # A squash merge appends " (#123)" to the subject the author
+            # wrote, and .githooks/commit-msg — the same regex — never sees
+            # that suffix. Measure what the author typed, so a subject that
+            # passed the hook cannot redden main just because GitHub made it
+            # five or six characters longer.
+            authored=$(printf '%s' "$subject" | sed -E 's/ \(#[0-9]+\)$//')
+            if ! printf '%s' "$authored" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [a-z].{0,49}$'; then
               echo "not conventional or too long: $subject"; bad=1
             fi
           done < <(git log --no-merges --format=%s $range 2>/dev/null || git log --no-merges --format=%s -1)
