@@ -61,6 +61,7 @@ next candidate or refetch rather than proceeding:
    archive="vts-extract-$asset.tar.gz"
    gh release download "v$version" -R brenoepics/video-to-skill -p "$archive*" -D "$VTS_DOWNLOAD"
    (cd "$VTS_DOWNLOAD" && if command -v sha256sum >/dev/null; then sha256sum -c "$archive.sha256"; else shasum -a 256 -c "$archive.sha256"; fi)
+   gh attestation verify "$VTS_DOWNLOAD/$archive" -R brenoepics/video-to-skill
    mkdir -p "$VTS_BIN"
    tar -xzf "$VTS_DOWNLOAD/$archive" -C "$VTS_BIN"
    mv "$VTS_BIN/vts-extract" "$VTS_BIN/vts-extract-$version"
@@ -83,6 +84,10 @@ next candidate or refetch rather than proceeding:
      $expected = ((Get-Content -LiteralPath "$archive.sha256") -split '\s+')[0]
      $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
      if ($actual -ne $expected.ToLowerInvariant()) { throw "vts-extract checksum mismatch" }
+     if (Get-Command gh -ErrorAction SilentlyContinue) {
+       gh attestation verify $archive -R brenoepics/video-to-skill
+       if ($LASTEXITCODE -ne 0) { throw "vts-extract provenance verification failed" }
+     }
      New-Item -ItemType Directory -Force -Path $vtsBin | Out-Null
      Expand-Archive -LiteralPath $archive -DestinationPath $download
      $vtsExtract = Join-Path $vtsBin "vts-extract-$version.exe"
@@ -92,7 +97,12 @@ next candidate or refetch rather than proceeding:
      Remove-Item -LiteralPath $download -Recurse -Force -ErrorAction SilentlyContinue
    }
    ```
-   The checksum must verify before the binary is executed.
+   The checksum must verify before the binary is executed, and so must
+   the attestation where `gh` runs it: `gh attestation verify` proves
+   GitHub built the archive from this repository's tagged source (SLSA
+   build provenance). On Windows that check runs only when `gh` is
+   installed; without it the checksum check stands alone. If either
+   fails, stop and report — never run the binary.
 4. Last resort, build from source: `cargo build --release` in this
    skill's directory; the result appears at candidate 2's path. Windows
    source builds use MSVC and require Rust 1.89+, CMake 3.15+, Ninja, LLVM/libclang,
