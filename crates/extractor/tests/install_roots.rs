@@ -77,7 +77,10 @@ fn only_filters_detection_to_the_named_agents() {
 
 #[test]
 fn unknown_agent_names_are_reported_for_the_caller_to_reject() {
-    assert!(unknown_agents(&["claude".into(), "amp".into()]).is_empty());
+    assert_eq!(
+        unknown_agents(&["claude".into(), "amp".into()]),
+        [] as [String; 0]
+    );
     assert_eq!(
         unknown_agents(&["claude".into(), "clyde".into()]),
         vec!["clyde".to_string()]
@@ -127,7 +130,7 @@ fn a_detected_symlink_lets_the_planner_skip_that_root() {
     let plan = vts_extract::install::plan_install("vim-basics", &states, true).unwrap();
 
     assert_eq!(plan.canonical.agent, "universal");
-    assert!(plan.links.is_empty());
+    assert_eq!(plan.links, [] as [vts_extract::install::Link; 0]);
     assert!(plan
         .skips
         .iter()
