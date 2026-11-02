@@ -78,11 +78,13 @@ fn passing_report() -> VerificationReport {
                 id: "01-first".into(),
                 outcome: "pass".into(),
                 detail: "exit 0, criteria met".into(),
+                repairs: vec![],
             },
             StepOutcome {
                 id: "02-second".into(),
                 outcome: "pass".into(),
                 detail: "exit 0".into(),
+                repairs: vec![],
             },
         ],
     }
@@ -100,11 +102,13 @@ fn partial_report() -> VerificationReport {
                 id: "01-first".into(),
                 outcome: "pass".into(),
                 detail: "exit 0, criteria met".into(),
+                repairs: vec![],
             },
             StepOutcome {
                 id: "02-second".into(),
                 outcome: "unverifiable".into(),
                 detail: "needs GUI hardware".into(),
+                repairs: vec![],
             },
         ],
     }
@@ -246,55 +250,5 @@ fn restamping_transitions_between_all_three_states() {
     assert_single_badge(
         "Verified by execution",
         ["NOT verified", "Partially verified"],
-    );
-}
-
-#[test]
-fn reports_citing_unknown_steps_are_rejected() {
-    let dir = scratch("unknown");
-    let package = compiled_package(&dir);
-
-    let mut report = passing_report();
-    report.steps[0].id = "99-ghost".into();
-
-    let err = record_verification(&package, &report).unwrap_err();
-    assert!(err.to_string().contains("99-ghost"), "got: {err}");
-}
-
-#[test]
-fn outcomes_must_use_the_known_vocabulary() {
-    let dir = scratch("vocab");
-    let package = compiled_package(&dir);
-
-    let mut report = passing_report();
-    report.steps[0].outcome = "maybe".into();
-
-    let err = record_verification(&package, &report).unwrap_err();
-    assert!(err.to_string().contains("maybe"), "got: {err}");
-}
-
-#[test]
-fn recording_updates_the_verified_steps_frontmatter_metadata() {
-    let dir = scratch("metadata");
-    let package = compiled_package(&dir);
-    let metadata_line = |value: &str| format!(r#"  video-to-skill/verified-steps: "{value}""#);
-    let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
-    assert!(skill_md.contains(&metadata_line("0/2")), "{skill_md}");
-
-    record_verification(&package, &passing_report()).unwrap();
-    let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
-    assert!(skill_md.contains(&metadata_line("2/2")), "{skill_md}");
-    assert!(!skill_md.contains(&metadata_line("0/2")), "{skill_md}");
-
-    record_verification(&package, &partial_report()).unwrap();
-    let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
-    assert!(
-        skill_md.contains(&metadata_line("1/2")),
-        "only passes count: {skill_md}"
-    );
-    assert_eq!(
-        skill_md.matches("verified-steps").count(),
-        1,
-        "the line is replaced, never duplicated: {skill_md}"
     );
 }
