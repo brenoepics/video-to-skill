@@ -146,9 +146,8 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
         notes,
         segments,
     };
-    let tmp = bundle_dir.join(format!("{TIMELINE_FILE}.tmp"));
-    fs::write(&tmp, serde_json::to_string_pretty(&timeline)?)?;
-    fs::rename(&tmp, bundle_dir.join(TIMELINE_FILE))?;
+    let path = bundle_dir.join(TIMELINE_FILE);
+    crate::fsx::write_atomic(&path, &serde_json::to_vec_pretty(&timeline)?)?;
     manifest.tracks.timeline = Some(TIMELINE_FILE.to_string());
     save_manifest(bundle_dir, &manifest)?;
     Ok(timeline)

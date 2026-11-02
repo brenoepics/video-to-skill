@@ -23,12 +23,13 @@ boundary; the kernel is. Run **every** command through:
 vts-extract sandbox --workspace <throwaway-dir> -- <command>
 ```
 
-which enforces, per OS policy (macOS seatbelt, Linux bubblewrap):
+which enforces, per OS policy (Windows LPAC/AppContainer plus a Job
+Object, macOS Seatbelt, or Linux bubblewrap):
 
 | Guarantee | Why it matters here |
 | --- | --- |
 | No network, at all | A malicious step cannot exfiltrate what it reads, or pull a second stage |
-| Writes confined to `<throwaway-dir>` | Nothing persists on the machine after verification |
+| Only `<throwaway-dir>` is deliberately granted on the host | Output is contained; Windows may also use an ephemeral private AppContainer profile that is removed afterwards |
 | Credential stores unreadable (`~/.ssh`, `~/.aws`, keychains, `~/.claude`, `.netrc`, …) | A step cannot read what it cannot exfiltrate anyway — defence in depth |
 
 The command's exit code is passed straight through, so `pass`/`fail`
@@ -42,7 +43,15 @@ reason "no sandbox mechanism available", and the badge reads
 🟡 partially verified. A green badge is never worth an unconfined
 execution.
 
-The workspace is deleted afterwards.
+The workspace is deleted afterwards. On Windows, profile creation, ACL
+changes, process attributes, or cleanup failures are fatal: the command is
+never retried outside AppContainer confinement.
+
+Some hardened Windows hosts deny a confined program's attempt to create a
+child process (`ERROR_ACCESS_DENIED`). This is a fail-closed host policy, not a
+reason to weaken confinement: mark a step that needs such a child
+`unverifiable`. When the host permits descendants, the kill-on-close Job Object
+keeps the complete process tree bounded to the sandbox lifetime.
 
 ## Safety policy (classify before executing)
 

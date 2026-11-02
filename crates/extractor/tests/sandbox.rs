@@ -1,3 +1,5 @@
+#![cfg(unix)]
+
 //! End-to-end proof that the sandbox confines for real.
 //!
 //! The unit tests in `sandbox::profile` assert the policy *text*; these

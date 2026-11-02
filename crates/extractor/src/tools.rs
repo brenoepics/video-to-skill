@@ -14,18 +14,19 @@ pub struct Toolchain {
     pub ffprobe: PathBuf,
     /// Whisper weights; optional because ingest-only flows don't need them.
     pub whisper_model: Option<PathBuf>,
+    /// Silero VAD weights; when present, transcription skips non-speech.
+    pub whisper_vad: Option<PathBuf>,
 }
 
 impl Toolchain {
     /// Resolve from PATH + app data dir; errors name what's missing and
     /// how to fix it.
     pub fn resolve(env: &Env) -> Result<Toolchain> {
-        let statuses = deps::probe(env);
         let locate = |tool: Tool| -> Result<PathBuf> {
-            statuses
-                .iter()
-                .find(|s| s.tool == tool && s.presence != Presence::Missing)
-                .and_then(|s| s.location.clone())
+            let status = deps::status(tool, env);
+            status
+                .location
+                .filter(|_| status.presence != Presence::Missing)
                 .map_or_else(
                     || {
                         bail!(
@@ -40,6 +41,7 @@ impl Toolchain {
             ffmpeg: locate(Tool::Ffmpeg)?,
             ffprobe: locate(Tool::Ffprobe)?,
             whisper_model: locate(Tool::WhisperModel).ok(),
+            whisper_vad: locate(Tool::WhisperVad).ok(),
         })
     }
 }

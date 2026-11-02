@@ -21,7 +21,11 @@ pub fn run(input: &str, out: &str) -> Result<()> {
     if input.starts_with("http") {
         println!("downloading …");
     }
-    let report = bundle::ingest_any(input, bundle_dir, &tools, &LazyYtdlp { env })?;
+    let downloader = LazyYtdlp {
+        env: &env,
+        ffmpeg: &tools.ffmpeg,
+    };
+    let report = bundle::ingest_any(input, bundle_dir, &tools, &downloader)?;
     let m = &report.manifest;
     println!(
         "{} {out}/ ({:.1}s)",
@@ -74,38 +78,40 @@ pub fn run(input: &str, out: &str) -> Result<()> {
 
 /// Resolves yt-dlp only when a URL actually needs downloading, so
 /// local-file extraction never requires it.
-struct LazyYtdlp {
-    env: Env,
+struct LazyYtdlp<'a> {
+    env: &'a Env,
+    ffmpeg: &'a Path,
 }
 
-impl bundle::VideoDownloader for LazyYtdlp {
+impl bundle::VideoDownloader for LazyYtdlp<'_> {
     fn download(&self, url: &str, dest_dir: &Path) -> Result<bundle::DownloadedVideo> {
-        let ytdlp = deps::probe(&self.env)
-            .into_iter()
-            .find(|s| s.tool == Tool::Ytdlp && s.presence != Presence::Missing)
-            .and_then(|s| s.location)
-            .context("yt-dlp is missing — run `vts-extract check --fix --yes` first")?;
-        YtdlpDownloader::new(ytdlp).download(url, dest_dir)
+        let status = deps::status(Tool::Ytdlp, self.env);
+        let ytdlp = status
+            .location
+            .filter(|_| status.presence != Presence::Missing)
+            .context(
+                "yt-dlp is missing or incompatible — run `vts-extract check --fix --yes` first",
+            )?;
+        YtdlpDownloader::new(ytdlp, self.ffmpeg.to_path_buf()).download(url, dest_dir)
     }
 }
 
 /// Transcription is best-effort: without the model (or on engine failure)
 /// the pipeline continues and the gap surfaces in the timeline notes.
 fn transcribe_stage(bundle_dir: &Path, tools: &Toolchain) {
-    let Some(model) = tools.whisper_model.clone() else {
+    let Some(engine) = WhisperEngine::from_toolchain(tools) else {
         println!(
             "! whisper model missing — skipping transcription (run `vts-extract check --fix --yes`)"
         );
         return;
     };
     let started = Instant::now();
-    println!("transcribing …");
-    let result =
-        asr::extract_audio_track(bundle_dir, tools, &WhisperEngine::new(model), &mut |pct| {
-            if pct > 0 {
-                println!("  … {pct}%");
-            }
-        });
+    println!("transcribing ({}) …", engine.device());
+    let result = asr::extract_audio_track(bundle_dir, tools, &engine, &mut |pct| {
+        if pct > 0 {
+            println!("  … {pct}%");
+        }
+    });
     match result {
         Ok(t) => match (t.segments.len(), t.language.as_deref().unwrap_or("unknown")) {
             (0, _) => println!("  no speech found (see manifest notes)"),

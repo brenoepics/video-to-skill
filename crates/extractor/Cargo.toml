@@ -3,6 +3,7 @@ name = "vts-extract"
 description = "Local extraction engine for video-to-skill: ingest, scene/slide detection, keyframe dedup, timestamped ASR"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
@@ -16,9 +17,15 @@ hound = "3"
 dirs = "7"
 sha2 = "0.11"
 ureq = "3"
+# zip's `deflate-flate2` pulls flate2 in with no backend selected, so the ZIP
+# reader only builds because ureq's defaults happen to turn on
+# flate2/rust_backend. Name the backend here — the same miniz_oxide one already
+# in use — so a change to ureq's features cannot break dependency extraction.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+zip = { version = "9.2.1", default-features = false, features = ["deflate-flate2"] }
 
 [[bin]]
 name = "vts-extract"
@@ -29,3 +36,17 @@ whisper-rs = { version = "0.16", features = ["metal"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 whisper-rs = "0.16"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Security_Isolation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_JobObjects",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_System_WindowsProgramming",
+] }

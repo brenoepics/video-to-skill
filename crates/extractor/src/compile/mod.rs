@@ -123,12 +123,7 @@ fn validate(ir: &ProcedureIr, bundle_dir: &Path) -> Result<()> {
     if ir.schema_version != 1 {
         bail!("unsupported IR schema_version {}", ir.schema_version);
     }
-    if !is_kebab(&ir.skill_name) {
-        bail!(
-            "skill_name '{}' must be kebab-case (lowercase letters, digits, hyphens)",
-            ir.skill_name
-        );
-    }
+    crate::safe_path::validate_skill_name(&ir.skill_name)?;
     if ir.description.trim().is_empty() || ir.description.len() > 1024 {
         bail!("description must be non-empty and at most 1024 characters");
     }
@@ -137,9 +132,7 @@ fn validate(ir: &ProcedureIr, bundle_dir: &Path) -> Result<()> {
     }
     let mut seen = std::collections::HashSet::new();
     for step in &ir.steps {
-        if !is_kebab(&step.id) {
-            bail!("step id '{}' must be kebab-case", step.id);
-        }
+        crate::safe_path::validate_step_id(&step.id)?;
         if !seen.insert(&step.id) {
             bail!("duplicate step id '{}'", step.id);
         }
@@ -155,16 +148,55 @@ fn validate(ir: &ProcedureIr, bundle_dir: &Path) -> Result<()> {
                 step.id
             );
         }
+        for script in &step.scripts {
+            crate::safe_path::validate_script_name(&script.name)?;
+        }
         for evidence in &step.evidence {
             if let Some(frame) = &evidence.frame {
-                if !bundle_dir.join(frame).is_file() {
-                    bail!("step '{}' cites missing frame '{frame}'", step.id);
-                }
+                crate::safe_path::resolve_bundle_file(bundle_dir, frame).map_err(|error| {
+                    anyhow::anyhow!("step '{}' cites invalid frame '{frame}': {error}", step.id)
+                })?;
             }
         }
     }
+    for artifact in &ir.artifacts {
+        if let Some(frame) = &artifact.frame {
+            crate::safe_path::resolve_bundle_file(bundle_dir, frame)
+                .map_err(|error| anyhow::anyhow!("artifact frame '{frame}' is invalid: {error}"))?;
+        }
+    }
     safety::check(ir)?;
+    reject_script_name_collisions(ir)?;
     reject_frame_basename_collisions(ir)
+}
+
+/// Scripts from every step share one output directory. Reject names that
+/// would address the same file on a case-insensitive filesystem, as well as
+/// duplicate names whose contents disagree.
+fn reject_script_name_collisions(ir: &ProcedureIr) -> Result<()> {
+    let mut by_name: std::collections::HashMap<String, (&str, &str)> =
+        std::collections::HashMap::new();
+    for script in ir.steps.iter().flat_map(|step| &step.scripts) {
+        let key = script.name.to_lowercase();
+        if let Some(&(first_name, first_contents)) = by_name.get(&key) {
+            if first_name == script.name && first_contents == script.contents {
+                continue;
+            }
+            if first_name == script.name {
+                bail!(
+                    "script name collision: '{}' is declared with different contents",
+                    script.name
+                );
+            }
+            bail!(
+                "script name collision: '{first_name}' and '{}' are the same on a \
+                 case-insensitive filesystem",
+                script.name
+            );
+        }
+        by_name.insert(key, (&script.name, &script.contents));
+    }
+    Ok(())
 }
 
 /// The package flattens every referenced frame into `references/frames/`
@@ -177,28 +209,20 @@ fn reject_frame_basename_collisions(ir: &ProcedureIr) -> Result<()> {
         .flat_map(|s| &s.evidence)
         .filter_map(|e| e.frame.as_deref())
         .chain(ir.artifacts.iter().filter_map(|a| a.frame.as_deref()));
-    let mut by_basename: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+    let mut by_basename: std::collections::HashMap<String, &str> = std::collections::HashMap::new();
     for frame in referenced {
-        let name = frame.rsplit('/').next().unwrap_or(frame);
-        match by_basename.get(name) {
+        let name = crate::safe_path::portable_basename(frame)?;
+        let key = name.to_lowercase();
+        match by_basename.get(&key) {
             // The same source frame cited twice is one copy — fine.
             Some(&first) if first != frame => bail!(
-                "frame basename collision: '{name}' is used by both '{first}' and '{frame}' — \
-                 frames are flattened into references/frames/ by basename, so one would \
-                 overwrite the other"
+                "case-insensitive frame basename collision: '{first}' and '{frame}' both map \
+                 to '{name}' in references/frames/, so one would overwrite the other"
             ),
             _ => {
-                by_basename.insert(name, frame);
+                by_basename.insert(key, frame);
             }
         }
     }
     Ok(())
-}
-
-fn is_kebab(s: &str) -> bool {
-    !s.is_empty()
-        && s.chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
-        && !s.starts_with('-')
-        && !s.ends_with('-')
 }
