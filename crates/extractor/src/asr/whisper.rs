@@ -13,10 +13,9 @@ use whisper_rs::{
     DtwMode, DtwParameters, FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters,
 };
 
-use super::dtw;
 use super::segments::{segments_for, Token};
 use super::vad::{self, TimeMap};
-use super::{EngineOutput, TranscriptionEngine};
+use super::{dtw, prompt, EngineOutput, Hints, TranscriptionEngine};
 use crate::host;
 use crate::tools::Toolchain;
 
@@ -96,7 +95,12 @@ impl WhisperEngine {
 }
 
 impl TranscriptionEngine for WhisperEngine {
-    fn transcribe(&self, wav: &Path, progress: &mut dyn FnMut(u8)) -> Result<EngineOutput> {
+    fn transcribe(
+        &self,
+        wav: &Path,
+        hints: &Hints,
+        progress: &mut dyn FnMut(u8),
+    ) -> Result<EngineOutput> {
         let samples = read_wav_mono_f32(wav)?;
         progress(0);
         let (samples, times) = match &self.vad_model {
@@ -122,6 +126,12 @@ impl TranscriptionEngine for WhisperEngine {
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
         params.set_language(Some("auto"));
         params.set_token_timestamps(true);
+        // The decoder reads the prompt as transcript so far, and takes
+        // the media's name as a cue for spelling and subject.
+        let glossary = prompt::glossary(hints.title.as_deref(), &[]);
+        if let Some(glossary) = &glossary {
+            params.set_initial_prompt(glossary);
+        }
         params.set_print_progress(false);
         params.set_print_realtime(false);
         params.set_print_special(false);
