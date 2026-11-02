@@ -21,7 +21,7 @@ pub fn is_virtual_machine() -> bool {
 #[must_use]
 pub fn virtualized_from(hv_vmm_present: Option<&str>, cpu_brand: Option<&str>) -> bool {
     let kernel_says_vm = hv_vmm_present.is_some_and(|v| v.trim() == "1");
-    let brand_says_vm = cpu_brand.is_some_and(|b| b.to_ascii_lowercase().contains("virtual"));
+    let brand_says_vm = cpu_brand.is_some_and(|b| b.contains("(Virtual)"));
     kernel_says_vm || brand_says_vm
 }
 
@@ -55,6 +55,16 @@ mod tests {
     #[test]
     fn bare_metal_is_not_virtual() {
         assert!(!virtualized_from(Some("0\n"), Some("Apple M5\n")));
+    }
+
+    #[test]
+    fn rosetta_brand_prefix_is_not_the_apple_vm_marker() {
+        // Older macOS under Rosetta 2 reported "VirtualApple @ 2.50GHz" on
+        // bare metal; only the parenthesised "(Virtual)" suffix means a VM.
+        assert!(!virtualized_from(
+            Some("0\n"),
+            Some("VirtualApple @ 2.50GHz\n")
+        ));
     }
 
     #[test]
