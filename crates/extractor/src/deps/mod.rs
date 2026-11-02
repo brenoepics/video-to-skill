@@ -1,10 +1,10 @@
 //! Local dependency management: detection and zero-setup bootstrap.
 //!
 //! Layout inside the app data dir: `tools/` for static binaries,
-//! `models/` for whisper weights. A file is only counted present when a
-//! `.verified` marker sits beside it — the marker is written exclusively
-//! after a checksum-verified install, so an interrupted download can never
-//! masquerade as a working tool.
+//! `models/` for whisper and voice-activity-detection weights. A file is
+//! only counted present when a `.verified` marker sits beside it — the
+//! marker is written exclusively after a checksum-verified install, so an
+//! interrupted download can never masquerade as a working tool.
 
 pub mod bootstrap;
 pub mod fetch;
@@ -35,10 +35,18 @@ pub enum Tool {
     Ffprobe,
     Ytdlp,
     WhisperModel,
+    /// Silero voice-activity model: lets whisper skip non-speech audio.
+    WhisperVad,
 }
 
 impl Tool {
-    pub const ALL: [Tool; 4] = [Tool::Ffmpeg, Tool::Ffprobe, Tool::Ytdlp, Tool::WhisperModel];
+    pub const ALL: [Tool; 5] = [
+        Tool::Ffmpeg,
+        Tool::Ffprobe,
+        Tool::Ytdlp,
+        Tool::WhisperModel,
+        Tool::WhisperVad,
+    ];
 
     /// File name inside the data dir (and looked up on PATH for executables).
     #[must_use]
@@ -50,6 +58,8 @@ impl Tool {
             // Default model: multilingual `base` — 142 MB, fast on Apple
             // Silicon, good enough for tutorial narration; configurable later.
             Tool::WhisperModel => "ggml-base.bin",
+            // The VAD model whisper.cpp 1.8.x ships support for (~0.9 MB).
+            Tool::WhisperVad => "ggml-silero-v5.1.2.bin",
         }
     }
 
@@ -58,14 +68,14 @@ impl Tool {
     pub fn data_subdir(self) -> &'static str {
         match self {
             Tool::Ffmpeg | Tool::Ffprobe | Tool::Ytdlp => "tools",
-            Tool::WhisperModel => "models",
+            Tool::WhisperModel | Tool::WhisperVad => "models",
         }
     }
 
     /// Executables are also searched on PATH; model files are data-dir only.
     #[must_use]
     pub fn is_executable(self) -> bool {
-        !matches!(self, Tool::WhisperModel)
+        !matches!(self, Tool::WhisperModel | Tool::WhisperVad)
     }
 
     /// Where this tool lives inside `data_dir`.
@@ -211,7 +221,7 @@ fn executable_supports_required_options(tool: Tool, path: &Path) -> bool {
     let args = match tool {
         Tool::Ffmpeg | Tool::Ffprobe => &FFMPEG_PROBE_ARGS[..],
         Tool::Ytdlp => &YTDLP_PROBE_ARGS[..],
-        Tool::WhisperModel => return false,
+        Tool::WhisperModel | Tool::WhisperVad => return false,
     };
     command_succeeds_within(path, args)
 }

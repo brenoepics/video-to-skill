@@ -17,10 +17,11 @@ const WINDOWS_FFMPEG_SHA256: &str =
     "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec";
 const WINDOWS_FFMPEG_ROOT: &str = "ffmpeg-8.1.2-essentials_build/bin";
 const WINDOWS_YTDLP_URL: &str =
-    "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp.exe";
+    "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp.exe";
 const WINDOWS_YTDLP_SHA256: &str =
-    "52fe3c26dcf71fbdc85b528589020bb0b8e383155cfa81b64dd447bbe35e24b8";
+    "f5389d3698ecde4ef06f4e6b1ce0294fe9ac1396228c8990b8d3416d6d177a7d";
 const WHISPER_BASE_REVISION: &str = "5359861c739e955e79d9a303bcbc70fb988958b1";
+const SILERO_VAD_REVISION: &str = "9ffd54a1e1ee413ddf265af9913beaf518d1639b";
 
 /// The install spec for `tool` on this platform, or `None` when no
 /// trusted static build is pinned for it here (the doctor then points
@@ -46,6 +47,19 @@ pub fn spec_for(tool: Tool) -> Option<ToolSpec> {
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/{WHISPER_BASE_REVISION}/ggml-base.bin"
             ),
             sha256: "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe".into(),
+            archive: Archive::None,
+        }),
+        // Silero VAD weights in ggml format, from the ggml-org/whisper-vad
+        // repo on Hugging Face (where whisper.cpp's own download script
+        // fetches them): public, ungated, pinned to a commit; checksum from
+        // the git-lfs pointer, re-verified by downloading once.
+        // Platform-independent.
+        Tool::WhisperVad => Some(ToolSpec {
+            tool,
+            url: format!(
+                "https://huggingface.co/ggml-org/whisper-vad/resolve/{SILERO_VAD_REVISION}/ggml-silero-v5.1.2.bin"
+            ),
+            sha256: "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf".into(),
             archive: Archive::None,
         }),
     }
@@ -133,8 +147,8 @@ fn zipped_tool(tool: Tool, url: &str, sha256: &str) -> ToolSpec {
 fn macos_ytdlp(tool: Tool) -> ToolSpec {
     ToolSpec {
         tool,
-        url: "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp_macos".into(),
-        sha256: "498bd0dae17855c599d371d68ec5bafc439a9d8640e838be25c765a9792f261b".into(),
+        url: "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp_macos".into(),
+        sha256: "0f922c15ccc0b83eefa1c8bc9104e434318c4bf16e408e1ee93b7745a6efe0aa".into(),
         archive: Archive::None,
     }
 }
@@ -166,6 +180,26 @@ mod tests {
                 "the disclosed inventory must not omit fetchable artifacts"
             );
         }
+    }
+
+    #[test]
+    fn the_silero_vad_model_is_pinned_from_the_ggml_org_repo() {
+        let spec = spec_for(Tool::WhisperVad).expect("VAD model is platform-independent");
+        assert_eq!(
+            spec.url,
+            "https://huggingface.co/ggml-org/whisper-vad/resolve/\
+             9ffd54a1e1ee413ddf265af9913beaf518d1639b/ggml-silero-v5.1.2.bin"
+        );
+        // From the file's git-lfs pointer; re-verified by downloading once.
+        assert_eq!(
+            spec.sha256,
+            "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf"
+        );
+        assert_eq!(spec.archive, Archive::None);
+        assert!(
+            inventory().iter().any(|s| s.tool == Tool::WhisperVad),
+            "the VAD model must be disclosed in the inventory"
+        );
     }
 
     #[test]

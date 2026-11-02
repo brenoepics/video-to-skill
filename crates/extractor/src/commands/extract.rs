@@ -99,14 +99,13 @@ impl bundle::VideoDownloader for LazyYtdlp<'_> {
 /// Transcription is best-effort: without the model (or on engine failure)
 /// the pipeline continues and the gap surfaces in the timeline notes.
 fn transcribe_stage(bundle_dir: &Path, tools: &Toolchain) {
-    let Some(model) = tools.whisper_model.clone() else {
+    let Some(engine) = WhisperEngine::from_toolchain(tools) else {
         println!(
             "! whisper model missing — skipping transcription (run `vts-extract check --fix --yes`)"
         );
         return;
     };
     let started = Instant::now();
-    let engine = WhisperEngine::new(model);
     println!("transcribing ({}) …", engine.device());
     let result = asr::extract_audio_track(bundle_dir, tools, &engine, &mut |pct| {
         if pct > 0 {

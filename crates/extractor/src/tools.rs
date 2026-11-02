@@ -14,6 +14,8 @@ pub struct Toolchain {
     pub ffprobe: PathBuf,
     /// Whisper weights; optional because ingest-only flows don't need them.
     pub whisper_model: Option<PathBuf>,
+    /// Silero VAD weights; when present, transcription skips non-speech.
+    pub whisper_vad: Option<PathBuf>,
 }
 
 impl Toolchain {
@@ -39,6 +41,7 @@ impl Toolchain {
             ffmpeg: locate(Tool::Ffmpeg)?,
             ffprobe: locate(Tool::Ffprobe)?,
             whisper_model: locate(Tool::WhisperModel).ok(),
+            whisper_vad: locate(Tool::WhisperVad).ok(),
         })
     }
 }

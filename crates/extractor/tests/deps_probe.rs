@@ -25,6 +25,10 @@ const YTDLP_FILE_NAME: &str = "yt-dlp.exe";
 #[cfg(not(windows))]
 const YTDLP_FILE_NAME: &str = "yt-dlp";
 
+/// Model files: data in the data dir, never looked up on PATH.
+#[path = "deps_probe/models.rs"]
+mod models;
+
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir()
         .join("vts-deps-tests")
@@ -130,47 +134,11 @@ fn unverified_file_in_data_dir_is_not_counted_present() {
 }
 
 #[test]
-fn whisper_model_is_detected_by_verified_file_not_executability() {
-    let bin = scratch("model-bin");
-    let data = scratch("model-data");
-    let models = data.join("models");
-    fs::create_dir_all(&models).unwrap();
-    fs::write(models.join("ggml-base.bin"), b"weights").unwrap();
-    write_current_marker(Tool::WhisperModel, &models.join("ggml-base.bin"));
-
-    let statuses = probe(&env_with(vec![bin], data.clone()));
-
-    let model = statuses
-        .iter()
-        .find(|s| s.tool == Tool::WhisperModel)
-        .unwrap();
-    assert_eq!(model.presence, Presence::Installed);
-    assert_eq!(model.location, Some(models.join("ggml-base.bin")));
-}
-
-#[test]
-fn stale_managed_marker_is_not_reported_ready() {
-    let data = scratch("stale-managed-marker");
-    let model = data.join("models").join("ggml-base.bin");
-    fs::create_dir_all(model.parent().unwrap()).unwrap();
-    fs::write(&model, b"old weights").unwrap();
-    fs::write(model.with_file_name("ggml-base.bin.verified"), "sha256:old").unwrap();
-
-    let statuses = probe(&env_with(vec![], data));
-
-    let model = statuses
-        .iter()
-        .find(|status| status.tool == Tool::WhisperModel)
-        .unwrap();
-    assert_eq!(model.presence, Presence::Missing);
-    assert_eq!(model.location, None);
-}
-
-#[test]
 fn missing_everywhere_reports_missing_with_all_tools_covered() {
     let statuses = probe(&env_with(vec![scratch("none-bin")], scratch("none-data")));
 
-    assert_eq!(statuses.len(), 4);
+    assert_eq!(statuses.len(), 5);
+    assert!(statuses.iter().any(|s| s.tool == Tool::WhisperVad));
     assert!(statuses.iter().any(|s| s.tool == Tool::Ffprobe));
     assert!(statuses.iter().all(|s| s.presence == Presence::Missing));
     assert!(statuses.iter().all(|s| s.location.is_none()));
