@@ -126,6 +126,15 @@ enum Command {
         #[arg(last = true)]
         command: Vec<String>,
     },
+    /// Print on-screen text read from the keyframes, one `t=<secs>\t<frame>\t<text>` line each
+    Text {
+        /// Extraction bundle directory
+        #[arg(long, default_value = "extraction")]
+        bundle: String,
+        /// Only lines matching this regular expression (case-insensitive: OCR case is unreliable)
+        #[arg(long)]
+        grep: Option<String>,
+    },
     /// Export densely-sampled frames for a time range (agent "re-watch")
     Clip {
         #[arg(long, default_value = "extraction")]
@@ -173,6 +182,7 @@ fn main() -> Result<()> {
             print_policy,
             command,
         } => commands::sandbox::run(&workspace, &command, print_policy),
+        Command::Text { bundle, grep } => commands::text::run(&bundle, grep.as_deref()),
         Command::Clip {
             bundle,
             start,
