@@ -7,6 +7,7 @@
 //! recording the gap in `notes`.
 
 mod align;
+mod priors;
 
 use std::fs;
 use std::path::Path;
@@ -14,7 +15,10 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::bundle::{load_manifest, load_transcript, save_manifest};
+use crate::bundle::{
+    load_manifest, load_transcript, load_transcript_source, save_manifest, Chapter, SkipRange,
+    TranscriptSource,
+};
 use crate::frames::load_frame_track;
 
 pub const TIMELINE_FILE: &str = "timeline.json";
@@ -24,6 +28,17 @@ pub struct Timeline {
     pub schema_version: u32,
     pub duration_secs: f64,
     pub language: Option<String>,
+    /// Where the speech text came from: creator captions are the
+    /// author's words; whisper may mishear technical terms.
+    #[serde(default)]
+    pub transcript_source: Option<TranscriptSource>,
+    /// Creator chapters: section hints, often one per step.
+    #[serde(default)]
+    pub chapters: Vec<Chapter>,
+    /// `SponsorBlock` ranges to leave out of the analysis. The media is
+    /// uncut, so these and every other timestamp share one timeline.
+    #[serde(default)]
+    pub skips: Vec<SkipRange>,
     #[serde(default)]
     pub notes: Vec<String>,
     pub segments: Vec<TimelineSegment>,
@@ -34,6 +49,10 @@ pub struct TimelineSegment {
     pub index: usize,
     pub start_secs: f64,
     pub end_secs: f64,
+    /// `SponsorBlock` category when more than half of the segment lies
+    /// inside a skip range: never derive steps from it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip: Option<String>,
     pub motion_density: Option<f64>,
     pub keyframe: Option<KeyframeRef>,
     /// Periodic keyframes inside long shots, straight from the frame
@@ -88,6 +107,7 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
                 index: s.index,
                 start_secs: s.start_secs,
                 end_secs: s.end_secs,
+                skip: None,
                 motion_density: Some(s.motion_density),
                 keyframe: Some(KeyframeRef {
                     path: s.keyframe.path.clone(),
@@ -110,6 +130,7 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
             index: 0,
             start_secs: 0.0,
             end_secs: duration,
+            skip: None,
             motion_density: None,
             keyframe: None,
             interior_keyframes: Vec::new(),
@@ -118,6 +139,13 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
     };
 
     let mut segments = segments_base;
+    for segment in &mut segments {
+        segment.skip = priors::skip_category(
+            segment.start_secs,
+            segment.end_secs,
+            &manifest.platform.skips,
+        );
+    }
     if let Some(transcript) = &transcript {
         let ranges: Vec<(f64, f64)> = segments
             .iter()
@@ -143,6 +171,11 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
         schema_version: 1,
         duration_secs: duration,
         language: transcript.as_ref().and_then(|t| t.language.clone()),
+        transcript_source: transcript
+            .as_ref()
+            .and_then(|_| load_transcript_source(bundle_dir).ok()),
+        chapters: manifest.platform.chapters.clone(),
+        skips: manifest.platform.skips.clone(),
         notes,
         segments,
     };
