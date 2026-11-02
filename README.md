@@ -24,6 +24,12 @@ _Teach your AI from any video — turn tutorials into installable, **verified** 
 npx skills@latest add brenoepics/video-to-skill
 ```
 
+**Or ask your agent.** Most people install it by prompting their coding agent. Paste this into Claude Code, Codex, Cursor, Copilot, or any agent that can run shell commands:
+
+> Install the **video-to-skill** skill from https://github.com/brenoepics/video-to-skill: run `npx skills@latest add brenoepics/video-to-skill`, then follow the installed SKILL.md to set up its `vts-extract` extractor. It will want to download a few pinned, checksum-verified tools (the extractor, ffmpeg, yt-dlp, whisper and Silero VAD weights). Show me that download list and wait for my approval before passing `--yes`. When everything is ready, tell me how to point it at a video.
+
+Nothing is fetched until you say yes: `vts-extract check --fix` prints every URL and sha256 first ([details](SECURITY.md#download-inventory)).
+
 > [!TIP]
 > That's the entire setup. Windows 10/11 x64, macOS, and Linux are supported. First use auto-bootstraps a prebuilt Rust extractor, static ffmpeg, yt-dlp, and whisper + Silero VAD weights where a pinned build is available. Existing ffmpeg/ffprobe executables and yt-dlp builds that accept the required hardening flags are reused from `PATH`. No Homebrew, Python, account, or API key is required. Whisper runs Metal-accelerated on Apple Silicon ([benchmarks](BENCHMARK.md)).
 
