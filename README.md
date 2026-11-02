@@ -121,7 +121,7 @@ Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed au
 <!-- bench-summary:start -->
 | 2-min 720p extract | transcription | measured on |
 | --- | --- | --- |
-| 650.9s wall · 0.2x realtime | 0.2x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
+| 5.6s wall · 21.4x realtime | 2.3x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
 
 Full methodology and results: [BENCHMARK.md](BENCHMARK.md)
 <!-- bench-summary:end -->
