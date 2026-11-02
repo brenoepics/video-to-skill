@@ -238,6 +238,23 @@ fn real_whisper_transcribes_generated_speech() {
 }
 
 #[test]
+fn engine_device_follows_the_gpu_choice_and_the_host() {
+    use vts_extract::asr::whisper::WhisperEngine;
+    use vts_extract::host::is_virtual_machine;
+
+    // Construction never loads the model, so no weights are needed.
+    let model = PathBuf::from("unused-model.bin");
+    assert_eq!(WhisperEngine::with_gpu(model.clone(), true).device(), "gpu");
+    assert_eq!(
+        WhisperEngine::with_gpu(model.clone(), false).device(),
+        "cpu"
+    );
+    // `new` stays on the CPU exactly when the host is a virtual machine.
+    let default_uses_gpu = WhisperEngine::new(model).device() == "gpu";
+    assert_eq!(default_uses_gpu, !is_virtual_machine());
+}
+
+#[test]
 fn engine_progress_reaches_the_caller() {
     let dir = scratch("progress");
     let bundle = bundle_with_fixture(&dir, true);

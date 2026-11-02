@@ -35,6 +35,22 @@ pub struct BenchReport {
     pub results: Vec<BenchResult>,
 }
 
+impl BenchReport {
+    /// Where the numbers came from, as one line shared by the console
+    /// table and the markdown results.
+    #[must_use]
+    pub fn machine_line(&self) -> String {
+        format!(
+            "{} · {} logical cores · {} · whisper on {} · vts-extract {}",
+            self.machine.chip,
+            self.machine.logical_cores,
+            self.machine.os,
+            self.machine.whisper_device,
+            self.version
+        )
+    }
+}
+
 /// The hardware and OS the benchmark ran on.
 #[derive(Debug, Clone, Serialize)]
 pub struct Machine {
@@ -43,6 +59,9 @@ pub struct Machine {
     pub logical_cores: usize,
     /// OS and architecture, e.g. "macos/aarch64".
     pub os: String,
+    /// Where whisper ran: "gpu" on bare-metal Apple Silicon, "cpu" in
+    /// virtual machines and elsewhere.
+    pub whisper_device: String,
 }
 
 /// One benchmark's measurements.
@@ -97,7 +116,7 @@ pub fn run_suite(progress: &mut dyn FnMut(&str)) -> Result<SuiteOutcome> {
     Ok(SuiteOutcome {
         report: BenchReport {
             schema_version: 1,
-            machine: machine::detect(),
+            machine: machine::detect(engine.device()),
             version: env!("CARGO_PKG_VERSION").to_string(),
             results,
         },

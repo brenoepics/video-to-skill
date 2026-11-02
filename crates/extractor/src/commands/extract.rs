@@ -99,7 +99,7 @@ fn transcribe_stage(bundle_dir: &Path, tools: &Toolchain) {
         return;
     };
     let started = Instant::now();
-    println!("transcribing …");
+    println!("transcribing ({}) …", engine.device());
     let result = asr::extract_audio_track(bundle_dir, tools, &engine, &mut |pct| {
         if pct > 0 {
             println!("  … {pct}%");

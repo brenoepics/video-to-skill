@@ -1,5 +1,10 @@
 //! Production engine: whisper.cpp via the whisper-rs bindings
-//! (Metal-accelerated on Apple Silicon).
+//! (Metal-accelerated on Apple Silicon bare metal).
+//!
+//! Inside a virtual machine the only GPU is a paravirtual device whose
+//! Metal lacks simdgroup reductions and matrix multiply; ggml's fallback
+//! kernels there run tens of times slower than the CPU path, so the
+//! engine stays on the CPU whenever the host looks virtualized.
 
 use std::path::{Path, PathBuf};
 
@@ -9,21 +14,32 @@ use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextPar
 use super::segments::{segments_for, Token};
 use super::vad::{self, TimeMap};
 use super::{EngineOutput, TranscriptionEngine};
+use crate::host;
 use crate::tools::Toolchain;
 
 pub struct WhisperEngine {
     model_path: PathBuf,
+    use_gpu: bool,
     vad_model: Option<PathBuf>,
 }
 
 impl WhisperEngine {
+    /// Engine over `model_path`, on the GPU unless the host is a virtual
+    /// machine (see the module docs).
     #[must_use]
     pub fn new(model_path: PathBuf) -> WhisperEngine {
+        WhisperEngine::with_gpu(model_path, !host::is_virtual_machine())
+    }
+
+    /// Engine with the compute device chosen explicitly.
+    #[must_use]
+    pub fn with_gpu(model_path: PathBuf, use_gpu: bool) -> WhisperEngine {
         // Route whisper.cpp/ggml chatter through the `log` crate; with no
         // logger installed it is silenced instead of spamming stderr.
         whisper_rs::install_logging_hooks();
         WhisperEngine {
             model_path,
+            use_gpu,
             vad_model: None,
         }
     }
@@ -42,6 +58,16 @@ impl WhisperEngine {
     pub fn from_toolchain(tools: &Toolchain) -> Option<WhisperEngine> {
         let model = tools.whisper_model.clone()?;
         Some(WhisperEngine::new(model).with_vad_model(tools.whisper_vad.clone()))
+    }
+
+    /// Where inference runs: "gpu" or "cpu".
+    #[must_use]
+    pub fn device(&self) -> &'static str {
+        if self.use_gpu {
+            "gpu"
+        } else {
+            "cpu"
+        }
     }
 
     #[must_use]
@@ -71,9 +97,10 @@ impl TranscriptionEngine for WhisperEngine {
             None => (samples, TimeMap::identity()),
         };
 
-        let ctx =
-            WhisperContext::new_with_params(&self.model_path, WhisperContextParameters::default())
-                .context("loading whisper model")?;
+        let mut ctx_params = WhisperContextParameters::default();
+        ctx_params.use_gpu(self.use_gpu);
+        let ctx = WhisperContext::new_with_params(&self.model_path, ctx_params)
+            .context("loading whisper model")?;
         let mut state = ctx.create_state().context("creating whisper state")?;
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
         params.set_language(Some("auto"));
