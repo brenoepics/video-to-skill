@@ -22,6 +22,13 @@ const GAP_SAMPLES: usize = SAMPLE_RATE / 10;
 /// Audio kept past a region's end so a word on the boundary survives
 /// (upstream's default `samples_overlap`, 0.1 s).
 const OVERLAP_SAMPLES: usize = SAMPLE_RATE / 10;
+/// Silero is a tiny network evaluated once per 32 ms window, so ggml's
+/// thread barriers cost more than the work they share. Measured on 120 s
+/// of audio (M5, 10 cores): 1 thread 0.18 s, 2 → 0.22 s, 4 → 0.27 s,
+/// 10 → 1.3 s, and anything past the core count stalls for minutes —
+/// which is what whisper.cpp's default of 4 did on a 3-core CI runner
+/// (647 s for the same 120 s).
+const VAD_THREADS: i32 = 1;
 
 /// A stretch of speech, in centiseconds of the original audio.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,8 +44,9 @@ pub fn detect_speech(model: &Path, samples: &[f32]) -> Result<Vec<SpeechRegion>>
     let model = model
         .to_str()
         .context("the VAD model path is not valid UTF-8")?;
-    let mut vad = WhisperVadContext::new(model, WhisperVadContextParams::default())
-        .context("loading the VAD model")?;
+    let mut context_params = WhisperVadContextParams::default();
+    context_params.set_n_threads(VAD_THREADS);
+    let mut vad = WhisperVadContext::new(model, context_params).context("loading the VAD model")?;
     let regions = vad
         .segments_from_samples(WhisperVadParams::default(), samples)
         .context("running voice activity detection")?;
