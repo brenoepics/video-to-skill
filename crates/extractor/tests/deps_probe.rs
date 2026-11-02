@@ -95,10 +95,34 @@ fn whisper_model_is_detected_by_verified_file_not_executability() {
 }
 
 #[test]
+fn vad_model_is_detected_beside_the_whisper_weights() {
+    let bin = scratch("vad-bin");
+    let data = scratch("vad-data");
+    let models = data.join("models");
+    fs::create_dir_all(&models).unwrap();
+    fs::write(models.join("ggml-silero-v5.1.2.bin"), b"vad weights").unwrap();
+    fs::write(models.join("ggml-silero-v5.1.2.bin.verified"), "sha256:abc").unwrap();
+
+    let statuses = probe(&env_with(vec![bin], data.clone()));
+
+    let vad = statuses
+        .iter()
+        .find(|s| s.tool == Tool::WhisperVad)
+        .unwrap();
+    assert_eq!(vad.presence, Presence::Installed);
+    assert_eq!(vad.location, Some(models.join("ggml-silero-v5.1.2.bin")));
+    assert!(
+        !Tool::WhisperVad.is_executable(),
+        "model files are data, never run"
+    );
+}
+
+#[test]
 fn missing_everywhere_reports_missing_with_all_tools_covered() {
     let statuses = probe(&env_with(vec![scratch("none-bin")], scratch("none-data")));
 
-    assert_eq!(statuses.len(), 4);
+    assert_eq!(statuses.len(), 5);
+    assert!(statuses.iter().any(|s| s.tool == Tool::WhisperVad));
     assert!(statuses.iter().any(|s| s.tool == Tool::Ffprobe));
     assert!(statuses.iter().all(|s| s.presence == Presence::Missing));
     assert!(statuses.iter().all(|s| s.location.is_none()));

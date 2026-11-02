@@ -26,6 +26,7 @@ fn toolchain() -> Toolchain {
         ffmpeg: PathBuf::from("ffmpeg"),
         ffprobe: PathBuf::from("ffprobe"),
         whisper_model: None,
+        whisper_vad: None,
     }
 }
 

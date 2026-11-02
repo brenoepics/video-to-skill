@@ -55,6 +55,17 @@ pub fn spec_for(tool: Tool) -> Option<ToolSpec> {
             sha256: "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe".into(),
             archive: Archive::None,
         }),
+        // Silero VAD weights in ggml format, from the ggml-org/whisper-vad
+        // repo on Hugging Face (where whisper.cpp's own download script
+        // fetches them): public, ungated; checksum from the git-lfs pointer,
+        // re-verified by downloading once. Platform-independent.
+        Tool::WhisperVad => Some(ToolSpec {
+            tool,
+            url: "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin"
+                .into(),
+            sha256: "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf".into(),
+            archive: Archive::None,
+        }),
     }
 }
 
@@ -86,6 +97,25 @@ mod tests {
             inventory.len(),
             fetchable,
             "the disclosed inventory must not omit anything the tool can download"
+        );
+    }
+
+    #[test]
+    fn the_silero_vad_model_is_pinned_from_the_ggml_org_repo() {
+        let spec = spec_for(Tool::WhisperVad).expect("VAD model is platform-independent");
+        assert_eq!(
+            spec.url,
+            "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin"
+        );
+        // From the file's git-lfs pointer; re-verified by downloading once.
+        assert_eq!(
+            spec.sha256,
+            "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf"
+        );
+        assert_eq!(spec.archive, Archive::None);
+        assert!(
+            inventory().iter().any(|s| s.tool == Tool::WhisperVad),
+            "the VAD model must be disclosed in the inventory"
         );
     }
 
