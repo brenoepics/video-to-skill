@@ -126,6 +126,18 @@ enum Command {
         #[arg(last = true)]
         command: Vec<String>,
     },
+    /// Observe read-only GUI postconditions (window titles, elements,
+    /// checkboxes, menu items, files) for the verifier. Executes nothing,
+    /// so it runs outside the sandbox. Exit 0: every check holds; 1: a
+    /// check failed; 2: nothing could be observed (treat as unverifiable).
+    Observe {
+        /// A JSON check object or array; repeatable
+        #[arg(long, required = true)]
+        check: Vec<String>,
+        /// Also print the accessibility tree(s) that were read
+        #[arg(long)]
+        dump: bool,
+    },
     /// Export densely-sampled frames for a time range (agent "re-watch")
     Clip {
         #[arg(long, default_value = "extraction")]
@@ -173,6 +185,7 @@ fn main() -> Result<()> {
             print_policy,
             command,
         } => commands::sandbox::run(&workspace, &command, print_policy),
+        Command::Observe { check, dump } => commands::observe::run(&check, dump),
         Command::Clip {
             bundle,
             start,
