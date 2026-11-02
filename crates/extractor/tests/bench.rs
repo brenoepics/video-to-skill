@@ -23,12 +23,11 @@ fn suite_measures_the_contracted_benchmarks() {
     assert_eq!(report.schema_version, 1);
     assert_eq!(report.version, env!("CARGO_PKG_VERSION"));
     assert!(report.machine.logical_cores > 0);
-    assert_ne!(report.machine.chip, "");
-    assert_ne!(
-        progress_lines,
-        [] as [String; 0],
-        "suite must report progress"
+    assert!(
+        !report.machine.chip.is_empty(),
+        "the chip must be identified"
     );
+    assert!(!progress_lines.is_empty(), "suite must report progress");
 
     let extract = report
         .results

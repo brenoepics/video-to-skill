@@ -117,11 +117,7 @@ fn conflicting_actions_become_a_variant_never_an_overwrite() {
     let variant = &merged_step.variants[0];
     assert!(variant.actions.contains("Ctrl+S"));
     assert_eq!(variant.source_original, "https://b.example/v2");
-    assert_ne!(
-        variant.evidence,
-        [] as [Evidence; 0],
-        "variant cites its own video"
-    );
+    assert!(!variant.evidence.is_empty(), "variant cites its own video");
 }
 
 #[test]
@@ -182,7 +178,7 @@ fn history_records_the_fold_with_date_and_classification() {
     assert_eq!(record.date, "2026-08-05");
     assert_eq!(record.confirmed, vec!["01-quit"]);
     assert_eq!(record.added, vec!["05-macros"]);
-    assert_eq!(record.variants, [] as [String; 0]);
+    assert!(record.variants.is_empty(), "the fold recorded no variants");
 }
 
 #[test]

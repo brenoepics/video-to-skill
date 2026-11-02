@@ -156,6 +156,9 @@ mod tests {
     #[test]
     fn static_content_has_no_boundaries() {
         let frames = vec![flat_gray(90); 6];
-        assert_eq!(segment(&frames, 25.0), Vec::<usize>::new());
+        assert!(
+            segment(&frames, 25.0).is_empty(),
+            "static content has no shot boundaries"
+        );
     }
 }

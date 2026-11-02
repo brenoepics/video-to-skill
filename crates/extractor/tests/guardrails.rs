@@ -40,7 +40,10 @@ fn accepts_rs_file_exactly_at_the_limit() {
     let dir = fixture_dir("at-limit");
     write_lines(&dir.join("ok.rs"), 300);
 
-    assert_eq!(files_over_limit(&dir, 300), [] as [(PathBuf, usize); 0]);
+    assert!(
+        files_over_limit(&dir, 300).is_empty(),
+        "a file exactly at the limit is not an offender"
+    );
 }
 
 #[test]
@@ -50,7 +53,10 @@ fn ignores_target_directories_and_non_rust_files() {
     write_lines(&dir.join("notes.md"), 500);
     write_lines(&dir.join("nested/src/lib.rs"), 100);
 
-    assert_eq!(files_over_limit(&dir, 300), [] as [(PathBuf, usize); 0]);
+    assert!(
+        files_over_limit(&dir, 300).is_empty(),
+        "target dirs and non-Rust files are never offenders"
+    );
 }
 
 #[test]

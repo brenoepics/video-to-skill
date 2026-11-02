@@ -107,7 +107,10 @@ fn video_without_audio_yields_empty_transcript_with_note_and_no_engine_call() {
 
     let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
-    assert_eq!(transcript.segments, [] as [Segment; 0]);
+    assert!(
+        transcript.segments.is_empty(),
+        "a video without audio yields no segments"
+    );
     let manifest = load_manifest(&bundle).unwrap();
     assert_eq!(
         manifest.tracks.transcript.as_deref(),
@@ -158,7 +161,10 @@ fn speechless_audio_gets_a_no_speech_note() {
 
     let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
-    assert_eq!(transcript.segments, [] as [Segment; 0]);
+    assert!(
+        transcript.segments.is_empty(),
+        "speechless audio yields no segments"
+    );
     let manifest = load_manifest(&bundle).unwrap();
     assert!(
         manifest.notes.iter().any(|n| n.contains("no speech")),
