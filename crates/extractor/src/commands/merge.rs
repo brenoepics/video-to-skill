@@ -7,17 +7,23 @@ use vts_extract::merge::{merge, PlanAction};
 
 /// Fold a new video's IR into an existing generated skill package.
 /// Dry-run prints the plan; otherwise the merged package is compiled to
-/// `out` (unverified — re-run verification after a fold).
-pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -> Result<()> {
+/// `out` — a directory named after the skill, `merged/<skill-name>` by
+/// default — unverified: re-run verification after a fold.
+pub fn run(
+    skill: &str,
+    ir_path: &str,
+    bundle: &str,
+    out: Option<&str>,
+    dry_run: bool,
+) -> Result<()> {
     let existing: ProcedureIr = serde_json::from_str(
         &fs::read_to_string(Path::new(skill).join("provenance.json"))
             .context("not a generated skill package (missing provenance.json)")?,
     )
     .context("package provenance.json is not valid")?;
-    let mut incoming: ProcedureIr = serde_json::from_str(
-        &fs::read_to_string(ir_path).with_context(|| format!("no Procedure IR at {ir_path}"))?,
-    )
-    .context("incoming Procedure IR is not valid")?;
+    let mut incoming = compile::load_ir(Path::new(ir_path), Path::new(bundle))
+        .context("loading the incoming Procedure IR")?;
+    let out = out.map_or_else(|| format!("merged/{}", existing.skill_name), str::to_string);
 
     // Namespace the incoming frames by fold sequence so two videos'
     // `shot000.jpg` never collide inside one package.
@@ -54,7 +60,7 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
     }
 
     let staging = stage_frames(Path::new(skill), Path::new(bundle), &incoming, &prefix)?;
-    compile::compile(&result.merged, &staging, Path::new(out))?;
+    compile::compile(&result.merged, &staging, Path::new(&out))?;
     fs::remove_dir_all(&staging).ok();
     println!(
         "merged package written: {out}/ — re-verify before installing (the fold invalidates any previous badge)"

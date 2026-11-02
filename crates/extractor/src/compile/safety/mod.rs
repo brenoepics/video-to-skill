@@ -56,6 +56,12 @@ fn secret_fields(ir: &ProcedureIr) -> Vec<Field<'_>> {
         (meta(), "overview", &ir.overview),
     ];
     out.extend(ir.gaps.iter().map(|g| (meta(), "gaps", g.as_str())));
+    out.extend(ir.license.iter().map(|l| (meta(), "license", l.as_str())));
+    out.extend(
+        ir.compatibility
+            .iter()
+            .map(|c| (meta(), "compatibility", c.as_str())),
+    );
 
     for step in &ir.steps {
         let at = || format!("step '{}'", step.id);
@@ -138,12 +144,15 @@ mod tests {
             skill_name: "demo".into(),
             title: "Demo".into(),
             description: "A demo skill.".into(),
+            license: None,
+            compatibility: None,
             overview: "It demonstrates.".into(),
             genre: "cli".into(),
             source: SourceRef {
                 original: "demo.mp4".into(),
                 title: None,
                 duration_secs: 10.0,
+                sha256: None,
             },
             steps: vec![step()],
             artifacts: vec![],
@@ -177,6 +186,10 @@ mod tests {
             ("description", |i| i.description = format!("uses {LEAK}")),
             ("overview", |i| i.overview = format!("the key is {LEAK}")),
             ("gaps", |i| i.gaps = vec![format!("unseen {LEAK}")]),
+            ("license", |i| i.license = Some(format!("key {LEAK}"))),
+            ("compatibility", |i| {
+                i.compatibility = Some(format!("needs {LEAK}"));
+            }),
         ] {
             let mut ir = base_ir();
             mutate(&mut ir);

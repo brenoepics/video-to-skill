@@ -33,12 +33,15 @@ fn valid_ir() -> ProcedureIr {
         skill_name: "safe-skill".into(),
         title: "Safe Skill".into(),
         description: "Use for testing safe paths.".into(),
+        license: None,
+        compatibility: None,
         overview: "Overview".into(),
         genre: "screencast".into(),
         source: SourceRef {
             original: "fixture.mp4".into(),
             title: None,
             duration_secs: 1.0,
+            sha256: None,
         },
         steps: vec![Step {
             id: "01-safe-step".into(),
@@ -88,7 +91,7 @@ fn frame_parent_traversal_is_rejected_before_any_output_is_written() {
     fs::write(root.join("outside.jpg"), b"private").unwrap();
     let mut ir = valid_ir();
     ir.steps[0].evidence[0].frame = Some("../outside.jpg".into());
-    let out = root.join("out");
+    let out = root.join("safe-skill");
 
     let error = compile(&ir, &bundle, &out).unwrap_err().to_string();
 
@@ -104,7 +107,7 @@ fn windows_separators_and_drive_paths_are_rejected_on_every_host() {
         let mut ir = valid_ir();
         ir.steps[0].evidence[0].frame = Some(unsafe_path.into());
 
-        let error = compile(&ir, &bundle, &root.join("out"))
+        let error = compile(&ir, &bundle, &root.join("safe-skill"))
             .unwrap_err()
             .to_string();
 
@@ -124,7 +127,7 @@ fn artifact_frames_receive_the_same_confinement_validation_as_step_evidence() {
         frame: Some("../outside.jpg".into()),
     });
 
-    let error = compile(&ir, &bundle, &root.join("out"))
+    let error = compile(&ir, &bundle, &root.join("safe-skill"))
         .unwrap_err()
         .to_string();
 
@@ -143,7 +146,7 @@ fn script_names_must_be_one_portable_file_name() {
             contents: "echo safe".into(),
         });
 
-        let error = compile(&ir, &bundle, &root.join("out"))
+        let error = compile(&ir, &bundle, &root.join("safe-skill"))
             .unwrap_err()
             .to_string();
 
@@ -164,7 +167,7 @@ fn windows_reserved_script_names_are_rejected_portably() {
             contents: "Write-Output safe".into(),
         });
 
-        let error = compile(&ir, &bundle, &root.join("out"))
+        let error = compile(&ir, &bundle, &root.join("safe-skill"))
             .unwrap_err()
             .to_string();
 
@@ -182,7 +185,7 @@ fn colliding_frame_basenames_are_rejected() {
     add_second_step(&mut ir);
     ir.steps[1].evidence[0].frame = Some("rewatch/at-a/shot001.jpg".into());
 
-    let error = compile(&ir, &bundle, &root.join("out"))
+    let error = compile(&ir, &bundle, &root.join("safe-skill"))
         .unwrap_err()
         .to_string();
 
@@ -204,7 +207,7 @@ fn artifact_frames_join_the_collision_check() {
         frame: Some("rewatch/at-b/shot001.jpg".into()),
     });
 
-    let error = compile(&ir, &bundle, &root.join("out"))
+    let error = compile(&ir, &bundle, &root.join("safe-skill"))
         .unwrap_err()
         .to_string();
 
@@ -221,7 +224,7 @@ fn frame_basenames_that_only_differ_by_case_are_rejected() {
     add_second_step(&mut ir);
     ir.steps[1].evidence[0].frame = Some("rewatch/at-c/SHOT001.JPG".into());
 
-    let error = compile(&ir, &bundle, &root.join("out"))
+    let error = compile(&ir, &bundle, &root.join("safe-skill"))
         .unwrap_err()
         .to_string();
 
@@ -250,7 +253,7 @@ fn colliding_script_names_are_rejected() {
             name: name.into(),
             contents: "second".into(),
         });
-        let error = compile(&candidate, &bundle, &root.join(name))
+        let error = compile(&candidate, &bundle, &root.join(name).join("safe-skill"))
             .unwrap_err()
             .to_string();
         assert!(error.contains("script name collision"), "{error}");
@@ -266,5 +269,5 @@ fn the_same_frame_cited_twice_is_not_a_collision() {
     add_second_step(&mut ir);
     ir.steps[1].evidence[0].frame = Some("frames/shot001.jpg".into());
 
-    compile(&ir, &bundle, &root.join("out")).unwrap();
+    compile(&ir, &bundle, &root.join("safe-skill")).unwrap();
 }

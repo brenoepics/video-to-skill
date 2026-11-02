@@ -3,11 +3,14 @@
 //! agent-skills package. Pure: same IR + bundle → byte-identical output.
 
 mod emit;
+pub mod frontmatter;
 mod safety;
+mod validate;
 
+use std::fs;
 use std::path::Path;
 
-use anyhow::{bail, Result};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 /// The Procedure IR, schema v1. Authored by the orchestrating agent
@@ -20,6 +23,16 @@ pub struct ProcedureIr {
     pub title: String,
     /// Frontmatter description: what the skill does + when to trigger.
     pub description: String,
+    /// Frontmatter `license`: a licence name, or a reference to a file
+    /// bundled in the package. Unset means the source video's terms
+    /// apply, and the frontmatter says so instead of inventing one.
+    #[serde(default)]
+    pub license: Option<String>,
+    /// Frontmatter `compatibility`: environment requirements — the tool
+    /// the skill drives, its version, OS, required binaries. At most
+    /// 500 characters. Unset: derived from script interpreters, if any.
+    #[serde(default)]
+    pub compatibility: Option<String>,
     /// Markdown body for the generated SKILL.md's overview section.
     pub overview: String,
     pub genre: String,
@@ -53,6 +66,10 @@ pub struct SourceRef {
     pub original: String,
     pub title: Option<String>,
     pub duration_secs: f64,
+    /// sha256 of the media file, copied from the bundle manifest by
+    /// [`load_ir`] when the IR does not state it.
+    #[serde(default)]
+    pub sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -113,116 +130,32 @@ pub struct OnScreenArtifact {
 }
 
 /// Validate `ir` and emit the package into `out_dir`, resolving frame
-/// references against `bundle_dir`.
+/// references against `bundle_dir`. `out_dir` must be named after the
+/// skill: the Agent Skills spec requires `name` to equal the directory.
 pub fn compile(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
-    validate(ir, bundle_dir)?;
+    validate::validate(ir, bundle_dir, out_dir)?;
     emit::emit(ir, bundle_dir, out_dir)
 }
 
-fn validate(ir: &ProcedureIr, bundle_dir: &Path) -> Result<()> {
-    if ir.schema_version != 1 {
-        bail!("unsupported IR schema_version {}", ir.schema_version);
-    }
-    crate::safe_path::validate_skill_name(&ir.skill_name)?;
-    if ir.description.trim().is_empty() || ir.description.len() > 1024 {
-        bail!("description must be non-empty and at most 1024 characters");
-    }
-    if ir.steps.is_empty() {
-        bail!("a skill needs at least one step — refuse non-procedural videos instead");
-    }
-    let mut seen = std::collections::HashSet::new();
-    for step in &ir.steps {
-        crate::safe_path::validate_step_id(&step.id)?;
-        if !seen.insert(&step.id) {
-            bail!("duplicate step id '{}'", step.id);
-        }
-        if step.evidence.is_empty() {
-            bail!(
-                "step '{}' has no evidence — every step must cite at least one timestamp",
-                step.id
-            );
-        }
-        if !matches!(step.confidence.as_str(), "high" | "medium" | "low") {
-            bail!(
-                "step '{}': confidence must be high, medium, or low",
-                step.id
-            );
-        }
-        for script in &step.scripts {
-            crate::safe_path::validate_script_name(&script.name)?;
-        }
-        for evidence in &step.evidence {
-            if let Some(frame) = &evidence.frame {
-                crate::safe_path::resolve_bundle_file(bundle_dir, frame).map_err(|error| {
-                    anyhow::anyhow!("step '{}' cites invalid frame '{frame}': {error}", step.id)
-                })?;
-            }
+/// Read a Procedure IR from `path`. When the IR does not state the source
+/// media's sha256, take it from the bundle manifest at `bundle_dir` — the
+/// manifest is where ingest recorded it, so the package can name the exact
+/// bytes it was learned from. A bundle without a manifest (hand-built
+/// fixtures) leaves it unset.
+pub fn load_ir(path: &Path, bundle_dir: &Path) -> Result<ProcedureIr> {
+    let raw = fs::read_to_string(path).with_context(|| {
+        format!(
+            "no Procedure IR at {} — write it first (see references/ir-format.md)",
+            path.display()
+        )
+    })?;
+    let mut ir: ProcedureIr =
+        serde_json::from_str(&raw).context("Procedure IR is not valid JSON for schema v1")?;
+    if ir.source.sha256.is_none() && bundle_dir.join(crate::bundle::MANIFEST_FILE).is_file() {
+        let manifest = crate::bundle::load_manifest(bundle_dir)?;
+        if !manifest.source.sha256.is_empty() {
+            ir.source.sha256 = Some(manifest.source.sha256);
         }
     }
-    for artifact in &ir.artifacts {
-        if let Some(frame) = &artifact.frame {
-            crate::safe_path::resolve_bundle_file(bundle_dir, frame)
-                .map_err(|error| anyhow::anyhow!("artifact frame '{frame}' is invalid: {error}"))?;
-        }
-    }
-    safety::check(ir)?;
-    reject_script_name_collisions(ir)?;
-    reject_frame_basename_collisions(ir)
-}
-
-/// Scripts from every step share one output directory. Reject names that
-/// would address the same file on a case-insensitive filesystem, as well as
-/// duplicate names whose contents disagree.
-fn reject_script_name_collisions(ir: &ProcedureIr) -> Result<()> {
-    let mut by_name: std::collections::HashMap<String, (&str, &str)> =
-        std::collections::HashMap::new();
-    for script in ir.steps.iter().flat_map(|step| &step.scripts) {
-        let key = script.name.to_lowercase();
-        if let Some(&(first_name, first_contents)) = by_name.get(&key) {
-            if first_name == script.name && first_contents == script.contents {
-                continue;
-            }
-            if first_name == script.name {
-                bail!(
-                    "script name collision: '{}' is declared with different contents",
-                    script.name
-                );
-            }
-            bail!(
-                "script name collision: '{first_name}' and '{}' are the same on a \
-                 case-insensitive filesystem",
-                script.name
-            );
-        }
-        by_name.insert(key, (&script.name, &script.contents));
-    }
-    Ok(())
-}
-
-/// The package flattens every referenced frame into `references/frames/`
-/// by basename, so two different source frames sharing a basename would
-/// silently overwrite each other. Refuse to compile instead.
-fn reject_frame_basename_collisions(ir: &ProcedureIr) -> Result<()> {
-    let referenced = ir
-        .steps
-        .iter()
-        .flat_map(|s| &s.evidence)
-        .filter_map(|e| e.frame.as_deref())
-        .chain(ir.artifacts.iter().filter_map(|a| a.frame.as_deref()));
-    let mut by_basename: std::collections::HashMap<String, &str> = std::collections::HashMap::new();
-    for frame in referenced {
-        let name = crate::safe_path::portable_basename(frame)?;
-        let key = name.to_lowercase();
-        match by_basename.get(&key) {
-            // The same source frame cited twice is one copy — fine.
-            Some(&first) if first != frame => bail!(
-                "case-insensitive frame basename collision: '{first}' and '{frame}' both map \
-                 to '{name}' in references/frames/, so one would overwrite the other"
-            ),
-            _ => {
-                by_basename.insert(key, frame);
-            }
-        }
-    }
-    Ok(())
+    Ok(ir)
 }

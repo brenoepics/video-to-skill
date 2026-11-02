@@ -30,11 +30,7 @@ pub fn emit(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
 }
 
 fn render_skill_md(ir: &ProcedureIr) -> String {
-    let mut md = String::new();
-    let _ = writeln!(md, "---");
-    let _ = writeln!(md, "name: {}", ir.skill_name);
-    let _ = writeln!(md, "description: {}", ir.description.replace('\n', " "));
-    let _ = writeln!(md, "---");
+    let mut md = super::frontmatter::render(ir);
     let _ = writeln!(md, "\n# {}\n", ir.title);
     let _ = writeln!(md, "{}\n", ir.overview.trim());
     let source_title = ir.source.title.as_deref().unwrap_or("(untitled)");

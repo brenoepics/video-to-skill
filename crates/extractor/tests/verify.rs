@@ -45,12 +45,15 @@ fn compiled_package(dir: &Path) -> PathBuf {
         skill_name: "demo-skill".into(),
         title: "Demo".into(),
         description: "Use for testing.".into(),
+        license: None,
+        compatibility: None,
         overview: "Test package.".into(),
         genre: "screencast".into(),
         source: SourceRef {
             original: "file.mp4".into(),
             title: None,
             duration_secs: 60.0,
+            sha256: None,
         },
         steps: vec![step("01-first"), step("02-second")],
         artifacts: vec![],
@@ -59,7 +62,7 @@ fn compiled_package(dir: &Path) -> PathBuf {
     };
     let bundle = dir.join("bundle");
     fs::create_dir_all(&bundle).unwrap();
-    let out = dir.join("skill");
+    let out = dir.join("demo-skill");
     compile(&ir, &bundle, &out).unwrap();
     out
 }
@@ -268,4 +271,30 @@ fn outcomes_must_use_the_known_vocabulary() {
 
     let err = record_verification(&package, &report).unwrap_err();
     assert!(err.to_string().contains("maybe"), "got: {err}");
+}
+
+#[test]
+fn recording_updates_the_verified_steps_frontmatter_metadata() {
+    let dir = scratch("metadata");
+    let package = compiled_package(&dir);
+    let metadata_line = |value: &str| format!(r#"  video-to-skill/verified-steps: "{value}""#);
+    let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
+    assert!(skill_md.contains(&metadata_line("0/2")), "{skill_md}");
+
+    record_verification(&package, &passing_report()).unwrap();
+    let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
+    assert!(skill_md.contains(&metadata_line("2/2")), "{skill_md}");
+    assert!(!skill_md.contains(&metadata_line("0/2")), "{skill_md}");
+
+    record_verification(&package, &partial_report()).unwrap();
+    let skill_md = fs::read_to_string(package.join("SKILL.md")).unwrap();
+    assert!(
+        skill_md.contains(&metadata_line("1/2")),
+        "only passes count: {skill_md}"
+    );
+    assert_eq!(
+        skill_md.matches("verified-steps").count(),
+        1,
+        "the line is replaced, never duplicated: {skill_md}"
+    );
 }
