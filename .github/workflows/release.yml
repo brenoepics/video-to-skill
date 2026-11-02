@@ -115,10 +115,24 @@ jobs:
             Select-Object -First 1
           if (-not $binary) { throw 'ffmpeg.exe missing from pinned archive' }
           $binary.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: Install cargo-auditable and rust-audit-info
+        # Both built from crates.io at a pinned version; rust-cache keeps
+        # ~/.cargo/bin, so a warm job finds them already installed.
+        run: cargo install --locked cargo-auditable@0.7.7 rust-audit-info@0.5.4
       - name: Test release source
         run: cargo test --locked --target ${{ matrix.target }}
       - name: Build
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        # `cargo auditable` embeds the resolved dependency list in the binary
+        # (linker section `.dep-v0`) so `cargo audit bin` can scan a release.
+        run: cargo auditable build --release --locked --target ${{ matrix.target }}
+      - name: Verify embedded dependency list
+        shell: bash
+        run: |
+          binary="target/${{ matrix.target }}/release/vts-extract"
+          if [ "$RUNNER_OS" = Windows ]; then binary="$binary.exe"; fi
+          rust-audit-info "$binary" > audit-info.json
+          jq -e '.packages | length > 0' audit-info.json > /dev/null
+          jq -r '"\(.packages | length) crates recorded in .dep-v0; root: " + (.packages[] | select(.root == true) | "\(.name) \(.version)")' audit-info.json
       - name: Verify standalone Windows runtime
         if: runner.os == 'Windows'
         shell: pwsh
@@ -167,9 +181,15 @@ jobs:
           $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $archive" | Out-File -LiteralPath "$archive.sha256" -Encoding ascii
       - name: Attest build provenance
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        # SLSA v1.0 Build Level 2 provenance over the archive and its checksum
+        # sidecar, signed through Sigstore and stored with the repository.
+        # Consumers verify with
+        #   gh attestation verify <archive> -R brenoepics/video-to-skill
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: ${{ matrix.archive }}
+          subject-path: |
+            ${{ matrix.archive }}
+            ${{ matrix.archive }}.sha256
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: dist-${{ matrix.label }}
