@@ -8,8 +8,8 @@ commits.
 
 | Entry | What it does | What it reports |
 |---|---|---|
-| `asr-45s` | Transcribes ~45 s of macOS `say`-generated speech muxed into an mp4 — exercises demux + whisper | Wall time and realtime factor (`media_secs / wall_secs`) |
-| `extract-120s` | Full extract pipeline — ingest + asr + frames + timeline — on a 120 s 1280x720@30 ffmpeg `testsrc` video with a sine audio track | End-to-end wall time, realtime factor, and per-stage wall times (ingest, transcribe, frames, timeline) |
+| `asr-45s` | Transcribes ~45 s of macOS `say`-generated speech muxed into an mp4 — exercises demux + voice activity detection + whisper | Wall time and realtime factor (`media_secs / wall_secs`) |
+| `extract-120s` | Full extract pipeline — ingest + asr + frames + timeline — on a 120 s 1280x720@30 ffmpeg `testsrc` video with a sine audio track (no speech: see the VAD caveat below) | End-to-end wall time, realtime factor, and per-stage wall times (ingest, transcribe, frames, timeline) |
 | `frames-batch-5` | Batch frame-at of 5 timestamps on that bundle | Wall time |
 
 Every run also records the machine: chip (macOS: `sysctl -n
@@ -26,7 +26,7 @@ npx skills@latest add brenoepics/video-to-skill
 cargo build --release --locked
 
 # then
-vts-extract check --fix --yes   # bootstraps ffmpeg, yt-dlp, whisper weights — checksum-pinned
+vts-extract check --fix --yes   # bootstraps ffmpeg, yt-dlp, whisper + VAD weights — checksum-pinned
 vts-extract bench         # prints the results table
 ```
 
@@ -47,6 +47,14 @@ runs.
   artifacts, 4K frames — will land on different absolute numbers; the suite
   is for tracking relative change.
 - Hosted runners are shared hardware; expect some run-to-run jitter.
+- **Voice activity detection changed what `transcribe` measures.** Since the
+  Silero VAD model joined the toolchain, whisper only decodes the stretches
+  the detector marks as speech. The `extract-120s` fixture's audio is a pure
+  440 Hz sine, which VAD classifies as *no speech*, so its `transcribe`
+  stage now covers demux + detection only and is **not comparable** with
+  rows generated before VAD (where whisper spent the whole stage decoding
+  the tone). `asr-45s` is continuous speech and stays comparable: VAD only
+  trims the pauses `say` leaves between sentences.
 
 ## Results
 

@@ -72,9 +72,7 @@ pub struct SuiteOutcome {
 /// receives one human-readable line per long-running step.
 pub fn run_suite(progress: &mut dyn FnMut(&str)) -> Result<SuiteOutcome> {
     let tools = Toolchain::resolve(&Env::from_system())?;
-    let model = tools
-        .whisper_model
-        .clone()
+    let engine = WhisperEngine::from_toolchain(&tools)
         .context("whisper model weights are missing — run `vts-extract check --fix --yes` first")?;
     let work = scratch_dir()?;
 
@@ -82,14 +80,14 @@ pub fn run_suite(progress: &mut dyn FnMut(&str)) -> Result<SuiteOutcome> {
     let mut skipped = Vec::new();
     if cfg!(target_os = "macos") {
         progress("asr-45s: generating ~45s speech fixture …");
-        results.push(bench_asr(&tools, &model, &work, progress)?);
+        results.push(bench_asr(&tools, &engine, &work, progress)?);
     } else {
         skipped
             .push("asr-45s skipped: generating the speech fixture needs macOS `say`".to_string());
     }
 
     progress("extract-120s: generating 120s 720p fixture …");
-    let (extract, bundle_dir) = bench_extract(&tools, &model, &work, progress)?;
+    let (extract, bundle_dir) = bench_extract(&tools, &engine, &work, progress)?;
     results.push(extract);
 
     progress("frames-batch-5: exporting 5 frames …");
@@ -111,7 +109,7 @@ pub fn run_suite(progress: &mut dyn FnMut(&str)) -> Result<SuiteOutcome> {
 /// (measures demux + recognition).
 fn bench_asr(
     tools: &Toolchain,
-    model: &Path,
+    engine: &WhisperEngine,
     work: &Path,
     progress: &mut dyn FnMut(&str),
 ) -> Result<BenchResult> {
@@ -121,9 +119,8 @@ fn bench_asr(
     let media_secs = ingest.manifest.media.duration_secs;
 
     progress("asr-45s: transcribing …");
-    let engine = WhisperEngine::new(model.to_path_buf());
     let started = Instant::now();
-    asr::extract_audio_track(&bundle_dir, tools, &engine, &mut |_| {})?;
+    asr::extract_audio_track(&bundle_dir, tools, engine, &mut |_| {})?;
     let wall_secs = started.elapsed().as_secs_f64();
 
     Ok(BenchResult {
@@ -140,7 +137,7 @@ fn bench_asr(
 /// Returns the bundle so the batch-frame bench can reuse it.
 fn bench_extract(
     tools: &Toolchain,
-    model: &Path,
+    engine: &WhisperEngine,
     work: &Path,
     progress: &mut dyn FnMut(&str),
 ) -> Result<(BenchResult, PathBuf)> {
@@ -155,9 +152,8 @@ fn bench_extract(
     let media_secs = ingest.manifest.media.duration_secs;
 
     progress("extract-120s: transcribing …");
-    let engine = WhisperEngine::new(model.to_path_buf());
     let started = Instant::now();
-    asr::extract_audio_track(&bundle_dir, tools, &engine, &mut |_| {})?;
+    asr::extract_audio_track(&bundle_dir, tools, engine, &mut |_| {})?;
     stages.push(("transcribe".to_string(), started.elapsed().as_secs_f64()));
 
     progress("extract-120s: analyzing frames …");

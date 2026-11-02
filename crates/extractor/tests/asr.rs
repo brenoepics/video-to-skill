@@ -174,21 +174,23 @@ fn speechless_audio_gets_a_no_speech_note() {
     );
 }
 
-/// Real end-to-end: macOS-generated speech through actual whisper weights.
-/// Ignored by default (needs `say`, ffmpeg, and the bootstrapped model);
-/// run with: cargo test --test asr -- --ignored
+/// Real end-to-end: macOS-generated speech through actual whisper weights,
+/// with voice activity detection on. Ignored by default (needs `say`,
+/// ffmpeg, and the bootstrapped models); run with:
+/// cargo test --test asr -- --ignored
 #[test]
-#[ignore = "requires whisper model weights and macOS `say`"]
+#[ignore = "requires whisper + VAD model weights and macOS `say`"]
 fn real_whisper_transcribes_generated_speech() {
     use vts_extract::asr::whisper::WhisperEngine;
-    use vts_extract::deps::{probe, Env, Presence, Tool};
+    use vts_extract::deps::Env;
 
-    let env = Env::from_system();
-    let model = probe(&env)
-        .into_iter()
-        .find(|s| s.tool == Tool::WhisperModel && s.presence == Presence::Installed)
-        .and_then(|s| s.location)
-        .expect("run `vts-extract check --fix --yes` first");
+    let tools = Toolchain::resolve(&Env::from_system()).unwrap();
+    let engine =
+        WhisperEngine::from_toolchain(&tools).expect("run `vts-extract check --fix --yes` first");
+    assert!(
+        engine.vad_model().is_some(),
+        "VAD weights must be installed"
+    );
 
     let dir = scratch("real-whisper");
     let aiff = dir.join("speech.aiff");
@@ -218,13 +220,7 @@ fn real_whisper_transcribes_generated_speech() {
     let bundle = dir.join("bundle");
     ingest(&fixture, &bundle, &toolchain()).unwrap();
 
-    let transcript = extract_audio_track(
-        &bundle,
-        &toolchain(),
-        &WhisperEngine::new(model),
-        &mut |_| {},
-    )
-    .unwrap();
+    let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
     let heard = transcript
         .segments
