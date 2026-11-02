@@ -5,15 +5,18 @@
 pub mod asr;
 pub mod bench;
 pub mod bundle;
+pub mod calendar;
 pub mod compile;
 pub mod deps;
 pub mod frames;
+mod fsx;
 pub mod guardrails;
 pub mod hashing;
 pub mod host;
 pub mod install;
 pub mod merge;
 pub mod rewatch;
+pub mod safe_path;
 pub mod sandbox;
 pub mod timeline;
 pub mod tools;

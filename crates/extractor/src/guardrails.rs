@@ -14,12 +14,42 @@ const SKIPPED_DIRS: &[&str] = &["target", ".git", "node_modules"];
 #[must_use]
 pub fn files_over_limit(root: &Path, limit: usize) -> Vec<(PathBuf, usize)> {
     let mut offenders = Vec::new();
-    visit(root, limit, &mut offenders);
+    visit(root, &mut |path, contents| {
+        let lines = contents.lines().count();
+        if lines > limit {
+            offenders.push((path.to_path_buf(), lines));
+        }
+    });
     offenders.sort();
     offenders
 }
 
-fn visit(dir: &Path, limit: usize, offenders: &mut Vec<(PathBuf, usize)>) {
+/// Walk `root` and return every `.rs` file that gates a test module with an
+/// `all(..)` predicate folding `test` together with another condition,
+/// rather than with a literal `cfg(test)`.
+///
+/// Clippy recognises test code by a literal `cfg(test)`, so folding a
+/// platform gate into one `all(..)` predicate silently withdraws the
+/// `unwrap_used` and `expect_used` allowances inside that module — and
+/// only on the platforms that compile it, so the lint lands on one CI
+/// runner and not the machine it was written on. Stacking `#[cfg(test)]`
+/// with a separate `#[cfg(unix)]` gates the module exactly the same way
+/// and keeps the allowances.
+#[must_use]
+pub fn files_with_folded_test_cfg(root: &Path) -> Vec<PathBuf> {
+    // Assembled at runtime so this file never matches its own needle.
+    let needle = format!("cfg(all({}", "test");
+    let mut offenders = Vec::new();
+    visit(root, &mut |path, contents| {
+        if contents.contains(&needle) {
+            offenders.push(path.to_path_buf());
+        }
+    });
+    offenders.sort();
+    offenders
+}
+
+fn visit(dir: &Path, on_rust_file: &mut impl FnMut(&Path, &str)) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -30,14 +60,11 @@ fn visit(dir: &Path, limit: usize, offenders: &mut Vec<(PathBuf, usize)>) {
                 .file_name()
                 .is_some_and(|n| SKIPPED_DIRS.iter().any(|s| n == *s));
             if !skipped {
-                visit(&path, limit, offenders);
+                visit(&path, on_rust_file);
             }
         } else if path.extension().is_some_and(|e| e == "rs") {
             if let Ok(contents) = fs::read_to_string(&path) {
-                let lines = contents.lines().count();
-                if lines > limit {
-                    offenders.push((path, lines));
-                }
+                on_rust_file(&path, &contents);
             }
         }
     }

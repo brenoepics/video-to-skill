@@ -10,73 +10,183 @@ on:
         required: true
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
 
 env:
   TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  WINDOWS_FFMPEG_URL: https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip
+  WINDOWS_FFMPEG_SHA256: db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec
 
 jobs:
+  validate:
+    name: validate release ref
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master 2026-09-06
+        with:
+          toolchain: stable
+      - name: Match tag, package version, and default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: |
+          if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "invalid release tag: $TAG" >&2
+            exit 1
+          fi
+          version="$(cargo metadata --locked --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "vts-extract") | .version')"
+          if [ "$TAG" != "v$version" ]; then
+            echo "tag $TAG does not match vts-extract version $version" >&2
+            exit 1
+          fi
+          tag_commit="$(git rev-parse "refs/tags/$TAG^{commit}")"
+          if [ "$tag_commit" != "$(git rev-parse HEAD)" ]; then
+            echo "checkout does not match tag $TAG" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          git merge-base --is-ancestor "$tag_commit" "origin/$DEFAULT_BRANCH"
+
   build:
     name: ${{ matrix.label }}
+    needs: validate
     runs-on: ${{ matrix.os }}
-    # Apple Silicon is the primary target; Intel mac and Linux are
-    # best-effort and must not block a release.
-    continue-on-error: ${{ matrix.optional }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
             target: aarch64-apple-darwin
             label: macos-arm64
-            optional: false
+            archive: vts-extract-macos-arm64.tar.gz
           - os: macos-15-intel
             target: x86_64-apple-darwin
             label: macos-x86_64
-            optional: true
-          - os: ubuntu-latest
+            archive: vts-extract-macos-x86_64.tar.gz
+          - os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             label: linux-x86_64
-            optional: true
+            archive: vts-extract-linux-x86_64.tar.gz
+          - os: windows-2025
+            target: x86_64-pc-windows-msvc
+            label: windows-x86_64
+            archive: vts-extract-windows-x86_64.zip
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ env.TAG }}
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Build
-        run: cargo build --release --locked
-      - name: Sign (ad-hoc)
-        if: runner.os == 'macOS'
-        run: codesign -s - --force target/release/vts-extract
-      - name: Package
-        run: |
-          NAME=vts-extract-${{ matrix.label }}
-          tar -C target/release -czf "$NAME.tar.gz" vts-extract
-          shasum -a 256 "$NAME.tar.gz" > "$NAME.tar.gz.sha256" 2>/dev/null || sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master 2026-09-06
         with:
-          subject-path: vts-extract-${{ matrix.label }}.tar.gz
-      # Immutable releases reject post-publish uploads, so every artifact is
-      # staged here and attached in one release-creation call downstream.
-      - uses: actions/upload-artifact@v4
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Configure MSVC and libclang (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/setup-msvc.ps1
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Install FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes ffmpeg
+      - name: Install pinned FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'ffmpeg.zip'
+          $extract = Join-Path $env:RUNNER_TEMP 'ffmpeg'
+          Invoke-WebRequest -Uri $env:WINDOWS_FFMPEG_URL -OutFile $archive
+          $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:WINDOWS_FFMPEG_SHA256) { throw "FFmpeg checksum mismatch: $actual" }
+          Expand-Archive -LiteralPath $archive -DestinationPath $extract
+          $binary = Get-ChildItem -LiteralPath $extract -Recurse -Filter ffmpeg.exe |
+            Where-Object { $_.Directory.Name -eq 'bin' } |
+            Select-Object -First 1
+          if (-not $binary) { throw 'ffmpeg.exe missing from pinned archive' }
+          $binary.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: Test release source
+        run: cargo test --locked --target ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Verify standalone Windows runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $binary = 'target/${{ matrix.target }}/release/vts-extract.exe'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $dumpbin = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1)
+          if (-not $dumpbin) { throw 'dumpbin.exe is missing from the Windows runner' }
+          $dependencies = (& $dumpbin /dependents $binary | Out-String)
+          if ($LASTEXITCODE -ne 0) { throw 'dumpbin failed to inspect the release binary' }
+          if ($dependencies -match '(?im)^\s*(VCRUNTIME|MSVCP)\d+[^\s]*\.dll\s*$') {
+            throw "release still depends on the Visual C++ Redistributable`n$dependencies"
+          }
+          $whisperBuild = Get-ChildItem -Path 'target/${{ matrix.target }}/release/build' -Recurse -Filter build.ninja |
+            Where-Object { $_.FullName -match 'whisper-rs-sys' } |
+            Select-Object -First 1
+          if (-not $whisperBuild) { throw 'whisper.cpp build.ninja is missing' }
+          $nativeFlags = Get-Content -LiteralPath $whisperBuild.FullName -Raw
+          if ($nativeFlags -match '(?i)/arch:AVX') {
+            throw 'Windows release was compiled for the runner CPU instead of portable x86-64'
+          }
+          $cmakeCache = Join-Path $whisperBuild.Directory.FullName 'CMakeCache.txt'
+          if (-not (Test-Path -LiteralPath $cmakeCache)) { throw 'whisper.cpp CMake cache is missing' }
+          $cache = Get-Content -LiteralPath $cmakeCache -Raw
+          foreach ($option in 'GGML_NATIVE', 'GGML_SSE42', 'GGML_AVX', 'GGML_AVX2', 'GGML_BMI2') {
+            if ($cache -notmatch "(?m)^${option}:BOOL=OFF`r?$") {
+              throw "$option must be OFF for the portable Windows x86-64 release"
+            }
+          }
+      - name: Sign macOS binary (ad-hoc)
+        if: runner.os == 'macOS'
+        run: codesign -s - --force target/${{ matrix.target }}/release/vts-extract
+      - name: Package Unix binary
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          tar -C target/${{ matrix.target }}/release -czf "${{ matrix.archive }}" vts-extract
+          shasum -a 256 "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256" 2>/dev/null || sha256sum "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"
+      - name: Package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $binary = 'target/${{ matrix.target }}/release/vts-extract.exe'
+          $archive = '${{ matrix.archive }}'
+          Compress-Archive -LiteralPath $binary -DestinationPath $archive
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $archive" | Out-File -LiteralPath "$archive.sha256" -Encoding ascii
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: ${{ matrix.archive }}
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: dist-${{ matrix.label }}
           path: |
-            vts-extract-${{ matrix.label }}.tar.gz
-            vts-extract-${{ matrix.label }}.tar.gz.sha256
+            ${{ matrix.archive }}
+            ${{ matrix.archive }}.sha256
           if-no-files-found: error
 
   publish:
     name: publish
     needs: build
-    # The primary target must have produced artifacts; optional legs may fail.
-    if: always() && needs.build.result != 'cancelled'
-    runs-on: ubuntu-latest
+    if: always() && needs.build.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: dist-*
           merge-multiple: true
@@ -87,5 +197,13 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           ls -la dist
+          test -f dist/vts-extract-macos-arm64.tar.gz
+          test -f dist/vts-extract-macos-arm64.tar.gz.sha256
+          test -f dist/vts-extract-macos-x86_64.tar.gz
+          test -f dist/vts-extract-macos-x86_64.tar.gz.sha256
+          test -f dist/vts-extract-linux-x86_64.tar.gz
+          test -f dist/vts-extract-linux-x86_64.tar.gz.sha256
+          test -f dist/vts-extract-windows-x86_64.zip
+          test -f dist/vts-extract-windows-x86_64.zip.sha256
           gh release delete "$TAG" --yes --cleanup-tag=false 2>/dev/null || true
           gh release create "$TAG" --verify-tag --generate-notes --title "$TAG" dist/*

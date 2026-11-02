@@ -10,9 +10,26 @@ pub mod bootstrap;
 pub mod fetch;
 pub mod registry;
 
-use std::path::{Path, PathBuf};
+mod archive;
+mod install_lock;
+mod recovery;
+mod transaction;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
+
+const YTDLP_PROBE_ARGS: [&str; 4] = [
+    "--ignore-config",
+    "--no-plugin-dirs",
+    "--no-remote-components",
+    "--version",
+];
+const FFMPEG_PROBE_ARGS: [&str; 1] = ["-version"];
+const EXECUTABLE_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
+const EXECUTABLE_PROBE_POLL_INTERVAL: Duration = Duration::from_millis(10);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Tool {
     Ffmpeg,
     Ffprobe,
@@ -27,9 +44,9 @@ impl Tool {
     #[must_use]
     pub fn file_name(self) -> &'static str {
         match self {
-            Tool::Ffmpeg => "ffmpeg",
-            Tool::Ffprobe => "ffprobe",
-            Tool::Ytdlp => "yt-dlp",
+            Tool::Ffmpeg => platform_executable_name("ffmpeg", "ffmpeg.exe"),
+            Tool::Ffprobe => platform_executable_name("ffprobe", "ffprobe.exe"),
+            Tool::Ytdlp => platform_executable_name("yt-dlp", "yt-dlp.exe"),
             // Default model: multilingual `base` — 142 MB, fast on Apple
             // Silicon, good enough for tutorial narration; configurable later.
             Tool::WhisperModel => "ggml-base.bin",
@@ -92,7 +109,7 @@ impl Env {
             .unwrap_or_default();
         let data_dir = std::env::var_os("VTS_DATA_DIR").map_or_else(
             || {
-                dirs::data_dir()
+                platform_data_dir()
                     .unwrap_or_else(std::env::temp_dir)
                     .join("video-to-skill")
             },
@@ -105,15 +122,37 @@ impl Env {
     }
 }
 
+#[cfg(windows)]
+const fn platform_executable_name(_unix: &'static str, windows: &'static str) -> &'static str {
+    windows
+}
+
+#[cfg(not(windows))]
+const fn platform_executable_name(unix: &'static str, _windows: &'static str) -> &'static str {
+    unix
+}
+
+#[cfg(windows)]
+fn platform_data_dir() -> Option<PathBuf> {
+    dirs::data_local_dir()
+}
+
+#[cfg(not(windows))]
+fn platform_data_dir() -> Option<PathBuf> {
+    dirs::data_dir()
+}
+
 /// Report the presence of every managed tool.
 #[must_use]
 pub fn probe(env: &Env) -> Vec<ToolStatus> {
-    Tool::ALL.iter().map(|&tool| status_of(tool, env)).collect()
+    Tool::ALL.iter().map(|&tool| status(tool, env)).collect()
 }
 
-fn status_of(tool: Tool, env: &Env) -> ToolStatus {
+/// Report one tool without probing unrelated executables.
+#[must_use]
+pub fn status(tool: Tool, env: &Env) -> ToolStatus {
     if tool.is_executable() {
-        if let Some(path) = find_on_path(tool.file_name(), &env.path_dirs) {
+        if let Some(path) = find_on_path(tool, &env.path_dirs) {
             return ToolStatus {
                 tool,
                 presence: Presence::OnPath,
@@ -121,13 +160,24 @@ fn status_of(tool: Tool, env: &Env) -> ToolStatus {
             };
         }
     }
-    let installed = tool.install_path(&env.data_dir);
-    if installed.is_file() && verification_marker(&installed).is_file() {
-        return ToolStatus {
-            tool,
-            presence: Presence::Installed,
-            location: Some(installed),
-        };
+    if let Some(spec) = registry::spec_for(tool) {
+        let installed = spec.install_path_for(tool, &env.data_dir);
+        if bootstrap::artifact_is_ready(&spec, &env.data_dir) {
+            return ToolStatus {
+                tool,
+                presence: Presence::Installed,
+                location: Some(installed),
+            };
+        }
+    } else {
+        let installed = tool.install_path(&env.data_dir);
+        if installed.is_file() && verification_marker(&installed).is_file() {
+            return ToolStatus {
+                tool,
+                presence: Presence::Installed,
+                location: Some(installed),
+            };
+        }
     }
     ToolStatus {
         tool,
@@ -147,10 +197,48 @@ pub fn verification_marker(installed: &Path) -> PathBuf {
     installed.with_file_name(name)
 }
 
-fn find_on_path(name: &str, dirs: &[PathBuf]) -> Option<PathBuf> {
+fn find_on_path(tool: Tool, dirs: &[PathBuf]) -> Option<PathBuf> {
     dirs.iter()
-        .map(|d| d.join(name))
-        .find(|p| p.is_file() && is_executable(p))
+        .map(|directory| directory.join(tool.file_name()))
+        .find(|path| {
+            path.is_file()
+                && is_executable(path)
+                && executable_supports_required_options(tool, path)
+        })
+}
+
+fn executable_supports_required_options(tool: Tool, path: &Path) -> bool {
+    let args = match tool {
+        Tool::Ffmpeg | Tool::Ffprobe => &FFMPEG_PROBE_ARGS[..],
+        Tool::Ytdlp => &YTDLP_PROBE_ARGS[..],
+        Tool::WhisperModel => return false,
+    };
+    command_succeeds_within(path, args)
+}
+
+fn command_succeeds_within(path: &Path, args: &[&str]) -> bool {
+    let Ok(mut child) = Command::new(path)
+        .args(args)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return false;
+    };
+    let deadline = Instant::now() + EXECUTABLE_PROBE_TIMEOUT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return status.success(),
+            Ok(None) if Instant::now() < deadline => {
+                std::thread::sleep(EXECUTABLE_PROBE_POLL_INTERVAL);
+            }
+            Ok(None) | Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return false;
+            }
+        }
+    }
 }
 
 #[cfg(unix)]

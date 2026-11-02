@@ -147,6 +147,7 @@ fn sbpl(path: &Path) -> Result<String> {
 }
 
 #[cfg(test)]
+#[cfg(unix)] // the fixtures below are Unix absolute paths
 mod tests {
     use super::*;
 

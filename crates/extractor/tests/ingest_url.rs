@@ -9,6 +9,9 @@ use std::process::Command;
 use vts_extract::bundle::{ingest_any, load_manifest, DownloadedVideo, VideoDownloader};
 use vts_extract::tools::Toolchain;
 
+#[path = "ingest_url/ytdlp.rs"]
+mod ytdlp;
+
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir()
         .join("vts-url-tests")
@@ -168,76 +171,4 @@ fn reingesting_the_same_url_reuses_the_bundle() {
     let second = ingest_any(url, &bundle, &toolchain(), &FakeDownloader::MustNotBeCalled).unwrap();
     assert!(!second.created);
     assert_eq!(first.manifest, second.manifest);
-}
-
-/// YouTube often rejects merged-stream downloads with a 403; the
-/// downloader must fall back to a combined single stream on its own.
-/// Fake `yt-dlp`: fails any call without an explicit `-f`, succeeds
-/// with one.
-#[test]
-fn ytdlp_downloader_retries_with_combined_stream_on_failure() {
-    use std::os::unix::fs::PermissionsExt;
-    use vts_extract::bundle::YtdlpDownloader;
-
-    let dir = scratch("fallback");
-    let fake = dir.join("yt-dlp");
-    fs::write(
-        &fake,
-        r#"#!/bin/bash
-out=""; title=""; fmt=""
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -o) out="$2"; shift 2;;
-    --print-to-file) title="$3"; shift 3;;
-    -f) fmt="$2"; shift 2;;
-    *) shift;;
-  esac
-done
-if [[ -z "$fmt" ]]; then
-  echo "ERROR: unable to download video data: HTTP Error 403: Forbidden" >&2
-  exit 1
-fi
-echo "Fallback Video" > "$title"
-echo fake-media > "${out/\%(ext)s/mp4}"
-"#,
-    )
-    .unwrap();
-    fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
-
-    let media = YtdlpDownloader::new(fake)
-        .download("https://youtube.example/watch?v=x", &dir)
-        .unwrap();
-
-    assert!(media.path.ends_with("source.mp4"));
-    assert_eq!(media.title.as_deref(), Some("Fallback Video"));
-}
-
-/// Real yt-dlp download of the yt-dlp project's own tiny test video.
-/// Run with: `cargo test --test ingest_url -- --ignored`
-#[test]
-#[ignore = "requires network and the bootstrapped yt-dlp"]
-fn real_youtube_download_end_to_end() {
-    use vts_extract::bundle::YtdlpDownloader;
-    use vts_extract::deps::{probe, Env, Presence, Tool};
-
-    let ytdlp = probe(&Env::from_system())
-        .into_iter()
-        .find(|s| s.tool == Tool::Ytdlp && s.presence != Presence::Missing)
-        .and_then(|s| s.location)
-        .expect("run `vts-extract check --fix --yes` first");
-
-    let dir = scratch("real-yt");
-    let bundle = dir.join("bundle");
-    let report = ingest_any(
-        "https://www.youtube.com/watch?v=jNQXAC9IVRw",
-        &bundle,
-        &toolchain(),
-        &YtdlpDownloader::new(ytdlp),
-    )
-    .unwrap();
-
-    let m = &report.manifest;
-    assert!(m.source.title.is_some(), "title should be recorded");
-    assert!(m.media.duration_secs > 5.0);
-    assert!(m.media.width > 0);
 }

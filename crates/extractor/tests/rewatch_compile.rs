@@ -123,7 +123,7 @@ fn compiled_package_keeps_every_distinct_frame_byte_for_byte() {
             .unwrap()
             .to_str()
             .unwrap()
-            .to_owned()
+            .replace(std::path::MAIN_SEPARATOR, "/")
     };
     let ir = ir_citing(vec![
         "frames/kf0001.jpg".into(),
