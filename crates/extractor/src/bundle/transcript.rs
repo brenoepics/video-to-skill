@@ -43,9 +43,8 @@ pub fn load_transcript(bundle_dir: &Path) -> Result<Transcript> {
 
 pub fn save_transcript(bundle_dir: &Path, transcript: &Transcript) -> Result<()> {
     fs::create_dir_all(bundle_dir)?;
-    let tmp = bundle_dir.join(format!("{TRANSCRIPT_FILE}.tmp"));
-    fs::write(&tmp, serde_json::to_string_pretty(transcript)?)?;
-    fs::rename(&tmp, bundle_dir.join(TRANSCRIPT_FILE))?;
+    let path = bundle_dir.join(TRANSCRIPT_FILE);
+    crate::fsx::write_atomic(&path, &serde_json::to_vec_pretty(transcript)?)?;
     Ok(())
 }
 

@@ -2,7 +2,7 @@
 //! motion-density signal, recorded as `frames.json` in the bundle.
 
 pub mod analyze;
-pub(crate) mod export;
+pub mod export;
 mod sample;
 mod subdivide;
 
@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::bundle::{load_manifest, save_manifest};
 use crate::tools::Toolchain;
+use export::FrameRequest;
 
 pub const FRAMES_FILE: &str = "frames.json";
 const FRAMES_DIR: &str = "frames";
@@ -100,6 +101,9 @@ pub fn extract_frame_track(
     let frames_dir = bundle_dir.join(FRAMES_DIR);
     fs::create_dir_all(&frames_dir)?;
 
+    // Plan every frame first, then export them all in one concurrent
+    // batch: exports are independent and dominate this stage's time.
+    let mut requests = Vec::new();
     let mut shots = Vec::new();
     let mut start = 0usize;
     let ends: Vec<usize> = boundaries.iter().copied().chain([sampled.len()]).collect();
@@ -112,24 +116,16 @@ pub fn extract_frame_track(
         let shot_end = end_time(&sampled, end, manifest.media.duration_secs);
         let kf_rel = format!("{FRAMES_DIR}/shot{index:03}.jpg");
         let native_rel = format!("{FRAMES_DIR}/shot{index:03}-native.jpg");
-        export::export_frame(
-            tools,
-            &media,
+        requests.push(FrameRequest::bounded(
             timestamp,
-            &bundle_dir.join(&kf_rel),
-            Some(config.max_keyframe_width),
-        )?;
-        export::export_frame(
-            tools,
-            &media,
+            bundle_dir.join(&kf_rel),
+            config.max_keyframe_width,
+        ));
+        requests.push(FrameRequest::native(
             sampled[start].timestamp_secs,
-            &bundle_dir.join(&native_rel),
-            None,
-        )?;
-        let interior_keyframes = subdivide::export_interior_keyframes(
-            tools,
-            &media,
-            bundle_dir,
+            bundle_dir.join(&native_rel),
+        ));
+        let interior_keyframes = subdivide::plan_interior_keyframes(
             &subdivide::ShotSpan {
                 index,
                 start_secs: sampled[start].timestamp_secs,
@@ -138,7 +134,14 @@ pub fn extract_frame_track(
                 samples: &sampled[start..end],
             },
             config,
-        )?;
+        );
+        requests.extend(interior_keyframes.iter().map(|kf| {
+            FrameRequest::bounded(
+                kf.timestamp_secs,
+                bundle_dir.join(&kf.path),
+                config.max_keyframe_width,
+            )
+        }));
         shots.push(Shot {
             index,
             start_secs: sampled[start].timestamp_secs,
@@ -157,14 +160,14 @@ pub fn extract_frame_track(
         });
         start = end;
     }
+    export::export_frames(tools, &media, &requests)?;
 
     let track = FrameTrack {
         schema_version: 1,
         shots,
     };
-    let tmp = bundle_dir.join(format!("{FRAMES_FILE}.tmp"));
-    fs::write(&tmp, serde_json::to_string_pretty(&track)?)?;
-    fs::rename(&tmp, bundle_dir.join(FRAMES_FILE))?;
+    let path = bundle_dir.join(FRAMES_FILE);
+    crate::fsx::write_atomic(&path, &serde_json::to_vec_pretty(&track)?)?;
     manifest.tracks.frames = Some(FRAMES_FILE.to_string());
     save_manifest(bundle_dir, &manifest)?;
     Ok(track)

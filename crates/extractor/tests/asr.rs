@@ -26,6 +26,7 @@ fn toolchain() -> Toolchain {
         ffmpeg: PathBuf::from("ffmpeg"),
         ffprobe: PathBuf::from("ffprobe"),
         whisper_model: None,
+        whisper_vad: None,
     }
 }
 
@@ -107,7 +108,10 @@ fn video_without_audio_yields_empty_transcript_with_note_and_no_engine_call() {
 
     let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
-    assert!(transcript.segments.is_empty());
+    assert!(
+        transcript.segments.is_empty(),
+        "a video without audio yields no segments"
+    );
     let manifest = load_manifest(&bundle).unwrap();
     assert_eq!(
         manifest.tracks.transcript.as_deref(),
@@ -158,7 +162,10 @@ fn speechless_audio_gets_a_no_speech_note() {
 
     let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
-    assert!(transcript.segments.is_empty());
+    assert!(
+        transcript.segments.is_empty(),
+        "speechless audio yields no segments"
+    );
     let manifest = load_manifest(&bundle).unwrap();
     assert!(
         manifest.notes.iter().any(|n| n.contains("no speech")),
@@ -167,21 +174,24 @@ fn speechless_audio_gets_a_no_speech_note() {
     );
 }
 
-/// Real end-to-end: macOS-generated speech through actual whisper weights.
-/// Ignored by default (needs `say`, ffmpeg, and the bootstrapped model);
-/// run with: cargo test --test asr -- --ignored
+/// Real end-to-end: macOS-generated speech through actual whisper weights,
+/// with voice activity detection on. Ignored by default (needs `say`,
+/// ffmpeg, and the bootstrapped models); run with:
+/// cargo test --test asr -- --ignored
 #[test]
-#[ignore = "requires whisper model weights and macOS `say`"]
+#[cfg(target_os = "macos")]
+#[ignore = "requires whisper + VAD model weights and macOS `say`"]
 fn real_whisper_transcribes_generated_speech() {
     use vts_extract::asr::whisper::WhisperEngine;
-    use vts_extract::deps::{probe, Env, Presence, Tool};
+    use vts_extract::deps::Env;
 
-    let env = Env::from_system();
-    let model = probe(&env)
-        .into_iter()
-        .find(|s| s.tool == Tool::WhisperModel && s.presence == Presence::Installed)
-        .and_then(|s| s.location)
-        .expect("run `vts-extract check --fix --yes` first");
+    let tools = Toolchain::resolve(&Env::from_system()).unwrap();
+    let engine =
+        WhisperEngine::from_toolchain(&tools).expect("run `vts-extract check --fix --yes` first");
+    assert!(
+        engine.vad_model().is_some(),
+        "VAD weights must be installed"
+    );
 
     let dir = scratch("real-whisper");
     let aiff = dir.join("speech.aiff");
@@ -211,13 +221,7 @@ fn real_whisper_transcribes_generated_speech() {
     let bundle = dir.join("bundle");
     ingest(&fixture, &bundle, &toolchain()).unwrap();
 
-    let transcript = extract_audio_track(
-        &bundle,
-        &toolchain(),
-        &WhisperEngine::new(model),
-        &mut |_| {},
-    )
-    .unwrap();
+    let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
     let heard = transcript
         .segments
@@ -232,6 +236,23 @@ fn real_whisper_transcribes_generated_speech() {
         transcript.segments.iter().any(|s| !s.words.is_empty()),
         "expected word-level timestamps"
     );
+}
+
+#[test]
+fn engine_device_follows_the_gpu_choice_and_the_host() {
+    use vts_extract::asr::whisper::WhisperEngine;
+    use vts_extract::host::is_virtual_machine;
+
+    // Construction never loads the model, so no weights are needed.
+    let model = PathBuf::from("unused-model.bin");
+    assert_eq!(WhisperEngine::with_gpu(model.clone(), true).device(), "gpu");
+    assert_eq!(
+        WhisperEngine::with_gpu(model.clone(), false).device(),
+        "cpu"
+    );
+    // `new` stays on the CPU exactly when the host is a virtual machine.
+    let default_uses_gpu = WhisperEngine::new(model).device() == "gpu";
+    assert_eq!(default_uses_gpu, !is_virtual_machine());
 }
 
 #[test]

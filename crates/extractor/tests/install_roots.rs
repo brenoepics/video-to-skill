@@ -5,10 +5,13 @@
 #![allow(clippy::unwrap_used)]
 
 use std::fs;
-use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
 
 use vts_extract::install::package::skill_name_of;
 use vts_extract::install::roots::{detect, known_agents, unknown_agents};
+#[cfg(unix)]
 use vts_extract::install::SkipReason;
 
 fn sandbox(name: &str) -> PathBuf {
@@ -77,7 +80,10 @@ fn only_filters_detection_to_the_named_agents() {
 
 #[test]
 fn unknown_agent_names_are_reported_for_the_caller_to_reject() {
-    assert!(unknown_agents(&["claude".into(), "amp".into()]).is_empty());
+    assert!(
+        unknown_agents(&["claude".into(), "amp".into()]).is_empty(),
+        "known agent names are not reported as unknown"
+    );
     assert_eq!(
         unknown_agents(&["claude".into(), "clyde".into()]),
         vec!["clyde".to_string()]
@@ -85,6 +91,7 @@ fn unknown_agent_names_are_reported_for_the_caller_to_reject() {
 }
 
 #[test]
+#[cfg(unix)]
 fn an_existing_skill_is_seen_as_occupied_and_a_symlink_is_resolved() {
     let base = sandbox("occupancy");
     let universal = base.join(".agents/skills");
@@ -112,6 +119,7 @@ fn an_existing_skill_is_seen_as_occupied_and_a_symlink_is_resolved() {
 }
 
 #[test]
+#[cfg(unix)]
 fn a_detected_symlink_lets_the_planner_skip_that_root() {
     let base = sandbox("skip-linked");
     let universal = base.join(".agents/skills");
@@ -127,7 +135,10 @@ fn a_detected_symlink_lets_the_planner_skip_that_root() {
     let plan = vts_extract::install::plan_install("vim-basics", &states, true).unwrap();
 
     assert_eq!(plan.canonical.agent, "universal");
-    assert!(plan.links.is_empty());
+    assert!(
+        plan.links.is_empty(),
+        "a detected symlink lets the planner skip that root"
+    );
     assert!(plan
         .skips
         .iter()
@@ -165,9 +176,4 @@ fn the_skill_name_comes_from_the_frontmatter_then_the_directory() {
 #[cfg(unix)]
 fn symlink(target: &Path, link: &Path) {
     std::os::unix::fs::symlink(target, link).unwrap();
-}
-
-#[cfg(windows)]
-fn symlink(target: &Path, link: &Path) {
-    std::os::windows::fs::symlink_dir(target, link).unwrap();
 }

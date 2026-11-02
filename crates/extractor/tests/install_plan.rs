@@ -100,7 +100,7 @@ fn roots_that_do_not_exist_are_skipped_as_not_installed() {
 
     let plan = plan_install("vim-basics", &roots, false).unwrap();
 
-    assert!(plan.links.is_empty());
+    assert!(plan.links.is_empty(), "missing roots produce no links");
     assert_eq!(agents_of_skips(&plan.skips), vec!["cursor", "amp"]);
     assert!(plan
         .skips
@@ -129,8 +129,9 @@ fn an_existing_skill_at_a_link_target_is_a_conflict_naming_the_path() {
         }
     );
     let message = err.to_string();
+    let expected_path = root("claude").join("vim-basics");
     assert!(
-        message.contains("/home/u/.claude/skills/vim-basics"),
+        message.contains(&expected_path.display().to_string()),
         "{message}"
     );
     assert!(message.contains("--force"), "{message}");
@@ -183,7 +184,10 @@ fn a_root_already_linked_to_the_canonical_package_is_skipped() {
     assert!(matches!(err, PlanError::Conflict { ref agent, .. } if agent == "codex"));
 
     let plan = plan_install("vim-basics", &roots[..2], false).unwrap();
-    assert!(plan.links.is_empty());
+    assert!(
+        plan.links.is_empty(),
+        "a root already linked to the canonical package produces no link"
+    );
     assert_eq!(agents_of_skips(&plan.skips), vec!["claude"]);
     assert_eq!(plan.skips[0].reason, SkipReason::AlreadyLinked);
 }
