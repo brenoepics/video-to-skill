@@ -6,7 +6,7 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use vts_extract::deps::Env;
+use vts_extract::deps::{registry, Env, Tool};
 use vts_extract::tools::Toolchain;
 
 fn scratch(name: &str) -> PathBuf {
@@ -26,11 +26,18 @@ fn fake_executable(dir: &Path, name: &str) {
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
-fn verified_model(models: &Path, name: &str) -> PathBuf {
+/// A model file with the marker a checksum-verified install of the
+/// currently pinned artifact would leave beside it.
+fn verified_model(models: &Path, tool: Tool) -> PathBuf {
     fs::create_dir_all(models).unwrap();
-    let path = models.join(name);
+    let path = models.join(tool.file_name());
     fs::write(&path, b"weights").unwrap();
-    fs::write(models.join(format!("{name}.verified")), "sha256:abc").unwrap();
+    let digest = registry::spec_for(tool).unwrap().sha256;
+    fs::write(
+        models.join(format!("{}.verified", tool.file_name())),
+        format!("sha256:{digest}"),
+    )
+    .unwrap();
     path
 }
 
@@ -40,8 +47,8 @@ fn resolve_picks_up_the_vad_model_beside_the_whisper_weights() {
     let data = scratch("vad-data");
     fake_executable(&bin, "ffmpeg");
     fake_executable(&bin, "ffprobe");
-    let whisper = verified_model(&data.join("models"), "ggml-base.bin");
-    let vad = verified_model(&data.join("models"), "ggml-silero-v5.1.2.bin");
+    let whisper = verified_model(&data.join("models"), Tool::WhisperModel);
+    let vad = verified_model(&data.join("models"), Tool::WhisperVad);
 
     let tools = Toolchain::resolve(&Env {
         path_dirs: vec![bin],
@@ -59,7 +66,7 @@ fn resolve_leaves_vad_unset_when_only_whisper_weights_are_installed() {
     let data = scratch("novad-data");
     fake_executable(&bin, "ffmpeg");
     fake_executable(&bin, "ffprobe");
-    verified_model(&data.join("models"), "ggml-base.bin");
+    verified_model(&data.join("models"), Tool::WhisperModel);
 
     let tools = Toolchain::resolve(&Env {
         path_dirs: vec![bin],

@@ -8,8 +8,20 @@
 //! Silicon and adequate for tutorial narration; larger models can become
 //! configurable later without touching this mechanism.
 
-use super::bootstrap::{Archive, ToolSpec};
+use super::bootstrap::{Archive, ArchiveMember, ToolSpec};
 use super::Tool;
+
+const WINDOWS_FFMPEG_URL: &str =
+    "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip";
+const WINDOWS_FFMPEG_SHA256: &str =
+    "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec";
+const WINDOWS_FFMPEG_ROOT: &str = "ffmpeg-8.1.2-essentials_build/bin";
+const WINDOWS_YTDLP_URL: &str =
+    "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp.exe";
+const WINDOWS_YTDLP_SHA256: &str =
+    "52fe3c26dcf71fbdc85b528589020bb0b8e383155cfa81b64dd447bbe35e24b8";
+const WHISPER_BASE_REVISION: &str = "5359861c739e955e79d9a303bcbc70fb988958b1";
+const SILERO_VAD_REVISION: &str = "9ffd54a1e1ee413ddf265af9913beaf518d1639b";
 
 /// The install spec for `tool` on this platform, or `None` when no
 /// trusted static build is pinned for it here (the doctor then points
@@ -19,50 +31,34 @@ pub fn spec_for(tool: Tool) -> Option<ToolSpec> {
     match tool {
         // Static build from Martin Riedl's ffmpeg build server, pinned to
         // 8.1.2; checksum cross-verified against the published .sha256.
-        Tool::Ffmpeg => macos_arm64().then(|| ToolSpec {
-            tool,
-            url: "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip"
-                .into(),
-            sha256: "ef1aa60006c7b77ce170c1608c08d8e4ba1c30c5746f2ac986ded932d0ac2c3c".into(),
-            archive: Archive::Zip {
-                member: "ffmpeg".into(),
-            },
-        }),
+        Tool::Ffmpeg | Tool::Ffprobe if windows_x64() => Some(windows_ffmpeg_bundle(tool)),
+        Tool::Ffmpeg => macos_arm64().then(|| macos_ffmpeg(tool)),
         // Same pinned build as ffmpeg above; checksum from the published .sha256.
-        Tool::Ffprobe => macos_arm64().then(|| ToolSpec {
-            tool,
-            url: "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffprobe.zip"
-                .into(),
-            sha256: "c39787f4af7a3932502d2d48db6f6feaaa836b48a73ef78c32cc3285df61dfaf".into(),
-            archive: Archive::Zip {
-                member: "ffprobe".into(),
-            },
-        }),
+        Tool::Ffprobe => macos_arm64().then(|| macos_ffprobe(tool)),
         // Official release binary (universal2), pinned with the SHA2-256SUMS
         // value published alongside the release.
-        Tool::Ytdlp => macos().then(|| ToolSpec {
-            tool,
-            url: "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp_macos"
-                .into(),
-            sha256: "498bd0dae17855c599d371d68ec5bafc439a9d8640e838be25c765a9792f261b".into(),
-            archive: Archive::None,
-        }),
+        Tool::Ytdlp if windows_x64() => Some(windows_ytdlp(tool)),
+        Tool::Ytdlp => macos().then(|| macos_ytdlp(tool)),
         // ggerganov/whisper.cpp model repo on Hugging Face: public, ungated;
         // checksum from the repo's git-lfs pointer. Platform-independent.
         Tool::WhisperModel => Some(ToolSpec {
             tool,
-            url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin".into(),
+            url: format!(
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/{WHISPER_BASE_REVISION}/ggml-base.bin"
+            ),
             sha256: "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe".into(),
             archive: Archive::None,
         }),
         // Silero VAD weights in ggml format, from the ggml-org/whisper-vad
         // repo on Hugging Face (where whisper.cpp's own download script
-        // fetches them): public, ungated; checksum from the git-lfs pointer,
-        // re-verified by downloading once. Platform-independent.
+        // fetches them): public, ungated, pinned to a commit; checksum from
+        // the git-lfs pointer, re-verified by downloading once.
+        // Platform-independent.
         Tool::WhisperVad => Some(ToolSpec {
             tool,
-            url: "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin"
-                .into(),
+            url: format!(
+                "https://huggingface.co/ggml-org/whisper-vad/resolve/{SILERO_VAD_REVISION}/ggml-silero-v5.1.2.bin"
+            ),
             sha256: "29940d98d42b91fbd05ce489f3ecf7c72f0a42f027e4875919a28fb4c04ea2cf".into(),
             archive: Archive::None,
         }),
@@ -74,7 +70,87 @@ pub fn spec_for(tool: Tool) -> Option<ToolSpec> {
 /// answer to "what does this thing pull off the internet?".
 #[must_use]
 pub fn inventory() -> Vec<ToolSpec> {
-    Tool::ALL.iter().copied().filter_map(spec_for).collect()
+    inventory_for(&Tool::ALL)
+}
+
+/// Unique download artifacts needed for `tools`, preserving request order.
+/// Shared bundles such as `FFmpeg` + `ffprobe` appear exactly once.
+#[must_use]
+pub fn inventory_for(tools: &[Tool]) -> Vec<ToolSpec> {
+    let mut inventory = Vec::new();
+    for spec in tools.iter().copied().filter_map(spec_for) {
+        let disclosed = inventory
+            .iter()
+            .any(|existing: &ToolSpec| existing.url == spec.url && existing.sha256 == spec.sha256);
+        if !disclosed {
+            inventory.push(spec);
+        }
+    }
+    inventory
+}
+
+fn windows_ffmpeg_bundle(tool: Tool) -> ToolSpec {
+    let members = [Tool::Ffmpeg, Tool::Ffprobe]
+        .into_iter()
+        .map(|member_tool| ArchiveMember {
+            tool: member_tool,
+            path: format!("{WINDOWS_FFMPEG_ROOT}/{}", member_tool.file_name()),
+        })
+        .collect();
+    ToolSpec {
+        tool,
+        url: WINDOWS_FFMPEG_URL.into(),
+        sha256: WINDOWS_FFMPEG_SHA256.into(),
+        archive: Archive::Zip { members },
+    }
+}
+
+fn windows_ytdlp(tool: Tool) -> ToolSpec {
+    ToolSpec {
+        tool,
+        url: WINDOWS_YTDLP_URL.into(),
+        sha256: WINDOWS_YTDLP_SHA256.into(),
+        archive: Archive::None,
+    }
+}
+
+fn macos_ffmpeg(tool: Tool) -> ToolSpec {
+    zipped_tool(
+        tool,
+        "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip",
+        "ef1aa60006c7b77ce170c1608c08d8e4ba1c30c5746f2ac986ded932d0ac2c3c",
+    )
+}
+
+fn macos_ffprobe(tool: Tool) -> ToolSpec {
+    zipped_tool(
+        tool,
+        "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffprobe.zip",
+        "c39787f4af7a3932502d2d48db6f6feaaa836b48a73ef78c32cc3285df61dfaf",
+    )
+}
+
+fn zipped_tool(tool: Tool, url: &str, sha256: &str) -> ToolSpec {
+    ToolSpec {
+        tool,
+        url: url.into(),
+        sha256: sha256.into(),
+        archive: Archive::Zip {
+            members: vec![ArchiveMember {
+                tool,
+                path: tool.file_name().into(),
+            }],
+        },
+    }
+}
+
+fn macos_ytdlp(tool: Tool) -> ToolSpec {
+    ToolSpec {
+        tool,
+        url: "https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp_macos".into(),
+        sha256: "498bd0dae17855c599d371d68ec5bafc439a9d8640e838be25c765a9792f261b".into(),
+        archive: Archive::None,
+    }
 }
 
 fn macos() -> bool {
@@ -85,6 +161,10 @@ fn macos_arm64() -> bool {
     cfg!(all(target_os = "macos", target_arch = "aarch64"))
 }
 
+fn windows_x64() -> bool {
+    cfg!(all(target_os = "windows", target_arch = "x86_64"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,12 +172,14 @@ mod tests {
     #[test]
     fn the_inventory_covers_every_fetchable_tool() {
         let inventory = inventory();
-        let fetchable = Tool::ALL.iter().filter(|&&t| spec_for(t).is_some()).count();
-        assert_eq!(
-            inventory.len(),
-            fetchable,
-            "the disclosed inventory must not omit anything the tool can download"
-        );
+        for spec in Tool::ALL.iter().copied().filter_map(spec_for) {
+            assert!(
+                inventory
+                    .iter()
+                    .any(|item| { item.url == spec.url && item.sha256 == spec.sha256 }),
+                "the disclosed inventory must not omit fetchable artifacts"
+            );
+        }
     }
 
     #[test]
@@ -105,7 +187,8 @@ mod tests {
         let spec = spec_for(Tool::WhisperVad).expect("VAD model is platform-independent");
         assert_eq!(
             spec.url,
-            "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin"
+            "https://huggingface.co/ggml-org/whisper-vad/resolve/\
+             9ffd54a1e1ee413ddf265af9913beaf518d1639b/ggml-silero-v5.1.2.bin"
         );
         // From the file's git-lfs pointer; re-verified by downloading once.
         assert_eq!(
@@ -120,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn every_available_spec_is_pinned_and_verifiable() {
+    fn every_available_spec_is_immutable_and_verifiable() {
         for tool in Tool::ALL {
             let Some(spec) = spec_for(tool) else { continue };
             assert!(spec.url.starts_with("https://"), "{tool:?}: https only");
@@ -128,8 +211,32 @@ mod tests {
                 !spec.url.contains("latest"),
                 "{tool:?}: versions must be pinned, not 'latest'"
             );
+            assert!(
+                !spec.url.contains("/resolve/main/"),
+                "{tool:?}: repository revisions must be immutable"
+            );
             assert_eq!(spec.sha256.len(), 64, "{tool:?}: full sha256 required");
             assert!(spec.sha256.chars().all(|c| c.is_ascii_hexdigit()));
         }
+    }
+
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    #[test]
+    fn windows_ffmpeg_and_ffprobe_share_one_pinned_bundle() {
+        let ffmpeg = spec_for(Tool::Ffmpeg).unwrap();
+        let ffprobe = spec_for(Tool::Ffprobe).unwrap();
+
+        assert_eq!(ffmpeg.url, ffprobe.url);
+        assert_eq!(ffmpeg.sha256, ffprobe.sha256);
+        let Archive::Zip { members } = ffmpeg.archive else {
+            panic!("Windows FFmpeg must use the pinned ZIP bundle");
+        };
+        assert_eq!(members.len(), 2);
+        assert_eq!(
+            inventory_for(&[Tool::Ffmpeg, Tool::Ffprobe]).len(),
+            1,
+            "consent inventory must disclose the shared download once"
+        );
+        assert_eq!(ffprobe.provided_tools(), vec![Tool::Ffmpeg, Tool::Ffprobe]);
     }
 }

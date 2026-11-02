@@ -129,8 +129,9 @@ fn an_existing_skill_at_a_link_target_is_a_conflict_naming_the_path() {
         }
     );
     let message = err.to_string();
+    let expected_path = root("claude").join("vim-basics");
     assert!(
-        message.contains("/home/u/.claude/skills/vim-basics"),
+        message.contains(&expected_path.display().to_string()),
         "{message}"
     );
     assert!(message.contains("--force"), "{message}");

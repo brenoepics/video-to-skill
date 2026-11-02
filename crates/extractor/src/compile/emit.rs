@@ -123,7 +123,7 @@ fn render_step(step: &Step) -> String {
     for evidence in &step.evidence {
         let mut line = format!("- [t={}]", mmss(evidence.timestamp_secs));
         if let Some(frame) = &evidence.frame {
-            let name = frame.rsplit('/').next().unwrap_or(frame);
+            let name = crate::safe_path::portable_basename(frame).unwrap_or(frame);
             let _ = write!(line, " ![frame](../references/frames/{name})");
         }
         if let Some(quote) = &evidence.quote {
@@ -194,8 +194,9 @@ fn copy_frames(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()
     let dest_dir = out_dir.join("references/frames");
     fs::create_dir_all(&dest_dir)?;
     for frame in frames {
-        let name = frame.rsplit('/').next().unwrap_or(frame);
-        fs::copy(bundle_dir.join(frame), dest_dir.join(name))
+        let name = crate::safe_path::portable_basename(frame)?;
+        let source = crate::safe_path::resolve_bundle_file(bundle_dir, frame)?;
+        fs::copy(source, dest_dir.join(name))
             .with_context(|| format!("copying evidence frame {frame}"))?;
     }
     Ok(())

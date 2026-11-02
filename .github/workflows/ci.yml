@@ -10,24 +10,23 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  WINDOWS_FFMPEG_URL: https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip
+  WINDOWS_FFMPEG_SHA256: db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec
 
 jobs:
-  gate:
-    name: fmt + clippy + test
-    runs-on: macos-latest
+  conventional-commits:
+    name: conventional commits
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - name: Conventional commits
+      - name: Validate commit subjects
         env:
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
-        # Only the commits this event introduces are checked (merge
-        # commits excluded) — historical or bot-authored noise on other
-        # branches can never poison unrelated runs.
         run: |
           if [ "$EVENT" = "pull_request" ]; then
             range="$PR_BASE..$PR_HEAD"
@@ -39,8 +38,6 @@ jobs:
           bad=0
           while IFS= read -r subject; do
             [ -z "$subject" ] && continue
-            # GitHub-generated commits (security autofix, dependabot
-            # config toggles) carry fixed non-conventional subjects.
             case "$subject" in
               "Potential fix for code scanning alert"*|"Set package-ecosystem"*) continue;;
             esac
@@ -49,12 +46,70 @@ jobs:
             fi
           done < <(git log --no-merges --format=%s $range 2>/dev/null || git log --no-merges --format=%s -1)
           exit $bad
-      - uses: dtolnay/rust-toolchain@stable
+
+  msrv:
+    name: rust 1.89 minimum version
+    needs: conventional-commits
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master 2026-09-06
+        with:
+          toolchain: 1.89.0
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Check every target at the declared MSRV
+        run: cargo check --locked --all-targets
+
+  gate:
+    name: gate (${{ matrix.label }})
+    needs: conventional-commits
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macos-arm64
+          - os: ubuntu-24.04
+            label: linux-x86_64
+          - os: windows-2025
+            label: windows-x86_64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master 2026-09-06
+        with:
+          toolchain: stable
           components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - name: Install ffmpeg (test fixture generation)
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Configure MSVC and libclang (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/setup-msvc.ps1
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
         run: brew install ffmpeg
+      - name: Install FFmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes ffmpeg
+      - name: Install pinned FFmpeg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'ffmpeg.zip'
+          $extract = Join-Path $env:RUNNER_TEMP 'ffmpeg'
+          Invoke-WebRequest -Uri $env:WINDOWS_FFMPEG_URL -OutFile $archive
+          $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:WINDOWS_FFMPEG_SHA256) {
+            throw "FFmpeg checksum mismatch: $actual"
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $extract
+          $binary = Get-ChildItem -LiteralPath $extract -Recurse -Filter ffmpeg.exe |
+            Where-Object { $_.Directory.Name -eq 'bin' } |
+            Select-Object -First 1
+          if (-not $binary) { throw 'ffmpeg.exe missing from pinned archive' }
+          $binary.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
       - name: Format
         run: cargo fmt --all -- --check
       - name: Lint (compiles all targets)
