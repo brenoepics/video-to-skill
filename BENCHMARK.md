@@ -67,8 +67,8 @@ runs.
 <!-- bench-results:start -->
 | id | label | wall (s) | realtime | stages |
 | --- | --- | --- | --- | --- |
-| asr-45s | Transcribe ~45s of generated speech | 17.0 | 2.7x | — |
-| extract-120s | Full extract of a 120s 720p video | 11.4 | 10.5x | ingest 0.1s · transcribe 6.2s · frames 5.1s · timeline 0.0s |
+| asr-45s | Transcribe ~45s of generated speech | 263.1 | 0.2x | — |
+| extract-120s | Full extract of a 120s 720p video | 650.9 | 0.2x | ingest 0.0s · transcribe 647.0s · frames 3.9s · timeline 0.0s |
 | frames-batch-5 | Batch export of 5 frames | 0.2 | — | — |
 
 Machine: Apple M1 (Virtual) · 3 logical cores · macos/aarch64 · whisper on cpu · vts-extract 0.2.4
