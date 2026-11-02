@@ -2,6 +2,7 @@
 //!
 //! The binary in `main.rs` is a thin CLI over this crate.
 
+pub mod a11y;
 pub mod asr;
 pub mod bench;
 pub mod bundle;

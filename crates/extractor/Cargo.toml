@@ -33,6 +33,12 @@ path = "src/main.rs"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 whisper-rs = { version = "0.16", features = ["metal"] }
+# Read-only accessibility observation (`vts-extract observe`). These objc2
+# bindings are pure Rust over the system frameworks, so the build stays a
+# plain `cargo build --locked`; the `axuielement` crate would have added a
+# `swift build` step and a Swift runtime link to every macOS build.
+objc2-application-services = { version = "0.3", default-features = false, features = ["std", "HIServices", "AXUIElement", "AXError", "libc"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFBase", "CFString", "CFArray", "CFNumber"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 whisper-rs = "0.16"
