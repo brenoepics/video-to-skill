@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, Context, Result};
 
 use crate::bundle::load_manifest;
-use crate::frames::export::export_frame;
+use crate::frames::export::{export_frames, FrameRequest};
 use crate::tools::Toolchain;
 
 const REWATCH_DIR: &str = "rewatch";
@@ -96,14 +96,25 @@ pub fn frames_at<S: AsRef<str>>(
         // frames by basename, so every export must be globally unique.
         let name = format!("at-{:09}", millis(ts));
         let dir = request_dir(bundle_dir, &name)?;
-        let path = dir.join(format!("{name}.jpg"));
-        export_frame(tools, media, ts, &path, Some(MAX_WIDTH))?;
         frames.push(ExportedFrame {
             timestamp_secs: ts,
-            path,
+            path: dir.join(format!("{name}.jpg")),
         });
     }
+    export_frames(tools, media, &requests_for(&frames))?;
     Ok(frames)
+}
+
+/// Width-bounded export requests for the given frames, in order.
+fn requests_for(frames: &[ExportedFrame]) -> Vec<FrameRequest> {
+    frames
+        .iter()
+        .map(|f| FrameRequest {
+            timestamp_secs: f.timestamp_secs,
+            dest: f.path.clone(),
+            max_width: Some(MAX_WIDTH),
+        })
+        .collect()
 }
 
 /// Densely sample `start..end` at `fps` from the source media.
@@ -153,13 +164,12 @@ pub fn clip(
     for i in 0..count {
         #[allow(clippy::cast_precision_loss)] // counts are ≤ CLIP_FRAME_CAP
         let ts = start + i as f64 / fps;
-        let path = dir.join(format!("{name}-f{i:03}.jpg"));
-        export_frame(tools, media, ts, &path, Some(MAX_WIDTH))?;
         frames.push(ExportedFrame {
             timestamp_secs: ts,
-            path,
+            path: dir.join(format!("{name}-f{i:03}.jpg")),
         });
     }
+    export_frames(tools, media, &requests_for(&frames))?;
     Ok(ClipResult { frames, truncated })
 }
 
