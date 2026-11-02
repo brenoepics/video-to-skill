@@ -35,9 +35,16 @@ Context is the scarce resource. Images cost ~1-2k tokens each.
 
 ## Re-watch triggers (spend budget only on these)
 
-Before re-watching a long segment, check its interior keyframes
-(frames/shotNNN-kMM.jpg) — the periodic coverage often already shows
-the state change that used to require hand-exporting frames.
+Each segment's keyframe (frames/shotNNN.jpg) is already the settled
+result of the change that started the segment — the first second after
+it in which the screen held still — so a command's output or an opened
+dialog is normally in the keyframe itself. Scrolling never starts a
+segment: content that only moved stays in the running segment, so a
+long read-through is one segment whose interior keyframes carry the
+coverage. Before re-watching a long segment, check those interior
+keyframes (frames/shotNNN-kMM.jpg) — the periodic coverage often
+already shows the state change that used to require hand-exporting
+frames.
 
 1. Speech describes an action ("now click...", "then run...") but
    neither the segment keyframe nor any interior keyframe shows its

@@ -101,7 +101,7 @@ A fresh sub-agent — seeing only the generated package, not the video — runs 
 
 ```mermaid
 flowchart LR
-    A["video<br/>(URL or file)"] --> B["local extraction<br/>word-timestamped whisper ·<br/>pHash shot detection · motion density"]
+    A["video<br/>(URL or file)"] --> B["local extraction<br/>word-timestamped whisper ·<br/>screen-state detection · motion density"]
     B --> C[aligned timeline]
     C --> D[agent inspects<br/>keyframes selectively]
     D --> E["skill package<br/>steps + frames + timestamp provenance"]
@@ -111,7 +111,7 @@ flowchart LR
     F -->|unverifiable| I["⚠ labeled honestly"]
 ```
 
-The extractor (`vts-extract`, Rust) does the deterministic work locally: download, demux, voice activity detection and word-timestamped whisper transcription, perceptual-hash shot detection, motion density, and keyframe export. The agent does the reading: it inspects keyframes selectively and produces evidence-grounded steps.
+The extractor (`vts-extract`, Rust) does the deterministic work locally: download, demux, voice activity detection and word-timestamped whisper transcription, screen-state detection (one keyframe at the settled result of each screen change, scrolling folded in), motion density, and keyframe export. The agent does the reading: it inspects keyframes selectively and produces evidence-grounded steps.
 
 ## Skills that grow
 
