@@ -17,6 +17,11 @@ hound = "3"
 dirs = "6"
 sha2 = "0.11"
 ureq = "3"
+# zip's `deflate-flate2` pulls flate2 in with no backend selected, so the ZIP
+# reader only builds because ureq's defaults happen to turn on
+# flate2/rust_backend. Name the backend here — the same miniz_oxide one already
+# in use — so a change to ureq's features cannot break dependency extraction.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
