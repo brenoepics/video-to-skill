@@ -55,8 +55,9 @@ fn validate_archive(path: &Path, archive: &mut ZipArchive<File>) -> Result<()> {
     let mut names = HashSet::with_capacity(archive.len());
     for index in 0..archive.len() {
         let entry = archive.by_index(index).context("reading ZIP entry")?;
-        if !safe_name(&entry) {
-            bail!("unsafe ZIP path: {}", entry.name());
+        let name = entry.name().context("reading ZIP entry name")?;
+        if !safe_name(&entry, &name) {
+            bail!("unsafe ZIP path: {name}");
         }
         if entry.encrypted() {
             bail!("encrypted ZIP entries are not supported");
@@ -64,7 +65,7 @@ fn validate_archive(path: &Path, archive: &mut ZipArchive<File>) -> Result<()> {
         if entry.is_symlink() {
             bail!("ZIP symbolic links are not allowed");
         }
-        if !names.insert(entry.name().to_ascii_lowercase()) {
+        if !names.insert(name.to_ascii_lowercase()) {
             bail!("downloaded ZIP contains duplicate file names");
         }
         total = total
@@ -77,8 +78,7 @@ fn validate_archive(path: &Path, archive: &mut ZipArchive<File>) -> Result<()> {
     Ok(())
 }
 
-fn safe_name<R: Read>(entry: &zip::read::ZipFile<'_, R>) -> bool {
-    let name = entry.name();
+fn safe_name<R: Read>(entry: &zip::read::ZipFile<'_, R>, name: &str) -> bool {
     if name.is_empty()
         || entry.enclosed_name().is_none()
         || name.contains('\\')
