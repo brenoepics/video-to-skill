@@ -5,6 +5,7 @@
 //! production implementation.
 
 mod demux;
+pub mod dtw;
 pub mod segments;
 pub mod vad;
 pub mod whisper;

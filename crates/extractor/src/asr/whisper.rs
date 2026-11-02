@@ -9,8 +9,11 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use whisper_rs::{
+    DtwMode, DtwParameters, FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters,
+};
 
+use super::dtw;
 use super::segments::{segments_for, Token};
 use super::vad::{self, TimeMap};
 use super::{EngineOutput, TranscriptionEngine};
@@ -74,6 +77,22 @@ impl WhisperEngine {
     pub fn vad_model(&self) -> Option<&Path> {
         self.vad_model.as_deref()
     }
+
+    /// The compute device, plus DTW token timestamps over the weights'
+    /// alignment heads when whisper.cpp has a preset for them. Flash
+    /// attention stays off (whisper-rs's default): whisper.cpp silently
+    /// disables DTW when it is on.
+    fn context_params(&self) -> WhisperContextParameters<'static> {
+        let mut params = WhisperContextParameters::default();
+        params.use_gpu(self.use_gpu);
+        if let Some(model_preset) = dtw::preset_for(&self.model_path) {
+            params.dtw_parameters(DtwParameters {
+                mode: DtwMode::ModelPreset { model_preset },
+                ..DtwParameters::default()
+            });
+        }
+        params
+    }
 }
 
 impl TranscriptionEngine for WhisperEngine {
@@ -97,9 +116,7 @@ impl TranscriptionEngine for WhisperEngine {
             None => (samples, TimeMap::identity()),
         };
 
-        let mut ctx_params = WhisperContextParameters::default();
-        ctx_params.use_gpu(self.use_gpu);
-        let ctx = WhisperContext::new_with_params(&self.model_path, ctx_params)
+        let ctx = WhisperContext::new_with_params(&self.model_path, self.context_params())
             .context("loading whisper model")?;
         let mut state = ctx.create_state().context("creating whisper state")?;
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
@@ -130,6 +147,8 @@ impl TranscriptionEngine for WhisperEngine {
                     text: token.to_str_lossy()?.to_string(),
                     t0: data.t0,
                     t1: data.t1,
+                    // whisper.cpp leaves -1 where DTW produced no time.
+                    t_dtw: (data.t_dtw >= 0).then_some(data.t_dtw),
                     special: token.token_id() >= eot,
                 });
             }
@@ -177,6 +196,30 @@ mod tests {
             whisper_model: model.map(PathBuf::from),
             whisper_vad: vad.map(PathBuf::from),
         }
+    }
+
+    #[test]
+    fn dtw_alignment_follows_the_weights_and_flash_attention_stays_off() {
+        use whisper_rs::{DtwMode, DtwModelPreset};
+
+        let base = WhisperEngine::with_gpu(PathBuf::from("ggml-base.bin"), true);
+        let params = base.context_params();
+        assert!(matches!(
+            params.dtw_parameters.mode,
+            DtwMode::ModelPreset {
+                model_preset: DtwModelPreset::Base
+            }
+        ));
+        assert!(
+            !params.flash_attn,
+            "whisper.cpp disables DTW under flash attention"
+        );
+
+        let unknown = WhisperEngine::with_gpu(PathBuf::from("custom.bin"), false);
+        assert!(matches!(
+            unknown.context_params().dtw_parameters.mode,
+            DtwMode::None
+        ));
     }
 
     #[test]
