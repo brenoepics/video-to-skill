@@ -124,6 +124,15 @@ stub agent — its records are stamped mock and can never become a figure:
 python3 -m v2sbench.cli run --agent stub --sandbox local --allow-unsandboxed
 ```
 
+### What it costs
+
+Roughly **$75–220** for the pilot and **$700–2,100** for the
+pre-registered target of 100 tasks × 8 arms × 3 seeds, on Sonnet-class
+pricing — extrapolated from one recorded trial, with the derivation and
+the two commands that would replace the estimate with a measurement in
+[docs/cost.md](docs/cost.md). `--max-usd` caps any run, `--dry-run` spends
+nothing, and the stub agent exercises the whole pipeline for free.
+
 ### The first real run should be a pilot
 
 Sample size depends on the intra-task correlation and the correlation

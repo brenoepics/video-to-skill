@@ -40,7 +40,7 @@
       "terminal": {
         "prompt": "$ ",
         "output": [
-          "[fc#0 @ 0x56149c91c540] Filter vstack:default has an unconnected out",
+          "[fc#0 @ 0x564d44534540] Filter vstack:default has an unconnected out",
           "Error : Invalid argument"
         ]
       }
@@ -115,7 +115,7 @@
     },
     {
       "t": 7.7,
-      "text": "Give the graph's result a name of its own and ffmpeg stops choosing for you. It says so plainly."
+      "text": "Once the graph's result has a name of its own, ffmpeg will not guess for you. Read what it says."
     },
     {
       "t": 20.3,

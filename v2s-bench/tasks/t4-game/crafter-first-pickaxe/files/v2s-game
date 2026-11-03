@@ -90,24 +90,27 @@ The 17 actions, and nothing else:
   make_wood_pickaxe make_stone_pickaxe make_iron_pickaxe
   make_wood_sword make_stone_sword make_iron_sword
 
-`do` the ACTION and `do` the action named "do" are different things:
-`v2s-game do do` interacts with the tile you are facing -- chopping a
-tree, mining stone, drinking water, hitting a cow.
+The verb is `do` and one action is also called `do`, so
+`v2s-game do do` is not a typo: it interacts with the tile
+you are facing -- chopping a tree, mining stone, drinking
+water, hitting a cow.
 
-What the game does not tell you, and you have to work out or be told:
-which actions have requirements, what those requirements are, and what
-has to be standing next to you for a `make_` action to work. An action
-whose requirements are not met is accepted and simply does nothing: the
-step is spent, the observation comes back unchanged, and nothing says
-why.
+What this help does NOT tell you, and you have to work
+out or be told: which actions have requirements, what
+those requirements are, and what has to be standing next
+to you for a `make_` action to work. An action whose
+requirements are not met is accepted and simply does
+nothing. The step is spent, the observation comes back
+unchanged, and nothing says why.
 
-Vitals (health, food, drink, energy) fall over time. They are restored
-by eating, drinking and sleeping. At health 0 the episode ends.
+Vitals (health, food, drink, energy) fall over time, and
+are restored by eating, drinking and sleeping. At health 0
+the episode ends.
 
 Observation format (exactly this, every time):
   line 1  V2S-GAME {game} protocol={protocol}
   line 2  step=<k>/<budget>  status=<st>  daylight=<0.00-1.00>
-  line 3  health=<n> food=<n> drink=<n> energy=<n>  sleeping=<yes|no>
+  line 3  health=<n> food=<n> drink=<n> energy=<n>  sleeping=<y/n>
   line 4  facing=<dir>  the tile in front of you is <material>
   line 5  inventory: <item>=<n> ...   (only non-zero items)
   line 6  achievements <n>/22: <names>, wrapped onto "... " lines
@@ -363,11 +366,13 @@ def cmd_do(store, argv):
             moved.append("pos=(%d,%d)" % tuple(after["pos"]))
         if after["facing"] != before["facing"]:
             moved.append("facing=" + after["facing"])
-        note = " ".join(moved + changed)
-        print("step %d %s: %s%s" % (
-            after["step"], name, note or "nothing changed",
-            (" UNLOCKED " + " ".join(gained)) if gained else "",
-        ))
+        note = " ".join(moved + changed) or "nothing changed"
+        if gained:
+            note += " UNLOCKED " + " ".join(gained)
+        # Wrapped the same way as the achievement line, so no line of this
+        # protocol can exceed 66 columns and every line fits the video.
+        for line in wrap("step %d %s: " % (after["step"], name), note):
+            print(line)
         if done:
             print("the episode is over: %s" % status_of(True, after, config["steps"]))
     print(render(env, config["steps"], status_of(done, snapshot(env, None), config["steps"])))

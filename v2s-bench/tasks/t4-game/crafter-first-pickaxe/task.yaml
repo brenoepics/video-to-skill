@@ -15,26 +15,28 @@ discoverability: poor
 feedback_bandwidth: silent
 knowledge_gap:
   summary: >-
-    Crafter's tech tree has requirements that the game never states and
-    never complains about. A crafting table is not a recipe you know, it
-    is an object you have to PLACE: it costs two wood, it has to go on a
-    walkable tile in front of you, and `make_wood_pickaxe` only works
-    while you are standing within one tile of it. Stone cannot be mined
-    at all until that pickaxe exists -- facing a stone tile and using
-    `do` without one is accepted, changes nothing and says nothing. So
-    the required order is: chop enough wood (one wood per tree, and the
-    tree is gone), place the table, craft beside it, and only then go
-    looking for stone. An agent that tries to craft without placing a
-    table, or mines stone first, burns its step budget on actions that
-    look like they ran.
+    Crafter's tech tree has requirements the game never states and never
+    complains about. A crafting table is not a recipe you know, it is an
+    object you have to PLACE: it costs two wood, it goes on a walkable
+    tile in front of you, and `make_wood_pickaxe` only works while you
+    are standing within one tile of it. The pickaxe then costs a third
+    piece of wood -- so placing the table with exactly two wood in hand
+    leaves you with an empty inventory and a craft that silently fails.
+    And stone cannot be mined at all until that pickaxe exists: facing a
+    stone tile and using `do` without one is accepted, changes nothing
+    and says nothing. One tree gives one wood and is then gone, so the
+    order that works is: three trees, place the table, craft beside it,
+    then go looking for stone. Every wrong order fails the same way --
+    accepted, silent, and a step poorer.
   probe_question: >-
-    In Crafter, you are standing on grass with two wood in your
-    inventory and want a wood pickaxe. What exactly has to be true for
-    `make_wood_pickaxe` to succeed, and what does the game do if it is
-    not true? And what is the one thing you must already have before
-    `do` on a stone tile gives you any stone?
+    In Crafter you are standing on grass holding three wood and you want
+    a wood pickaxe, and after that you want to mine stone. What exactly
+    has to be true for `make_wood_pickaxe` to succeed, how much of that
+    wood is gone by the time it does, and what does the game do if a
+    requirement is not met? And what must you already have before `do`
+    on a stone tile gives you any stone?
   probe_answer_pattern: '(?i)(?=[\s\S]*(place|placed|placing)[\s\S]{0,40}table)(?=[\s\S]*(near|nearby|next to|adjacent|within|beside|standing))(?=[\s\S]*(nothing happens|does nothing|no effect|silently|no error|no message|wastes? the step))(?=[\s\S]*wood[_ ]?pickaxe)'
-  taught_at: [24.0, 46.0, 74.0]
+  taught_at: [42.0, 58.6, 79.9]
 environment:
   image: v2sbench/t4-game-crafter:0.1
   workdir: /work

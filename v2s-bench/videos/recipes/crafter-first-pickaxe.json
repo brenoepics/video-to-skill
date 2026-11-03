@@ -1,0 +1,536 @@
+{
+  "schema_version": 1,
+  "id": "crafter-first-pickaxe",
+  "title": "Crafter: getting to the first pickaxe and the first stone",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 105.7,
+  "stills": [
+    {
+      "t": 0.0,
+      "step": "01-overview",
+      "slide": {
+        "heading": "Crafter through v2s-game",
+        "bullets": [
+          "a survival game, printed out as text",
+          "a 9 by 7 window, you at the centre",
+          "seed 6: a different world from any task"
+        ]
+      }
+    },
+    {
+      "t": 6.4,
+      "step": "02-the-interface",
+      "terminal": {
+        "type": "v2s-game help"
+      }
+    },
+    {
+      "t": 8.9,
+      "step": "02-the-interface",
+      "terminal": {
+        "output": [
+          "v2s-game crafter -- protocol 1",
+          "",
+          "  state                print the observation",
+          "  do ACTION [ACTION ...]   take one or more actions, in order",
+          "  help                 this text",
+          "",
+          "The 17 actions, and nothing else:",
+          "  noop",
+          "  move_left move_right move_up move_down",
+          "  do",
+          "  sleep",
+          "  place_stone place_table place_furnace place_plant",
+          "  make_wood_pickaxe make_stone_pickaxe make_iron_pickaxe",
+          "  make_wood_sword make_stone_sword make_iron_sword",
+          "",
+          "The verb is `do` and one action is also called `do`, so",
+          "`v2s-game do do` is not a typo: it interacts with the tile",
+          "you are facing -- chopping a tree, mining stone, drinking",
+          "water, hitting a cow.",
+          "",
+          "What this help does NOT tell you, and you have to work",
+          "out or be told: which actions have requirements, what",
+          "those requirements are, and what has to be standing next",
+          "to you for a `make_` action to work. An action whose",
+          "requirements are not met is accepted and simply does",
+          "nothing. The step is spent, the observation comes back",
+          "unchanged, and nothing says why.",
+          "",
+          "Vitals (health, food, drink, energy) fall over time, and",
+          "are restored by eating, drinking and sleeping. At health 0",
+          "the episode ends.",
+          "",
+          "Observation format (exactly this, every time):",
+          "  line 1  V2S-GAME crafter protocol=1",
+          "  line 2  step=<k>/<budget>  status=<st>  daylight=<0.00-1.00>",
+          "  line 3  health=<n> food=<n> drink=<n> energy=<n>  sleeping=<y/n>",
+          "  line 4  facing=<dir>  the tile in front of you is <material>",
+          "  line 5  inventory: <item>=<n> ...   (only non-zero items)",
+          "  line 6  achievements <n>/22: <names>, wrapped onto \"... \" lines",
+          "  then    the 9x7 view, one glyph per tile, you at the centre",
+          "  then    the legend"
+        ]
+      }
+    },
+    {
+      "t": 19.8,
+      "step": "03-the-opening",
+      "terminal": {
+        "type": "v2s-game state"
+      }
+    },
+    {
+      "t": 22.3,
+      "step": "03-the-opening",
+      "terminal": {
+        "output": [
+          "V2S-GAME crafter protocol=1",
+          "step=0/1000  status=playing  daylight=0.80",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=down  the tile in front of you is grass",
+          "inventory: (empty)",
+          "achievements 0/22: (none yet)",
+          "view 9x7, you are at the centre:",
+          "  T C g g g g g g g",
+          "  g g g g g g g g g",
+          "  g g g g g g g g g",
+          "  g g g g @ g g g g",
+          "  g g g g g g g g g",
+          "  g g g g g g g g g",
+          "  g g g g g g g g T",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 28.1,
+      "step": "04-first-wood",
+      "terminal": {
+        "type": "v2s-game do move_left move_left move_left move_left"
+      }
+    },
+    {
+      "t": 30.6,
+      "step": "04-first-wood",
+      "terminal": {
+        "output": [
+          "step 1 move_left: pos=(31,32) facing=left",
+          "step 2 move_left: pos=(30,32)",
+          "step 3 move_left: pos=(29,32)",
+          "step 4 move_left: pos=(28,32)",
+          "V2S-GAME crafter protocol=1",
+          "step=4/1000  status=playing  daylight=0.83",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=left  the tile in front of you is grass",
+          "inventory: (empty)",
+          "achievements 0/22: (none yet)",
+          "view 9x7, you are at the centre:",
+          "  g g g T T g g C g",
+          "  g g g g g g g g g",
+          "  g g g g g g g g g",
+          "  g g T g @ g g g g",
+          "  g g T g g g g g g",
+          "  s g g g g g g g g",
+          "  s s T g g g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 33.6,
+      "step": "04-first-wood",
+      "terminal": {
+        "type": "v2s-game do move_up move_up move_up do"
+      }
+    },
+    {
+      "t": 36.1,
+      "step": "04-first-wood",
+      "terminal": {
+        "output": [
+          "step 5 move_up: pos=(28,31) facing=up",
+          "step 6 move_up: pos=(28,30)",
+          "step 7 move_up: nothing changed",
+          "step 8 do: wood+1 UNLOCKED collect_wood",
+          "V2S-GAME crafter protocol=1",
+          "step=8/1000  status=playing  daylight=0.86",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=up  the tile in front of you is grass",
+          "inventory: wood=1",
+          "achievements 1/22: collect_wood",
+          "view 9x7, you are at the centre:",
+          "  T g T T g g g T g",
+          "  g g g T g T g C g",
+          "  g g g T g g g g g",
+          "  g g g g @ g g g g",
+          "  g g g g g g g g g",
+          "  g g T g g g g g g",
+          "  g g T g g g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 39.5,
+      "step": "05-it-just-does-nothing",
+      "terminal": {
+        "type": "v2s-game do make_wood_pickaxe"
+      }
+    },
+    {
+      "t": 42.0,
+      "step": "05-it-just-does-nothing",
+      "terminal": {
+        "output": [
+          "step 9 make_wood_pickaxe: nothing changed",
+          "V2S-GAME crafter protocol=1",
+          "step=9/1000  status=playing  daylight=0.87",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=up  the tile in front of you is grass",
+          "inventory: wood=1",
+          "achievements 1/22: collect_wood",
+          "view 9x7, you are at the centre:",
+          "  T g T T g g g T g",
+          "  g g g T g T g C g",
+          "  g g g T g g g g g",
+          "  g g g g @ g g g g",
+          "  g g g g g g g g g",
+          "  g g T g g g g g g",
+          "  g g T g g g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 53.1,
+      "step": "06-another-tree",
+      "terminal": {
+        "type": "v2s-game do move_left move_up do"
+      }
+    },
+    {
+      "t": 55.6,
+      "step": "06-another-tree",
+      "terminal": {
+        "output": [
+          "step 10 move_left: pos=(27,30) facing=left",
+          "step 11 move_up: facing=up",
+          "step 12 do: wood+1",
+          "V2S-GAME crafter protocol=1",
+          "step=12/1000  status=playing  daylight=0.89",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=up  the tile in front of you is grass",
+          "inventory: wood=2",
+          "achievements 1/22: collect_wood",
+          "view 9x7, you are at the centre:",
+          "  s T g T T g g g T",
+          "  g g g g T g T g g",
+          "  g g g g g g g g g",
+          "  g g g g @ g g g g",
+          "  g g g g g g g g g",
+          "  g g g T g g g g g",
+          "  g g g T g g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 58.6,
+      "step": "07-what-nothing-tells-you",
+      "slide": {
+        "heading": "What nothing tells you",
+        "bullets": [
+          "a table is an object you place, not a recipe you know",
+          "place_table costs 2 wood; make_wood_pickaxe costs 1 more",
+          "crafting works only within one tile of the table",
+          "stone needs the pickaxe first: without it, do does nothing"
+        ]
+      }
+    },
+    {
+      "t": 71.8,
+      "step": "08-place-it",
+      "terminal": {
+        "type": "v2s-game do move_left place_table"
+      }
+    },
+    {
+      "t": 74.3,
+      "step": "08-place-it",
+      "terminal": {
+        "output": [
+          "step 13 move_left: pos=(26,30) facing=left",
+          "step 14 place_table: wood-2 UNLOCKED place_table",
+          "V2S-GAME crafter protocol=1",
+          "step=14/1000  status=playing  daylight=0.90",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=left  the tile in front of you is table",
+          "inventory: (empty)",
+          "achievements 2/22: collect_wood place_table",
+          "view 9x7, you are at the centre:",
+          "  s s T g T T g g g",
+          "  s g g g g T g T g",
+          "  s g g g g g g g g",
+          "  s g g = @ g g g g",
+          "  s g g g g g g g g",
+          "  s g g g T g g g g",
+          "  s g g g T g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 77.4,
+      "step": "09-and-again-nothing",
+      "terminal": {
+        "type": "v2s-game do make_wood_pickaxe"
+      }
+    },
+    {
+      "t": 79.9,
+      "step": "09-and-again-nothing",
+      "terminal": {
+        "output": [
+          "step 15 make_wood_pickaxe: nothing changed",
+          "V2S-GAME crafter protocol=1",
+          "step=15/1000  status=playing  daylight=0.91",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=left  the tile in front of you is table",
+          "inventory: (empty)",
+          "achievements 2/22: collect_wood place_table",
+          "view 9x7, you are at the centre:",
+          "  s s T g T T g g g",
+          "  s g g g g T g T g",
+          "  s g g g g g g g g",
+          "  s g g = @ g g g g",
+          "  s g g g g g g g g",
+          "  s g g g T g g g g",
+          "  s g g g T g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 85.1,
+      "step": "10-one-more-tree",
+      "terminal": {
+        "type": "v2s-game do move_down move_down do"
+      }
+    },
+    {
+      "t": 87.6,
+      "step": "10-one-more-tree",
+      "terminal": {
+        "output": [
+          "step 16 move_down: pos=(26,31) facing=down",
+          "step 17 move_down: nothing changed",
+          "step 18 do: wood+1",
+          "V2S-GAME crafter protocol=1",
+          "step=18/1000  status=playing  daylight=0.92",
+          "health=9 food=9 drink=9 energy=9  sleeping=no",
+          "facing=down  the tile in front of you is grass",
+          "inventory: wood=1",
+          "achievements 2/22: collect_wood place_table",
+          "view 9x7, you are at the centre:",
+          "  s g g g g T g T g",
+          "  s g g g g g g g g",
+          "  s g g = g g g g g",
+          "  s g g g @ g g g g",
+          "  s g g g g g g g g",
+          "  s g g g T g g g g",
+          "  s s s g g g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 90.6,
+      "step": "11-craft-beside-it",
+      "terminal": {
+        "type": "v2s-game do move_left move_up make_wood_pickaxe"
+      }
+    },
+    {
+      "t": 93.1,
+      "step": "11-craft-beside-it",
+      "terminal": {
+        "output": [
+          "step 19 move_left: pos=(25,31) facing=left",
+          "step 20 move_up: facing=up",
+          "step 21 make_wood_pickaxe: drink-1 wood-1 wood_pickaxe+1 UNLOCKED",
+          "... make_wood_pickaxe",
+          "V2S-GAME crafter protocol=1",
+          "step=21/1000  status=playing  daylight=0.94",
+          "health=9 food=9 drink=8 energy=9  sleeping=no",
+          "facing=up  the tile in front of you is table",
+          "inventory: wood_pickaxe=1",
+          "achievements 3/22: collect_wood make_wood_pickaxe place_table",
+          "view 9x7, you are at the centre:",
+          "  p s g g g g T g T",
+          "  p s g g g g g g g",
+          "  p s g g = g g g g",
+          "  p s g g @ g g g g",
+          "  s s g g g g g g g",
+          "  s s g g g T g g g",
+          "  s s s s g g g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    },
+    {
+      "t": 96.1,
+      "step": "12-now-the-stone",
+      "terminal": {
+        "type": "v2s-game do move_left move_left move_left do"
+      }
+    },
+    {
+      "t": 98.6,
+      "step": "12-now-the-stone",
+      "terminal": {
+        "output": [
+          "step 22 move_left: pos=(24,31) facing=left",
+          "step 23 move_left: pos=(23,31)",
+          "step 24 move_left: nothing changed",
+          "step 25 do: stone+1 UNLOCKED collect_stone",
+          "V2S-GAME crafter protocol=1",
+          "step=25/1000  status=playing  daylight=0.95",
+          "health=9 food=9 drink=8 energy=9  sleeping=no",
+          "facing=left  the tile in front of you is path",
+          "inventory: stone=1 wood_pickaxe=1",
+          "achievements 4/22: collect_stone collect_wood make_wood_pickaxe",
+          "... place_table",
+          "view 9x7, you are at the centre:",
+          "  s s p s g g g g T",
+          "  s s p s g g g g g",
+          "  p p p s g g = g g",
+          "  p p p p @ g g g g",
+          "  s s s s g g g g g",
+          "  s s s s g g g T g",
+          "  s s s s s s g g g",
+          "legend: g grass  T tree  s stone  p path  n sand  w water",
+          "        L lava  c coal  i iron  d diamond  = table  f furnace",
+          "        @ you  C cow  Z zombie  K skeleton  a arrow  P plant",
+          "        . off the map"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Crafter, but in text. Little survival game, you are the at-sign in the middle."
+    },
+    {
+      "t": 6.7,
+      "text": "Let's see what it even takes."
+    },
+    {
+      "t": 9.2,
+      "text": "Seventeen things you can do, and that is the lot."
+    },
+    {
+      "t": 12.8,
+      "text": "And look what it says here. It will list the actions. It will not tell you what any of them need."
+    },
+    {
+      "t": 22.6,
+      "text": "Here's where we start. Trees off to the left, a cow wandering about."
+    },
+    {
+      "t": 28.4,
+      "text": "Walk over towards one."
+    },
+    {
+      "t": 33.9,
+      "text": "Turn to face it, give it a chop."
+    },
+    {
+      "t": 36.6,
+      "text": "There we go. One wood."
+    },
+    {
+      "t": 39.8,
+      "text": "Right. Let's have a pickaxe then."
+    },
+    {
+      "t": 42.8,
+      "text": "And... nothing. No error, no complaint, nothing at all. The step is simply gone. This is the thing that will quietly eat your whole budget."
+    },
+    {
+      "t": 53.4,
+      "text": "Grab another one."
+    },
+    {
+      "t": 59.1,
+      "text": "You cannot make anything out of thin air in here. You need something to make it on, you have to put that down yourself, and it is not free, so there is a bit of arithmetic worth doing before you start chopping."
+    },
+    {
+      "t": 72.1,
+      "text": "Put it down in front of us."
+    },
+    {
+      "t": 74.6,
+      "text": "Good. That is it down."
+    },
+    {
+      "t": 77.7,
+      "text": "Try again."
+    },
+    {
+      "t": 80.2,
+      "text": "And again, nothing, for exactly the reason I just gave you."
+    },
+    {
+      "t": 85.4,
+      "text": "One more trip, then."
+    },
+    {
+      "t": 90.9,
+      "text": "Back over there, and now..."
+    },
+    {
+      "t": 93.4,
+      "text": "There's the pickaxe."
+    },
+    {
+      "t": 96.4,
+      "text": "And with that in hand, the grey stuff is finally worth the walk."
+    },
+    {
+      "t": 100.5,
+      "text": "Stone. That's the gate open."
+    }
+  ],
+  "notes": "Hermetic, and laid out by env/crafter/calibrate.py's sibling generator: every terminal screen is verbatim stdout from the frozen interface (env/crafter/v2s_game_crafter.py) on seed 6, a different world from the one the task provisions, so a route cannot be replayed and the procedure has to be carried across worlds. Both silent failures are real: make_wood_pickaxe with no table, then make_wood_pickaxe again after place_table has eaten both pieces of wood. Narration is deliberately vague where the pixels are exact (docs/preregistration.md 7.2) -- it says you need something to make things on and that it costs you, and never the two-wood price, the one-tile adjacency rule, or the pickaxe-before-stone order, all of which appear only on screen."
+}

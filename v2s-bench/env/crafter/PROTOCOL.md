@@ -89,7 +89,8 @@ legend: g grass  T tree  s stone  p path  n sand  w water
   columns.
 
 Each action also prints one line: `step 7 do: wood+1 UNLOCKED collect_wood`,
-or `step 8 place_table: nothing changed`.
+or `step 8 place_table: nothing changed`. It wraps onto `... ` continuations
+too, so no line of this protocol exceeds 66 columns.
 
 ## What the environment does not tell you
 
