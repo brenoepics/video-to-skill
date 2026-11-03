@@ -4,6 +4,7 @@
 
 mod emit;
 pub mod frontmatter;
+pub mod repairs;
 mod safety;
 mod validate;
 

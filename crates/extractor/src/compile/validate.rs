@@ -5,7 +5,7 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use super::{safety, ProcedureIr};
+use super::{repairs, safety, ProcedureIr};
 
 /// Agent Skills spec limits on frontmatter fields.
 const MAX_NAME_LENGTH: usize = 64;
@@ -36,6 +36,15 @@ pub(super) fn validate(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> R
         if !matches!(step.confidence.as_str(), "high" | "medium" | "low") {
             bail!(
                 "step '{}': confidence must be high, medium, or low",
+                step.id
+            );
+        }
+        if let Err(line) = repairs::cited_signals(step.caveats.as_deref().unwrap_or("")) {
+            bail!(
+                "step '{}': a repair in caveats cites no external signal ('{line}') — write \
+                 it as 'Repair N: <change>. Signal: <exit code N | stdout: … | stderr: … | \
+                 output diff: … | file: … | state: …>', naming what the environment \
+                 reported, never your own judgement (see references/verification-protocol.md)",
                 step.id
             );
         }
