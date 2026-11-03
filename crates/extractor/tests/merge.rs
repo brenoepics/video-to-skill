@@ -24,6 +24,12 @@ fn step(id: &str, goal: &str, actions: &str, confidence: &str) -> Step {
         }],
         scripts: vec![],
         variants: vec![],
+        preconditions: vec![],
+        parameters: vec![],
+        postcondition: None,
+        failure_notes: vec![],
+        usage_count: 0,
+        verdict: None,
     }
 }
 
@@ -231,4 +237,48 @@ fn merge_is_pure_and_leaves_inputs_untouched() {
 
     assert_eq!(existing, existing_before, "inputs are not mutated");
     assert_eq!(first.merged, second.merged, "deterministic");
+}
+
+#[test]
+fn folding_clears_verdicts_keeps_usage_and_writes_schema_v2() {
+    use vts_extract::compile::{Verdict, SCHEMA_VERSION};
+    let verdict = |outcome: &str| {
+        Some(Verdict {
+            outcome: outcome.into(),
+            detail: "seen".into(),
+            repairs: vec![],
+        })
+    };
+    let mut existing = ir(
+        "https://a.example/v1",
+        vec![step("01-quit", "Quit Vim", "Type `:q!`", "high")],
+    );
+    existing.schema_version = 1;
+    existing.steps[0].usage_count = 4;
+    existing.steps[0].verdict = verdict("pass");
+    let mut incoming = ir(
+        "https://b.example/v2",
+        vec![
+            step("01-quit", "Quit Vim", "Type `:q!`", "high"),
+            step("05-macros", "Record a macro", "Press `q`", "medium"),
+        ],
+    );
+    incoming.steps[1].usage_count = 1;
+    incoming.steps[1].verdict = verdict("fail");
+
+    let merged = merge(&existing, &incoming, "2026-08-05").merged;
+
+    assert_eq!(
+        merged.schema_version, SCHEMA_VERSION,
+        "a v1 package folds into a v2 one"
+    );
+    assert!(
+        merged.steps.iter().all(|s| s.verdict.is_none()),
+        "a fold invalidates every verdict"
+    );
+    assert_eq!(merged.steps[0].usage_count, 4, "execution history is kept");
+    assert_eq!(
+        merged.steps[1].usage_count, 1,
+        "an added step brings its own history"
+    );
 }

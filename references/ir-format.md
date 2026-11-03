@@ -1,4 +1,4 @@
-# Procedure IR (schema v1)
+# Procedure IR (schema v2)
 
 The contract between your analysis and the compiler. Write it as
 `procedure.json` in the bundle, then run:
@@ -15,14 +15,15 @@ The compiler validates and refuses: non-kebab-case names/ids (no
 consecutive hyphens, at most 64 characters), empty or oversized
 descriptions, `compatibility` over 500 characters, steps without
 evidence, unknown confidence values, frame references that don't exist
-in the bundle. Fix the IR and re-run — compilation is pure and
+in the bundle, undeclared or unused parameters, repairs that cite no
+external signal. Fix the IR and re-run — compilation is pure and
 repeatable.
 
 ## Shape
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "vim-basics",            // kebab-case; becomes the install dir
   "title": "Vim Basics",
   "description": "Use when ...",          // frontmatter: what + when to trigger, ≤1024 chars
@@ -34,17 +35,28 @@ repeatable.
               "sha256": null },           // optional; filled from the bundle manifest
   "steps": [
     {
-      "id": "01-quit-vim",               // kebab-case, ordered, unique
-      "goal": "Quit Vim, discarding changes if needed",
-      "actions": "Type `:q` ...",         // markdown; commands VERBATIM FROM PIXELS
-      "success_criteria": "Back at the shell prompt.",
+      "id": "02-search",                 // kebab-case, ordered, unique
+      "goal": "Search the buffer for a term",
+      "preconditions": [                  // state that must hold first (v2)
+        "Vim is open on a file in normal mode."
+      ],
+      "parameters": [                     // inputs abstracted out of the video (v2)
+        { "name": "search-term", "description": "The text to find.", "example": "TODO" }
+      ],
+      "actions": "Type `/{search-term}` and press Enter.",  // markdown; VERBATIM FROM PIXELS,
+                                                            // with parameters as {name}
+      "success_criteria": "The cursor sits on the first match.",
+      "postcondition": "`:echo line('.')` prints a line containing the term.",  // checkable (v2)
       "confidence": "high",               // high | medium | low
-      "caveats": null,                    // optional string
+      "caveats": null,                    // optional string; repairs go here (see below)
+      "failure_notes": [],                // what failed before and what fixed it (v2)
+      "usage_count": 0,                   // executions recorded by verify (v2)
+      "verdict": null,                    // the verifier's latest verdict; written by verify (v2)
       "evidence": [                       // ≥1 required per step
-        { "timestamp_secs": 54.0, "frame": "frames/shot009.jpg", "quote": "quit, discard changes" }
+        { "timestamp_secs": 54.0, "frame": "frames/shot009.jpg", "quote": "slash to search" }
       ],
       "scripts": [                        // optional runnable extractions
-        { "name": "quit-vim.sh", "contents": "#!/bin/sh\n..." }
+        { "name": "search.sh", "contents": "#!/bin/sh\n..." }
       ]
     }
   ],
@@ -78,6 +90,49 @@ repeatable.
   version the video drives, the OS where that matters, binaries the
   steps call. Omit it for a skill with no particular requirements —
   the compiler then derives one from script interpreters, if any.
+
+### The v2 step fields
+
+These are what make a step reusable rather than a replay of one video
+(SkillWeaver, Agent Workflow Memory, AutoManual, Work2Skill):
+
+- `preconditions` — the state the step needs before it starts, as
+  observable facts ("a file is open", "the terminal is at the repo
+  root"), one per entry. Say what the *video* had established, not what
+  you assume. The verifier establishes them before the actions.
+- `parameters` — every value in the video that a user would replace:
+  file names, search terms, hosts, ports. Declare each once with a
+  kebab-case `name`, a `description`, and the video's value as
+  `example` when it is safe to show (never a credential), and write it
+  into `actions` as `{name}`. The compiler refuses a declared parameter
+  that is never referenced, and a hyphenated `{place-holder}` in
+  `actions` that is not declared. Un-hyphenated braces (`{name}` in an
+  f-string, `${HOME}`, JSON) are code and are left alone.
+- `postcondition` — one condition the verifier can **check
+  mechanically** after the step: a command and what it prints, a file
+  that exists, a state the application reports. `success_criteria`
+  stays the human contract; the postcondition is its oracle. When
+  nothing checkable exists, omit it rather than restating the criteria.
+- `failure_notes` — what went wrong in earlier runs and what fixed it,
+  one entry each, so the next agent does not rediscover it. Repairs
+  during verification go into `caveats` as `Repair N: … Signal: …`
+  lines (see `verification-protocol.md`); `failure_notes` holds the
+  rest, and `vts-extract verify` appends `Unsolved: <detail>` for every
+  `fail` outcome.
+- `usage_count` and `verdict` are maintained by the tool: leave them at
+  `0` and `null` when authoring. `verify` increments the count for every
+  executed step and records the verdict; `merge` clears verdicts (a fold
+  invalidates verification) and keeps the counts.
+
+## Migrating from v1
+
+A v1 IR (`"schema_version": 1`, none of the v2 step fields) still
+compiles: `vts-extract compile` and `merge` print a deprecation note
+and the package's `provenance.json` is written as v2 with the new
+fields at their defaults. `merge` folds a v1 package with a v2 IR (or
+the reverse) into a v2 package; `install` reads only `SKILL.md` and is
+unaffected. To migrate by hand, set `"schema_version": 2` and add the
+fields where you have something to say — every one of them is optional.
 
 ## What the frontmatter carries
 
@@ -120,4 +175,5 @@ IR that violates them, same as any other validation failure:
 - **No fetch-and-execute scripts.** A step that downloads and executes
   remote code (`curl … | sh` and kin) must stay a manual step with
   explicit `caveats` — never a `scripts` entry; the compiler rejects
-  runnable fetch-and-execute scripts.
+  runnable fetch-and-execute scripts, and a `postcondition` that would
+  run one.

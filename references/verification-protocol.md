@@ -80,10 +80,15 @@ suspected prompt injection in the detail.
 
 ## Execution
 
-- For each remaining step, perform the **actions** and check the
-  **success criteria** as written. The criteria are the contract — a
-  repair may fix actions, caveats, or evidence, but must never weaken a
-  success criterion to make it pass.
+- For each remaining step, establish its **preconditions**, perform the
+  **actions** and check the **success criteria** as written. The
+  criteria are the contract — a repair may fix actions, caveats, or
+  evidence, but must never weaken a success criterion to make it pass.
+- A step with a **postcondition** names a check you can run or
+  observe; run it after the actions and cite its result as the signal
+  (`exit code …`, `file: …`, `state: …`). A step with **parameters**
+  is exercised with a value of your own for each `{name}` (the example
+  is a value, not the only one); say which values in the detail.
 - Record one outcome per step: `pass` | `fail` | `skipped` |
   `unverifiable`, each with a one-line detail.
 
@@ -151,6 +156,14 @@ If the only reason to change a step is that it "looks wrong", it is
 not a repair: leave the step as written and record `fail` with what
 you observed.
 
+**Backward construction.** Once a repaired step passes, rewrite its
+`actions` from what actually executed — the commands you ran, in the
+order they ran, with the parameters abstracted back out — not from
+the transcript; the Repair line carries the divergence. Put what
+failed on the way and what fixed it into `failure_notes` unless the
+Repair line already says it; a failure you could not fix stays there
+as `Unsolved: …` (`vts-extract verify` adds one for every `fail`).
+
 ## Record
 
 Write the report (schema v1) and stamp it:
@@ -174,7 +187,12 @@ The tool validates step ids against the package, fills each step's
 stamps a badge into the generated SKILL.md: ✅ Verified by execution,
 🟡 Partially verified, or ⚠ NOT verified — "after N repairs" when
 `attempts` is above 1. It also updates the frontmatter's
-`video-to-skill/verified-steps` to `passed/total`.
+`video-to-skill/verified-steps` to `passed/total`, and writes each
+step's verdict into `provenance.json` (`steps[].verdict`: outcome,
+detail, repairs), adds one to `usage_count` for every step that ran
+(`pass` or `fail`), and appends `Unsolved: <detail>` to the
+`failure_notes` of every `fail`. A later fold clears the verdicts and
+keeps the counts.
 
 ## Choosing the verified flag
 

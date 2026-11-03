@@ -36,6 +36,12 @@ fn step(id: &str) -> Step {
         }],
         scripts: vec![],
         variants: vec![],
+        preconditions: vec![],
+        parameters: vec![],
+        postcondition: None,
+        failure_notes: vec![],
+        usage_count: 0,
+        verdict: None,
     }
 }
 

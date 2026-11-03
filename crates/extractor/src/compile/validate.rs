@@ -5,7 +5,7 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use super::{repairs, safety, ProcedureIr};
+use super::{repairs, safety, ProcedureIr, Step, SCHEMA_VERSION};
 
 /// Agent Skills spec limits on frontmatter fields.
 const MAX_NAME_LENGTH: usize = 64;
@@ -13,8 +13,11 @@ const MAX_DESCRIPTION_LENGTH: usize = 1024;
 const MAX_COMPATIBILITY_LENGTH: usize = 500;
 
 pub(super) fn validate(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
-    if ir.schema_version != 1 {
-        bail!("unsupported IR schema_version {}", ir.schema_version);
+    if ir.schema_version == 0 || ir.schema_version > SCHEMA_VERSION {
+        bail!(
+            "unsupported IR schema_version {} (this build reads v1 and v{SCHEMA_VERSION})",
+            ir.schema_version
+        );
     }
     validate_frontmatter_fields(ir)?;
     validate_package_directory(ir, out_dir)?;
@@ -39,6 +42,7 @@ pub(super) fn validate(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> R
                 step.id
             );
         }
+        validate_parameters(step)?;
         if let Err(line) = repairs::cited_signals(step.caveats.as_deref().unwrap_or("")) {
             bail!(
                 "step '{}': a repair in caveats cites no external signal ('{line}') — write \
@@ -109,6 +113,75 @@ fn validate_frontmatter_fields(ir: &ProcedureIr) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Parameters are what make a step reusable: a declared name must be
+/// kebab-case and referenced as `{name}` from the actions, a script or
+/// the postcondition, and a hyphenated `{place-holder}` in the actions
+/// must be declared. Braces in code — `${HOME}`, `{name}` in an f-string,
+/// JSON — are left alone: only hyphenated names count as placeholders.
+fn validate_parameters(step: &Step) -> Result<()> {
+    let texts: Vec<&str> = std::iter::once(step.actions.as_str())
+        .chain(step.postcondition.as_deref())
+        .chain(step.scripts.iter().map(|s| s.contents.as_str()))
+        .collect();
+    for parameter in &step.parameters {
+        if !is_kebab(&parameter.name) {
+            bail!(
+                "step '{}': parameter name '{}' must be kebab-case (lowercase letters, \
+                 digits, hyphens)",
+                step.id,
+                parameter.name
+            );
+        }
+        let placeholder = format!("{{{}}}", parameter.name);
+        if !texts.iter().any(|text| text.contains(&placeholder)) {
+            bail!(
+                "step '{}': parameter '{}' is never referenced — write it as '{placeholder}' \
+                 in the actions, a script or the postcondition, or drop it",
+                step.id,
+                parameter.name
+            );
+        }
+    }
+    for name in placeholders(&step.actions) {
+        if !step.parameters.iter().any(|p| p.name == name) {
+            bail!(
+                "step '{}': '{{{name}}}' in actions is not declared in parameters — declare \
+                 it with a description and an example, or write the literal value",
+                step.id
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Hyphenated `{kebab-case}` placeholders in `text`, skipping shell
+/// expansions (`${…}`).
+fn placeholders(text: &str) -> Vec<String> {
+    let mut found = Vec::new();
+    for (open, _) in text.match_indices('{') {
+        if text[..open].ends_with('$') {
+            continue;
+        }
+        let Some(close) = text[open..].find('}') else {
+            break;
+        };
+        let name = &text[open + 1..open + close];
+        if name.contains('-') && is_kebab(name) {
+            found.push(name.to_string());
+        }
+    }
+    found
+}
+
+fn is_kebab(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+        && !value.starts_with('-')
+        && !value.ends_with('-')
 }
 
 /// The spec requires `name` to equal the directory name; agents resolve a

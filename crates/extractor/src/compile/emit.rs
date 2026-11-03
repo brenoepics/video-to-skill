@@ -21,10 +21,16 @@ pub fn emit(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
     }
     emit_scripts(ir, out_dir)?;
     copy_frames(ir, bundle_dir, out_dir)?;
+    // Packages always carry the current schema, whatever the IR was
+    // written at: every field v2 added has a default.
+    let provenance = ProcedureIr {
+        schema_version: super::SCHEMA_VERSION,
+        ..ir.clone()
+    };
     write(
         out_dir,
         "provenance.json",
-        &serde_json::to_string_pretty(ir)?,
+        &serde_json::to_string_pretty(&provenance)?,
     )?;
     Ok(())
 }
@@ -106,14 +112,45 @@ fn render_step(step: &Step) -> String {
             "> ⚠ **LOW CONFIDENCE** — verify before relying on this step.\n"
         );
     }
+    bullets(&mut md, "Preconditions", &step.preconditions);
+    if !step.parameters.is_empty() {
+        let _ = writeln!(md, "## Parameters\n");
+        for parameter in &step.parameters {
+            let example = parameter
+                .example
+                .as_deref()
+                .map(|e| format!(" (e.g. `{e}`)"))
+                .unwrap_or_default();
+            let _ = writeln!(
+                md,
+                "- `{{{}}}` — {}{example}",
+                parameter.name,
+                parameter.description.trim()
+            );
+        }
+        let _ = writeln!(md);
+    }
     let _ = writeln!(md, "## Actions\n\n{}\n", step.actions.trim());
     let _ = writeln!(
         md,
         "## Success criteria\n\n{}\n",
         step.success_criteria.trim()
     );
+    if let Some(postcondition) = &step.postcondition {
+        let _ = writeln!(md, "## Postcondition (check)\n\n{}\n", postcondition.trim());
+    }
     if let Some(caveats) = &step.caveats {
         let _ = writeln!(md, "## Caveats\n\n{}\n", caveats.trim());
+    }
+    bullets(&mut md, "Failure notes", &step.failure_notes);
+    match step.usage_count {
+        0 => {}
+        1 => {
+            let _ = writeln!(md, "Executed once under verification.\n");
+        }
+        n => {
+            let _ = writeln!(md, "Executed {n} times under verification.\n");
+        }
     }
     let _ = writeln!(md, "## Evidence\n");
     for evidence in &step.evidence {
@@ -156,6 +193,18 @@ fn render_step(step: &Step) -> String {
         }
     }
     md
+}
+
+/// A `## Title` section of bullet points, omitted when there are none.
+fn bullets(md: &mut String, title: &str, items: &[String]) {
+    if items.is_empty() {
+        return;
+    }
+    let _ = writeln!(md, "## {title}\n");
+    for item in items {
+        let _ = writeln!(md, "- {}", item.trim());
+    }
+    let _ = writeln!(md);
 }
 
 fn emit_scripts(ir: &ProcedureIr, out_dir: &Path) -> Result<()> {
