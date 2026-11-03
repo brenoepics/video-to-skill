@@ -152,8 +152,10 @@ line `*` — the dir ignores itself and never dirties the user's VCS.
 This produces the bundle: `manifest.json` (source + media facts +
 notes), `transcript.json` (timestamped speech; its `source` says whether
 the text is the creator's own captions or whisper's hearing),
-`frames.json` (shots + keyframes + motion density), `timeline.json` —
-and `frames/*.jpg`. A URL download also keeps what the platform offers
+`frames.json` (shots + keyframes + motion density), `screen_text.json`
+(on-screen text OCR'd from the keyframes — macOS and Windows only;
+elsewhere the manifest notes why it is absent), `timeline.json` — and
+`frames/*.jpg`. A URL download also keeps what the platform offers
 for free, recorded under `platform` in the manifest: the creator's
 caption track when the video has one (`captions`, kept as
 `source.<lang>.json3` or `.vtt` and preferred over whisper, which then
@@ -174,6 +176,13 @@ open), with the native still taken at the same moment. Then inspect
 frames *selectively* (never all of them):
 
 - Read each segment's keyframe once — for most videos that is enough.
+- Grep the text track before re-watching to read on-screen text:
+  `vts-extract text --bundle <bundle> --grep <pattern>` prints
+  `t=<secs>\t<frame>\t<text>` for every OCR line matching the
+  case-insensitive regex (omit `--grep` for the whole track), so you
+  can jump straight to the frame that shows a command. OCR is a hint
+  with a confidence, not evidence: pixels stay authoritative (rules 2
+  and 4 below), so read the frame it names before copying anything.
 - Re-watch a range only when evidence demands it:
   `vts-extract frame-at --bundle <bundle> <t>` for one moment
   (`frame-at` accepts MULTIPLE timestamps in one call:

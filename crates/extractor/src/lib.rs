@@ -15,6 +15,7 @@ pub mod hashing;
 pub mod host;
 pub mod install;
 pub mod merge;
+pub mod ocr;
 pub mod rewatch;
 pub mod safe_path;
 pub mod sandbox;
