@@ -395,6 +395,33 @@
             "null"
           ],
           "description": "Content hash of the harness itself. Harness changes have been shown to swing the same model's score on the same tasks by tens of points, so the harness is pinned exactly like the model."
+        },
+        "extractor": {
+          "type": "object",
+          "description": "The vts-extract build that produced this trial's arm material -- the system under test. Recorded rather than pinned: the benchmark grades the code as it stands, so refusing a version other than a tagged release would make it impossible to measure the branch you want measured. A result that cannot say which build of v2s produced its skills is not interpretable.",
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "commit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Short git SHA of the source it was built from."
+            },
+            "dirty": {
+              "enum": [
+                "yes",
+                "no",
+                "unknown"
+              ],
+              "description": "Whether that working tree had uncommitted changes. `yes` means the build is not reproducible from any commit."
+            },
+            "path": {
+              "type": "string"
+            }
+          }
         }
       }
     },

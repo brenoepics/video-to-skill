@@ -36,7 +36,7 @@ knowledge_gap:
   probe_answer_pattern: '(?is)(?=.*bisect\s+start)(?=.*bisect\s+run)(?=.*bisect\s+reset)(?=.*\b125\b)'
   taught_at: [22.0, 37.0, 55.0]
 environment:
-  image: ubuntu:24.04
+  image: v2sbench/t2-real-cli:0.1
   workdir: /work
   network: none
   setup:

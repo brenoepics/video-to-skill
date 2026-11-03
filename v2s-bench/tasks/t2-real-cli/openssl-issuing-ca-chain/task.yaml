@@ -39,7 +39,7 @@ knowledge_gap:
   probe_answer_pattern: '(?is)(?=.*basicConstraints\s*=)(?=.*CA\s*:\s*TRUE)(?=.*pathlen\s*:?\s*=?\s*0)(?=.*(-extfile|-extensions|openssl\s+ca))'
   taught_at: [25.0, 42.0, 58.0]
 environment:
-  image: ubuntu:24.04
+  image: v2sbench/t2-real-cli:0.1
   workdir: /work
   network: none
   setup:

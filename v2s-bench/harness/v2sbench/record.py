@@ -66,6 +66,7 @@ class Provenance:
     image_digest: str | None = None
     sandbox_backend: str = "docker"
     network_policy: str = "none"
+    extractor: dict[str, Any] = field(default_factory=dict)
     host: dict[str, Any] = field(default_factory=host_info)
     finished_at: str | None = None
     is_mock: bool = False

@@ -36,7 +36,12 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-REQUIRED_EXTRACTOR_VERSION = "0.3.0"
+#: The extractor is the system under test, so the benchmark grades the
+#: code as it stands rather than a tagged release. We do not pin a version
+#: and refuse others -- that would make it impossible to measure the branch
+#: you actually want measured. Instead the exact version and git commit are
+#: recorded on every trial, which is what reproducibility needs.
+MIN_EXTRACTOR_VERSION = "0.3.0"
 
 #: What each material kind needs from the pipeline.
 MATERIAL_PLAN = {
@@ -77,26 +82,66 @@ class BuildPlan:
         return "\n".join(lines)
 
 
+def find_extractor(explicit: str | None = None) -> str | None:
+    """Locate the extractor, preferring a build of the current source.
+
+    Order matters. A locally built binary is checked first because the
+    extractor is the thing being graded: grading a tagged release would
+    measure code that is not the code in the tree, and the branch's whole
+    point is usually that it changed the extractor.
+    """
+    if explicit and explicit != "vts-extract":
+        return shutil.which(explicit) or (explicit if Path(explicit).exists() else None)
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "target" / "release" / "vts-extract"
+        if candidate.exists():
+            return str(candidate)
+    return shutil.which("vts-extract")
+
+
+def extractor_provenance(binary: str) -> dict[str, str]:
+    """Version and source commit of the extractor that built the materials.
+
+    Recorded per run because this is the system under test. A result that
+    cannot say which build of v2s produced its skills is not interpretable.
+    """
+    out: dict[str, str] = {"path": binary}
+    probe = subprocess.run([binary, "--version"], capture_output=True, text=True)
+    out["version"] = probe.stdout.strip() if probe.returncode == 0 else "unknown"
+    source = Path(binary).resolve()
+    for parent in source.parents:
+        if (parent / ".git").exists():
+            rev = subprocess.run(
+                ["git", "-C", str(parent), "rev-parse", "--short", "HEAD"],
+                capture_output=True, text=True,
+            )
+            if rev.returncode == 0:
+                out["commit"] = rev.stdout.strip()
+            dirty = subprocess.run(
+                ["git", "-C", str(parent), "status", "--porcelain"],
+                capture_output=True, text=True,
+            )
+            out["dirty"] = "yes" if dirty.stdout.strip() else "no"
+            break
+    return out
+
+
 def preflight(extractor: str = "vts-extract") -> list[str]:
     """Report every missing precondition at once, rather than one per run."""
     problems: list[str] = []
-    resolved = shutil.which(extractor)
+    resolved = find_extractor(extractor)
     if not resolved:
         problems.append(
-            f"{extractor} not on PATH. Build it from the repository root with "
-            "`cargo build --release` (binary at target/release/vts-extract) or "
-            "install a pinned release, then pass --extractor."
+            "vts-extract not found. Build the CURRENT source rather than "
+            "installing a release -- the extractor is what is being graded: "
+            "`cargo build --release` from the video-to-skill root, which puts "
+            "it at target/release/vts-extract. Or pass --extractor <path>."
         )
     else:
         probe = subprocess.run([resolved, "--version"], capture_output=True, text=True)
         if probe.returncode != 0:
             problems.append(f"{resolved} --version failed: {probe.stderr.strip()[:200]}")
-        elif REQUIRED_EXTRACTOR_VERSION not in probe.stdout:
-            problems.append(
-                f"{resolved} reports {probe.stdout.strip()!r}; this pipeline targets "
-                f"{REQUIRED_EXTRACTOR_VERSION}. A different extraction version is a "
-                "different treatment, so it is refused rather than recorded."
-            )
     if not shutil.which("ffmpeg"):
         problems.append("ffmpeg not on PATH (needed for extraction and rendering)")
     if not shutil.which("claude"):

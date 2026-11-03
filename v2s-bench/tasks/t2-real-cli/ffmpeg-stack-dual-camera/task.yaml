@@ -30,7 +30,7 @@ knowledge_gap:
   probe_answer_pattern: '(?is)(?=.*hstack)(?=.*-map\s*"?\[)(?=.*-map\s*"?1:a)(?=.*-shortest)'
   taught_at: [21.0, 33.0, 49.0]
 environment:
-  image: ubuntu:24.04
+  image: v2sbench/t2-real-cli:0.1
   workdir: /work
   network: none
   setup:

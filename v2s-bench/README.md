@@ -90,6 +90,18 @@ cd v2s-bench/harness && uv sync
 python3 -m v2sbench.cli doctor
 ```
 
+**If you are about to do a real run, read
+[docs/running-a-pilot.md](docs/running-a-pilot.md) first** — it is written
+for one attempt, lists what has actually been verified against what your
+run will be the first test of, and the stages are checkpointed so a failure
+never costs you the earlier ones.
+
+Start with the free readiness check, which spends nothing:
+
+```bash
+python3 -m v2sbench.cli preflight --arms core --seeds 3 --model <full-model-id>
+```
+
 The pipeline, in order. Each step refuses to proceed on a missing
 precondition rather than substituting something else:
 

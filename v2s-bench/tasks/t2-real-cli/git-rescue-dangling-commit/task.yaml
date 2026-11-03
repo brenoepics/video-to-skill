@@ -31,7 +31,7 @@ knowledge_gap:
   probe_answer_pattern: '(?is)git\s+fsck[\s\S]{0,200}(git\s+branch|git\s+update-ref)|(--lost-found|--unreachable|--dangling)[\s\S]{0,200}git\s+branch'
   taught_at: [25.0, 43.0]
 environment:
-  image: ubuntu:24.04
+  image: v2sbench/t2-real-cli:0.1
   workdir: /work
   network: none
   setup:

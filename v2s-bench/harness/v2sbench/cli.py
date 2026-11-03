@@ -323,6 +323,23 @@ def cmd_power(args) -> int:
     return 0
 
 
+def cmd_preflight(args) -> int:
+    from .preflight import render, run_preflight
+
+    root, suite = _load(args)
+    report = run_preflight(
+        root, suite,
+        armset=arms_mod.armset(args.arms),
+        seeds=args.seeds,
+        model=args.model,
+        backend=args.sandbox,
+        adapter=args.agent,
+    )
+    print(f"preflight: {len(suite)} task(s), arms {args.arms}, {args.seeds} seed(s)\n")
+    print(render(report))
+    return 0 if report.ready() else 1
+
+
 def cmd_probe(args) -> int:
     from .probe import probe_task, saturated, write_probes
 
@@ -349,31 +366,64 @@ def cmd_probe(args) -> int:
 
 
 def cmd_build_materials(args) -> int:
-    from .pipeline import plan, preflight
+    from .build import build_all
+    from .pipeline import find_extractor, plan, preflight
 
     root, suite = _load(args)
     problems = preflight(args.extractor)
-    if problems and not args.dry_run:
+
+    if args.dry_run:
+        for task in suite:
+            video = root / ".cache" / "videos" / f"{task.video.ref}.mp4"
+            print(plan(
+                task, root=root, video=video,
+                extractor=args.extractor, model=args.model or "",
+            ).describe())
+            print()
+        print("dry run: nothing executed.")
+        for problem in problems:
+            print(f"  outstanding: {problem}")
+        return 0
+
+    if problems:
         print("cannot build materials:")
         for problem in problems:
             print(f"  - {problem}")
         print("\nRe-run with --dry-run to see the plan without these preconditions.")
         return 1
-    for task in suite:
-        video = root / ".cache" / "videos" / f"{task.video.ref}.mp4"
-        stages = plan(
-            task, root=root, video=video,
-            extractor=args.extractor, model=args.model or "",
+    if not args.model:
+        raise SystemExit(
+            "--model is required: the analysis stage is agent-driven, and the "
+            "model that read the frames is part of how the material was made"
         )
-        print(stages.describe())
-        print()
-    if args.dry_run:
-        print("dry run: nothing executed.")
-        if problems:
-            print("outstanding preconditions:")
-            for problem in problems:
-                print(f"  - {problem}")
-    return 0
+
+    extractor = find_extractor(args.extractor)
+    print(f"building materials for {len(suite)} task(s) with {extractor}\n")
+
+    def progress(build) -> None:
+        if build.skipped:
+            print(f"  [skip] {build.task_id:<30} already built")
+        elif build.ok:
+            print(
+                f"  [ ok ] {build.task_id:<30} {', '.join(build.produced)}"
+                f"  ({build.seconds:.0f}s)"
+            )
+        else:
+            print(f"  [FAIL] {build.task_id:<30} {build.error}")
+
+    summary = build_all(
+        suite, root=root, extractor=extractor, model=args.model,
+        force=args.force, skip_verify=args.skip_verify, on_task=progress,
+    )
+    print("\n" + summary.line())
+    print(f"extractor: {summary.extractor}")
+    failed = [b for b in summary.builds if not b.ok]
+    if failed:
+        print(
+            f"\n{len(failed)} task(s) have no materials and their treatment arms "
+            "cannot run. Re-running skips what already built."
+        )
+    return 1 if failed else 0
 
 
 def cmd_render(args) -> int:
@@ -469,6 +519,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--trials", type=int, default=150)
     p.set_defaults(func=cmd_power)
 
+    p = sub.add_parser(
+        "preflight", help="check a run will work, before it costs anything"
+    )
+    common(p)
+    sandboxed(p)
+    p.add_argument("--agent", default="claude-code", choices=["stub", "claude-code"])
+    p.add_argument("--model")
+    p.add_argument("--arms", default="core")
+    p.add_argument("--seeds", type=int, default=3)
+    p.set_defaults(func=cmd_preflight)
+
     p = sub.add_parser("probe", help="measure per-task headroom (what the model knows cold)")
     common(p)
     p.add_argument("--model", help="full model id; a probe score belongs to one model")
@@ -479,8 +540,18 @@ def build_parser() -> argparse.ArgumentParser:
         "build-materials", help="run the v2s pipeline to produce each arm's material"
     )
     common(p)
-    p.add_argument("--extractor", default="vts-extract")
+    p.add_argument(
+        "--extractor", default="vts-extract",
+        help="path to vts-extract; by default a build of the current source is "
+             "preferred over anything on PATH, since the extractor is what is graded",
+    )
     p.add_argument("--model", help="model for the agent-driven analysis stage")
+    p.add_argument("--force", action="store_true", help="rebuild materials that exist")
+    p.add_argument(
+        "--skip-verify", action="store_true",
+        help="build A1 without executing its steps; A1 and A3 then differ only "
+             "in badge text and H4 cannot be tested",
+    )
     p.add_argument("--dry-run", action="store_true", help="print the stage plan and stop")
     p.set_defaults(func=cmd_build_materials)
 
