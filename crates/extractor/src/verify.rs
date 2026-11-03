@@ -11,7 +11,7 @@ use std::path::Path;
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::compile::ProcedureIr;
+use crate::compile::{frontmatter, ProcedureIr};
 
 pub const VERIFICATION_FILE: &str = "verification.json";
 const BADGE_START: &str = "<!-- verification-badge -->";
@@ -76,13 +76,24 @@ pub fn record_verification(skill_dir: &Path, report: &VerificationReport) -> Res
         skill_dir.join(VERIFICATION_FILE),
         serde_json::to_string_pretty(report)?,
     )?;
-    stamp_badge(skill_dir, report)
-}
 
-fn stamp_badge(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
     let path = skill_dir.join("SKILL.md");
     let skill_md = fs::read_to_string(&path).context("package has no SKILL.md")?;
+    let stamped = stamp_badge(&skill_md, report)?;
+    // The frontmatter's machine-readable counterpart of the badge:
+    // passed/total, so a catalogue can rank skills without parsing prose.
+    let passed = report.steps.iter().filter(|s| s.outcome == "pass").count();
+    let stamped = frontmatter::set_metadata(
+        &stamped,
+        frontmatter::METADATA_VERIFIED_STEPS,
+        &format!("{passed}/{}", provenance.steps.len()),
+    )
+    .context("recompile the package with this version of vts-extract first")?;
+    fs::write(&path, stamped)?;
+    Ok(())
+}
 
+fn stamp_badge(skill_md: &str, report: &VerificationReport) -> Result<String> {
     let counts = |outcome: &str| report.steps.iter().filter(|s| s.outcome == outcome).count();
     let any_failed = report.steps.iter().any(|s| s.outcome == "fail");
     let body = if report.verified {
@@ -128,6 +139,5 @@ fn stamp_badge(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
                 &skill_md[after..]
             )
         };
-    fs::write(&path, stamped)?;
-    Ok(())
+    Ok(stamped)
 }

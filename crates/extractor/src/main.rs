@@ -55,7 +55,7 @@ enum Command {
         /// Path to the Procedure IR JSON
         #[arg(long)]
         ir: String,
-        /// Output directory for the skill package
+        /// Output directory for the skill package; must be named after the skill
         #[arg(long)]
         out: String,
     },
@@ -70,9 +70,10 @@ enum Command {
         /// New video's extraction bundle (for its frames)
         #[arg(long)]
         bundle: String,
-        /// Output directory for the merged package
-        #[arg(long, default_value = "merged-skill")]
-        out: String,
+        /// Output directory for the merged package, named after the skill
+        /// (default: merged/<skill-name>)
+        #[arg(long)]
+        out: Option<String>,
         /// Show the fold plan without writing anything
         #[arg(long)]
         dry_run: bool,
@@ -166,7 +167,7 @@ fn main() -> Result<()> {
             bundle,
             out,
             dry_run,
-        } => commands::merge::run(&skill, &ir, &bundle, &out, dry_run),
+        } => commands::merge::run(&skill, &ir, &bundle, out.as_deref(), dry_run),
         Command::Bench { write_docs } => commands::bench::run(write_docs.as_deref()),
         Command::Sandbox {
             workspace,
