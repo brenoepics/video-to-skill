@@ -201,7 +201,8 @@ mod tests {
     }
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
+#[cfg(unix)]
 mod deadline_tests {
     use std::process::Command;
     use std::time::{Duration, Instant};
