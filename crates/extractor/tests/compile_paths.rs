@@ -58,6 +58,12 @@ fn valid_ir() -> ProcedureIr {
             }],
             scripts: vec![],
             variants: vec![],
+            preconditions: vec![],
+            parameters: vec![],
+            postcondition: None,
+            failure_notes: vec![],
+            usage_count: 0,
+            verdict: None,
         }],
         artifacts: vec![],
         gaps: vec![],
@@ -81,6 +87,12 @@ fn add_second_step(ir: &mut ProcedureIr) {
         }],
         scripts: vec![],
         variants: vec![],
+        preconditions: vec![],
+        parameters: vec![],
+        postcondition: None,
+        failure_notes: vec![],
+        usage_count: 0,
+        verdict: None,
     });
 }
 

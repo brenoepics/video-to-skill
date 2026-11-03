@@ -121,6 +121,12 @@ pub fn merge(existing: &ProcedureIr, incoming: &ProcedureIr, date: &str) -> Merg
         merged.steps.push(added);
     }
 
+    // A fold invalidates verification: every verdict goes; execution
+    // counts are history and stay. The result is always a current-schema IR.
+    for step in &mut merged.steps {
+        step.verdict = None;
+    }
+    merged.schema_version = crate::compile::SCHEMA_VERSION;
     merged.history.push(record);
     MergeResult { merged, plan }
 }

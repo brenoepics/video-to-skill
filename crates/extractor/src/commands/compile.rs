@@ -7,6 +7,9 @@ use vts_extract::compile;
 /// installable skill package. `out` must be named after the skill.
 pub fn run(bundle: &str, ir_path: &str, out: &str) -> Result<()> {
     let ir = compile::load_ir(Path::new(ir_path), Path::new(bundle))?;
+    if let Some(note) = compile::deprecation_note(&ir) {
+        eprintln!("{note}");
+    }
     compile::compile(&ir, Path::new(bundle), Path::new(out))?;
     println!(
         "skill package written: {out}/ ({} steps{})",

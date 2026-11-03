@@ -23,6 +23,12 @@ pub fn run(
     .context("package provenance.json is not valid")?;
     let mut incoming = compile::load_ir(Path::new(ir_path), Path::new(bundle))
         .context("loading the incoming Procedure IR")?;
+    for note in [&existing, &incoming]
+        .into_iter()
+        .filter_map(compile::deprecation_note)
+    {
+        eprintln!("{note}");
+    }
     let out = out.map_or_else(|| format!("merged/{}", existing.skill_name), str::to_string);
 
     // Namespace the incoming frames by fold sequence so two videos'

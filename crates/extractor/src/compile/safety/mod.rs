@@ -7,6 +7,7 @@
 //! walked, so every piece of video-derived text that reaches the
 //! installed package is enumerated here.
 
+mod fields;
 mod patterns;
 
 use anyhow::{bail, Result};
@@ -71,6 +72,7 @@ fn secret_fields(ir: &ProcedureIr) -> Vec<Field<'_>> {
         if let Some(caveats) = &step.caveats {
             out.push((at(), "caveats", caveats));
         }
+        out.extend(fields::v2_prose(step));
         for script in &step.scripts {
             out.push((at(), "script contents", &script.contents));
         }
@@ -102,6 +104,7 @@ fn executable_fields(ir: &ProcedureIr) -> Vec<Field<'_>> {
     for step in &ir.steps {
         let at = || format!("step '{}'", step.id);
         out.push((at(), "actions", &step.actions));
+        out.extend(fields::v2_executable(step));
         for script in &step.scripts {
             out.push((at(), "script contents", &script.contents));
         }
@@ -135,6 +138,12 @@ mod tests {
             }],
             scripts: vec![],
             variants: vec![],
+            preconditions: vec![],
+            parameters: vec![],
+            postcondition: None,
+            failure_notes: vec![],
+            usage_count: 0,
+            verdict: None,
         }
     }
 

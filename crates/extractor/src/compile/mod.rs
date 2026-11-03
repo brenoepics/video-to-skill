@@ -14,8 +14,13 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-/// The Procedure IR, schema v1. Authored by the orchestrating agent
-/// (usually as `procedure.json` in the bundle) after analysis.
+/// The current Procedure IR schema. v1 IRs still compile (see
+/// [`deprecation_note`]); packages are always written at this version.
+pub const SCHEMA_VERSION: u32 = 2;
+
+/// The Procedure IR, schema v2 (v1 accepted). Authored by the
+/// orchestrating agent (usually as `procedure.json` in the bundle) after
+/// analysis; `vts-extract verify` and `merge` update the per-step history.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProcedureIr {
     pub schema_version: u32,
@@ -92,6 +97,51 @@ pub struct Step {
     /// conflicting sources become variants, never overwrites).
     #[serde(default)]
     pub variants: Vec<StepVariant>,
+    /// State that must hold before the step runs (v2): "Vim is open on a
+    /// modified buffer". The verifier establishes it before the actions.
+    #[serde(default)]
+    pub preconditions: Vec<String>,
+    /// Inputs abstracted out of the video (v2), referenced from `actions`
+    /// as `{name}`: the video's `TODO` becomes `{search-term}`.
+    #[serde(default)]
+    pub parameters: Vec<Parameter>,
+    /// A mechanically checkable completion condition (v2) — a command to
+    /// run or a state to observe — unlike the prose `success_criteria`.
+    #[serde(default)]
+    pub postcondition: Option<String>,
+    /// Past failures and the corrections learned (v2); `vts-extract
+    /// verify` appends unsolved failures.
+    #[serde(default)]
+    pub failure_notes: Vec<String>,
+    /// Executions observed so far (v2): each recorded pass or fail adds one.
+    #[serde(default)]
+    pub usage_count: u32,
+    /// The verifier's latest verdict (v2), written into provenance.json by
+    /// `vts-extract verify` and cleared by a fold.
+    #[serde(default)]
+    pub verdict: Option<Verdict>,
+}
+
+/// An input the step abstracts over, so one skill serves many values.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Parameter {
+    /// Kebab-case; appears in `actions` as `{name}`.
+    pub name: String,
+    pub description: String,
+    /// The value the video used, when it is safe to show.
+    #[serde(default)]
+    pub example: Option<String>,
+}
+
+/// What the verifier last found when it ran the step.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Verdict {
+    /// `pass` | `fail` | `skipped` | `unverifiable`.
+    pub outcome: String,
+    pub detail: String,
+    /// External signals cited by the repairs that led here.
+    #[serde(default)]
+    pub repairs: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -136,6 +186,21 @@ pub struct OnScreenArtifact {
 pub fn compile(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
     validate::validate(ir, bundle_dir, out_dir)?;
     emit::emit(ir, bundle_dir, out_dir)
+}
+
+/// The note a command prints when it reads an IR written at an older
+/// schema: it still compiles, and what v2 adds.
+#[must_use]
+pub fn deprecation_note(ir: &ProcedureIr) -> Option<String> {
+    (ir.schema_version < SCHEMA_VERSION).then(|| {
+        format!(
+            "note: Procedure IR schema v{} is deprecated — it still compiles, and the package \
+             is written as v{SCHEMA_VERSION}, but v2 adds per-step preconditions, \
+             parameters, postcondition, failure_notes and usage_count (see \
+             references/ir-format.md)",
+            ir.schema_version
+        )
+    })
 }
 
 /// Read a Procedure IR from `path`. When the IR does not state the source

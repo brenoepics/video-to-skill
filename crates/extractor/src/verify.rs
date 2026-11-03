@@ -11,7 +11,7 @@ use std::path::Path;
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::compile::{frontmatter, repairs, ProcedureIr};
+use crate::compile::{frontmatter, repairs, ProcedureIr, Verdict, SCHEMA_VERSION};
 
 pub const VERIFICATION_FILE: &str = "verification.json";
 const BADGE_START: &str = "<!-- verification-badge -->";
@@ -61,7 +61,7 @@ pub fn record_verification(
             report.schema_version
         );
     }
-    let provenance: ProcedureIr = serde_json::from_str(
+    let mut provenance: ProcedureIr = serde_json::from_str(
         &fs::read_to_string(skill_dir.join("provenance.json"))
             .context("not a generated skill package (missing provenance.json)")?,
     )
@@ -126,7 +126,39 @@ pub fn record_verification(
     )
     .context("recompile the package with this version of vts-extract first")?;
     fs::write(&path, stamped)?;
+
+    record_verdicts(&mut provenance, &recorded);
+    fs::write(
+        skill_dir.join("provenance.json"),
+        serde_json::to_string_pretty(&provenance)?,
+    )?;
     Ok(recorded)
+}
+
+/// Fold the report into the package's own record of its steps: the
+/// latest verdict, one more execution for every step that ran, and
+/// unsolved failures as failure notes.
+fn record_verdicts(provenance: &mut ProcedureIr, report: &VerificationReport) {
+    for outcome in &report.steps {
+        let Some(step) = provenance.steps.iter_mut().find(|s| s.id == outcome.id) else {
+            continue;
+        };
+        if matches!(outcome.outcome.as_str(), "pass" | "fail") {
+            step.usage_count += 1;
+        }
+        if outcome.outcome == "fail" {
+            let note = format!("Unsolved: {}", outcome.detail);
+            if !step.failure_notes.contains(&note) {
+                step.failure_notes.push(note);
+            }
+        }
+        step.verdict = Some(Verdict {
+            outcome: outcome.outcome.clone(),
+            detail: outcome.detail.clone(),
+            repairs: outcome.repairs.clone(),
+        });
+    }
+    provenance.schema_version = SCHEMA_VERSION;
 }
 
 fn stamp_badge(skill_md: &str, report: &VerificationReport) -> Result<String> {
