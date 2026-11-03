@@ -1,20 +1,49 @@
 //! URL ingest: download into the bundle, then flow through the exact
 //! same local-file ingest path (one probe/manifest code path for both).
 
+mod priors;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 
-use super::{ingest, load_manifest, save_manifest, IngestReport};
+use super::{ingest, load_manifest, save_manifest, IngestReport, PlatformPriors};
 use crate::tools::Toolchain;
 
+/// No user config, no plugins, no remote components — every attempt.
+const HARDENING: [&str; 3] = [
+    "--ignore-config",
+    "--no-plugin-dirs",
+    "--no-remote-components",
+];
+/// Creator captions only, never `--write-auto-subs`. Every language the
+/// creator published is fetched because the spoken language is only
+/// known once the info json is read; `priors` then keeps one track.
+/// `live_chat` is a stream replay, not captions.
+const CAPTION_FLAGS: [&str; 5] = [
+    "--write-subs",
+    "--sub-langs",
+    "all,-live_chat",
+    "--sub-format",
+    "json3/vtt",
+];
+/// Mark, never remove: cutting would shift every `[t=]` off the
+/// original timeline.
+const SPONSORBLOCK_FLAGS: [&str; 2] = ["--sponsorblock-mark", "sponsor,intro,outro,selfpromo"];
+const SPONSORBLOCK_DOWN_NOTE: &str =
+    "ingest: SponsorBlock lookup failed — downloaded without skip marks";
+
 /// What a downloader hands back: the media file it wrote (inside the
-/// bundle) and the video's title when known.
+/// bundle), the video's title when known, and what the platform offered
+/// beside the media.
 #[derive(Debug)]
 pub struct DownloadedVideo {
     pub path: PathBuf,
     pub title: Option<String>,
+    pub platform: PlatformPriors,
+    /// Degradations worth keeping in the manifest notes.
+    pub notes: Vec<String>,
 }
 
 /// Transport seam for video downloads — tests substitute canned files
@@ -62,7 +91,7 @@ fn ingest_url(
     let outcome = download_then_ingest(url, bundle_dir, tools, downloader);
     if outcome.is_err() {
         // Restartable: a failed attempt leaves no manifest and no
-        // half-downloaded media behind.
+        // half-downloaded media (or sidecars) behind.
         let _ = fs::remove_file(bundle_dir.join(super::MANIFEST_FILE));
         for entry in fs::read_dir(bundle_dir).into_iter().flatten().flatten() {
             if entry.file_name().to_string_lossy().starts_with("source.") {
@@ -85,6 +114,8 @@ fn download_then_ingest(
     // temp path the file landed at.
     report.manifest.source.original = url.to_string();
     report.manifest.source.title = media.title;
+    report.manifest.platform = media.platform;
+    report.manifest.notes.extend(media.notes);
     save_manifest(bundle_dir, &report.manifest)?;
     Ok(report)
 }
@@ -108,10 +139,27 @@ impl VideoDownloader for YtdlpDownloader {
         // downloads; a combined single stream usually still works, so
         // retry with one before giving up.
         let format_attempts: [Option<&str>; 2] = [None, Some("b[ext=mp4]/b")];
+        let mut sponsorblock = true;
         let mut last_error = None;
         for format in format_attempts {
-            match self.attempt(url, dest_dir, format) {
-                Ok(video) => return Ok(video),
+            let mut outcome = self.attempt(url, dest_dir, format, sponsorblock);
+            if sponsorblock
+                && outcome
+                    .as_ref()
+                    .is_err_and(|err| err.to_string().contains("SponsorBlock"))
+            {
+                // A third-party lookup must never block the download.
+                sponsorblock = false;
+                outcome = self.attempt(url, dest_dir, format, false);
+            }
+            match outcome {
+                Ok(mut video) => {
+                    if !sponsorblock {
+                        video.platform.skips.clear();
+                        video.notes.push(SPONSORBLOCK_DOWN_NOTE.to_string());
+                    }
+                    return Ok(video);
+                }
                 Err(err) => last_error = Some(err),
             }
         }
@@ -120,28 +168,36 @@ impl VideoDownloader for YtdlpDownloader {
 }
 
 impl YtdlpDownloader {
-    fn attempt(&self, url: &str, dest_dir: &Path, format: Option<&str>) -> Result<DownloadedVideo> {
+    fn attempt(
+        &self,
+        url: &str,
+        dest_dir: &Path,
+        format: Option<&str>,
+        sponsorblock: bool,
+    ) -> Result<DownloadedVideo> {
         let title_file = dest_dir.join("title.txt");
         let mut cmd = std::process::Command::new(&self.ytdlp);
-        cmd.args([
-            "--ignore-config",
-            "--no-plugin-dirs",
-            "--no-remote-components",
-            "--no-playlist",
-            "--merge-output-format",
-            "mp4",
-            "-o",
-        ])
-        .arg(dest_dir.join("source.%(ext)s"))
-        .arg("--ffmpeg-location")
-        .arg(&self.ffmpeg)
-        .args(["--print-to-file", "%(title)s"])
-        .arg(&title_file)
-        .arg("--no-simulate");
+        cmd.args(HARDENING)
+            .args(["--no-playlist", "--merge-output-format", "mp4", "-o"])
+            .arg(dest_dir.join("source.%(ext)s"))
+            .arg("--ffmpeg-location")
+            .arg(&self.ffmpeg)
+            .args(["--print-to-file", "%(title)s"])
+            .arg(&title_file)
+            .arg("--no-simulate")
+            .args(CAPTION_FLAGS)
+            .arg("--write-info-json");
+        if sponsorblock {
+            cmd.args(SPONSORBLOCK_FLAGS);
+        }
         if let Some(format) = format {
             cmd.args(["-f", format]);
         }
-        let output = cmd.arg(url).output().context("running yt-dlp")?;
+        cmd.arg(url);
+        // A yt-dlp that is still being written (a test stand-in, or a
+        // concurrent install) fails to exec with "text file busy" for an
+        // instant; wait it out like the PATH probe does.
+        let output = crate::deps::retry_while_busy(|| cmd.output()).context("running yt-dlp")?;
         if !output.status.success() {
             bail!(
                 "download failed: {}",
@@ -165,6 +221,12 @@ impl YtdlpDownloader {
                     && p.extension().is_some_and(|e| e != "part")
             })
             .context("yt-dlp reported success but no media file was found")?;
-        Ok(DownloadedVideo { path: media, title })
+        let platform = priors::collect(dest_dir)?;
+        Ok(DownloadedVideo {
+            path: media,
+            title,
+            platform,
+            notes: Vec::new(),
+        })
     }
 }

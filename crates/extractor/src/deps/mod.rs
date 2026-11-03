@@ -13,6 +13,7 @@ pub mod registry;
 mod archive;
 mod install_lock;
 mod probe;
+pub(crate) use probe::retry_while_busy;
 mod recovery;
 mod transaction;
 

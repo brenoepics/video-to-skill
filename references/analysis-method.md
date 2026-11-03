@@ -96,4 +96,27 @@ only across a described action's duration, never the whole segment.
 Whisper mishears technical terms (e.g. "trunks" → "punks", tool names,
 flags). Any token that will be *executed or typed* must come from a
 frame, not the transcript. When only the transcript has it, mark the
-step low-confidence and say the exact string is unverified.
+step low-confidence and say the exact string is unverified. When
+`timeline.json` says `transcript_source: creator-captions`, the words are
+the creator's own and mishearing is not a risk; the rule stands anyway,
+because captions paraphrase and abbreviate what was typed.
+
+## Platform priors
+
+A URL download records what the platform already knew, under
+`platform` in `manifest.json` and at the top of `timeline.json`:
+
+- **Chapters** (`chapters`: start, end, title) are the creator's own
+  section boundaries. Treat them as step candidates to confirm against
+  the frames, and as the unit of work for long videos.
+- **Skips** (`skips`: start, end, category) are SponsorBlock ranges —
+  sponsor, intro, outro, selfpromo. The media is uncut, so they share
+  the timeline with everything else. A segment more than half inside
+  such a range carries `skip: <category>`: read nothing from it, derive
+  no step from it, spend no re-watch budget there. A segment that only
+  overlaps a range keeps its keyframe; check the range bounds before
+  citing a timestamp near them.
+- **Captions** (`captions` in the manifest) name the creator track kept
+  in the bundle. `transcript.json` is built from it when present, with
+  whisper supplying word timing only; `source` in the transcript and
+  `transcript_source` in the timeline say which happened.
