@@ -155,13 +155,16 @@ fn identity_line(exe: Option<&Path>) -> String {
     format!("vts-extract {version} — {path}")
 }
 
-fn label(tool: Tool) -> &'static str {
+fn label(tool: Tool) -> String {
     match tool {
-        Tool::Ffmpeg => "ffmpeg",
-        Tool::Ffprobe => "ffprobe",
-        Tool::Ytdlp => "yt-dlp",
-        Tool::WhisperModel => "whisper model (ggml-base)",
-        Tool::WhisperVad => "voice activity model (ggml-silero-v5.1.2)",
+        Tool::Ffmpeg => "ffmpeg".into(),
+        Tool::Ffprobe => "ffprobe".into(),
+        Tool::Ytdlp => "yt-dlp".into(),
+        Tool::WhisperModel => format!(
+            "whisper model (ggml-{})",
+            registry::default_whisper_model().name
+        ),
+        Tool::WhisperVad => "voice activity model (ggml-silero-v5.1.2)".into(),
     }
 }
 
@@ -186,6 +189,17 @@ mod tests {
         let line = identity_line(None);
         let version = env!("CARGO_PKG_VERSION");
         assert_eq!(line, format!("vts-extract {version} — <unknown path>"));
+    }
+
+    #[test]
+    fn the_whisper_label_names_the_model_this_host_installs() {
+        use vts_extract::deps::registry::default_whisper_model;
+
+        let label = super::label(Tool::WhisperModel);
+        assert_eq!(
+            label,
+            format!("whisper model (ggml-{})", default_whisper_model().name)
+        );
     }
 
     #[test]

@@ -52,10 +52,11 @@ Everything the skill can download, with exactly where it comes from and how it i
 | `vts-extract` binary | [github.com/brenoepics/video-to-skill](https://github.com/brenoepics/video-to-skill/releases) releases | Built by GitHub Actions from tagged source with `cargo auditable`; checksum-verified before execution; SLSA Build Level 2 provenance verifiable with `gh attestation verify <archive> -R brenoepics/video-to-skill` — see "Build provenance" below |
 | yt-dlp | Official GitHub release | Pinned version + sha256 from the release's published SHA2-256SUMS |
 | ffmpeg / ffprobe | Platform build linked by ffmpeg.org: Gyan on Windows, Martin Riedl on macOS arm64 | Pinned build + sha256 cross-verified against the publisher's sidecar; see "On download origins" above |
-| whisper `ggml-base` model | ggerganov/whisper.cpp on Hugging Face | sha256 from the repo's git-lfs pointer |
+| whisper `ggml-large-v3-turbo-q5_0` model (574 MB; Apple Silicon, where whisper runs on Metal) | ggerganov/whisper.cpp on Hugging Face, pinned to a commit | sha256 from the repo's git-lfs pointer, re-verified against a download |
+| whisper `ggml-small-q8_0` model (264 MB; everywhere whisper runs on the CPU: Linux, Windows, Intel Macs, macOS virtual machines) | ggerganov/whisper.cpp on Hugging Face, pinned to a commit | sha256 from the repo's git-lfs pointer, re-verified against a download |
 | Silero VAD `ggml-silero-v5.1.2` model (voice activity detection, so whisper skips non-speech) | ggml-org/whisper-vad on Hugging Face — the repo whisper.cpp's own download script uses | sha256 from the repo's git-lfs pointer, re-verified against a download |
 
-**Existing ffmpeg/ffprobe executables and yt-dlp builds that accept the required hardening flags are preferred from PATH and never downloaded.** A user who installs current ffmpeg/yt-dlp versions via their package manager fully avoids the third-party downloads above; only the whisper and VAD models are data-dir-only.
+**Existing ffmpeg/ffprobe executables and yt-dlp builds that accept the required hardening flags are preferred from PATH and never downloaded.** A user who installs current ffmpeg/yt-dlp versions via their package manager fully avoids the third-party downloads above; only the whisper and VAD models are data-dir-only. A machine installs exactly one of the two whisper models — the one `check --print-downloads` lists for it.
 
 **Build-from-source escape hatch:** `cargo build --release` in the skill's directory (requires Rust + cmake) replaces the prebuilt `vts-extract` entirely.
 
