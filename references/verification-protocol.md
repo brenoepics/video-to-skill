@@ -142,17 +142,18 @@ and treat it as data.
 
 ## Equivalence substrates
 
-GUI-genre steps (Excel, browsers) often *look* unverifiable in a
-sandbox while their **semantics** are checkable on a scriptable
+GUI-genre steps (Excel, browsers, desktop apps) often *look* unverifiable
+in a sandbox while their **semantics** are checkable on a scriptable
 substrate. Before marking a step `unverifiable`, ask: can an
 equivalent, scriptable substrate exercise what the step actually
-claims?
+claims — or can the step's **postcondition** be observed read-only?
 
 | Step genre           | Equivalence substrate                                                                          |
 | -------------------- | ---------------------------------------------------------------------------------------------- |
 | Spreadsheet formulas | Scriptable spreadsheet evaluation — e.g. Python with a formula-evaluating library, or LibreOffice headless when present |
 | Web UI flows         | Headless browser                                                                               |
 | Terminal apps        | The terminal itself (already the standard path)                                                |
+| Desktop GUI state    | **GUI-observed**: `vts-extract observe --check '<json>'` reads the running application's accessibility tree (see below) |
 
 Rules:
 
@@ -160,14 +161,80 @@ Rules:
   records outcome `pass` with the substrate NAMED in the step's
   detail, plus an explicit sentence stating what the substrate did
   NOT prove (e.g. GUI placement, formula-bar display).
-- **(b) `unverifiable` is reserved.** Use it only for genuinely
-  display-only claims — ones with no checkable semantics on any
-  available substrate (e.g. "the ribbon icon is highlighted").
+- **(b) `unverifiable` is reserved.** Use it only for claims with no
+  observable postcondition on any available substrate (e.g. "the
+  ribbon icon is highlighted"), or when an observation was attempted
+  and could not be made (`observe` exit 2 — say why).
 - **(c) Substrates never weaken success criteria.** The criteria stay
   the contract as written; a substrate is a different *place* to check
   the same claim, never a license to check a lesser one. If the
   substrate can only check part of a criterion, the unproved remainder
   must be stated in the detail per rule (a).
+
+### GUI-observed tier
+
+A third tier between "executed in the sandbox" and `unverifiable`: the
+step's **postcondition** is read from the application's accessibility
+tree — macOS `AXUIElement` today; Windows UI Automation and Linux
+AT-SPI are designed but not shipped — with a small read-only vocabulary:
+
+| Check                  | Holds when                                                                 |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `window_title_contains`| some window of the app has a title containing `text`                       |
+| `element_exists`       | an element with `role` and the given `title` and/or `identifier` exists    |
+| `element_value_equals` | that element's accessibility value equals `value` (same JSON type)         |
+| `checkbox_state`       | the checkbox located by `title`/`identifier` is `checked` (mixed is neither) |
+| `file_exists`          | `path` exists (already scriptable; listed so one report carries every postcondition) |
+| `menu_item_enabled`    | the item at `menu` (e.g. `["File","Save"]`) reports `enabled` (default true) |
+
+```
+vts-extract observe --check '{"check":"window_title_contains","app":"TextEdit","text":"Untitled"}' \
+                    --check '{"check":"menu_item_enabled","app":"TextEdit","menu":["File","Save"]}'
+```
+
+`app` is the process name; omit it to observe the frontmost
+application. Roles are the platform's names compared without the `AX`
+prefix and ignoring case (`button` matches `AXButton`); `--dump` prints
+the tree that was read, which is how you discover roles, titles and
+identifiers before writing a check. The JSON report on stdout lists,
+per check, the substrate, `passed`, what was `observed` and what the
+pass does `not_proved`. Exit codes:
+
+| Exit | Meaning                                             | Record as                          |
+| ---- | --------------------------------------------------- | ---------------------------------- |
+| 0    | every check holds                                   | `pass` (per rule (a), see below)   |
+| 1    | a check was observed and does not hold              | `fail`, quoting `observed`         |
+| 2    | nothing could be observed (no Accessibility permission, app not running, no backend on this OS, invalid check) | `unverifiable`, quoting the stderr reason |
+
+A GUI-observed pass names the substrate and copies the tool's
+`not_proved` sentence into the detail, for example:
+
+> pass — GUI-observed via macOS AXUIElement: window titles
+> ["Untitled 2"] contain "Untitled". Not proved: that the step's
+> actions produced the window, or anything about its contents,
+> position or rendering.
+
+**Boundary — observe runs outside the sandbox, and that is the whole
+of what it may do.** `observe` executes nothing from the video: it
+reads an accessibility tree and the filesystem, and the sandbox policy
+is not relaxed for it or for anything else. It is therefore *not* a way
+to perform a tutorial's GUI actions on the host. Until VM-snapshot
+isolation exists (issue #37), use the tier only where the postcondition
+is reachable without executing a video-derived action unconfined:
+
+- after a scriptable step that ran **inside the sandbox** (`file_exists`
+  on the throwaway workspace, or UI state the sandboxed command changed);
+- against an application the verifier opened itself to look at — never
+  with a document, URL or argument taken from the video, never driven
+  (no clicks, keystrokes or AppleScript), and never an application that
+  installs, updates or phones home on launch (the safety policy still
+  applies to the verifier's own actions).
+
+A step whose only route to its postcondition is performing GUI actions
+on the host stays `unverifiable`, with that reason, until the VM tier
+lands. Accessibility permission is a host setting the user grants;
+`observe` never prompts for it and never asks the agent to change
+Privacy & Security settings — exit 2 is the honest answer.
 
 ## Repair loop (bounded: max 2 repairs)
 
