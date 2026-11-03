@@ -61,6 +61,11 @@ runs.
   rows generated before VAD (where whisper spent the whole stage decoding
   the tone). `asr-45s` is continuous speech and stays comparable: VAD only
   trims the pauses `say` leaves between sentences.
+- **The whisper model follows the compute device.** Bare-metal Apple
+  Silicon loads `large-v3-turbo-q5_0`; CPU hosts — including the macOS VMs
+  that produce the table below — load `small-q8_0`. Both replaced `base`,
+  so `asr-45s` rows generated before the switch measured a smaller, less
+  accurate model and are not comparable with rows generated after it.
 
 ## Results
 

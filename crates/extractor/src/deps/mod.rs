@@ -55,9 +55,8 @@ impl Tool {
             Tool::Ffmpeg => platform_executable_name("ffmpeg", "ffmpeg.exe"),
             Tool::Ffprobe => platform_executable_name("ffprobe", "ffprobe.exe"),
             Tool::Ytdlp => platform_executable_name("yt-dlp", "yt-dlp.exe"),
-            // Default model: multilingual `base` — 142 MB, fast on Apple
-            // Silicon, good enough for tutorial narration; configurable later.
-            Tool::WhisperModel => "ggml-base.bin",
+            // Follows the compute device; see `registry::whisper_model_for`.
+            Tool::WhisperModel => registry::default_whisper_model().file_name,
             // The VAD model whisper.cpp 1.8.x ships support for (~0.9 MB).
             Tool::WhisperVad => "ggml-silero-v5.1.2.bin",
         }

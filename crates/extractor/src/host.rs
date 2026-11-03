@@ -1,6 +1,42 @@
 //! Facts about the machine the extractor runs on that change how work
 //! is scheduled. Detection is best-effort and never fails the pipeline.
 
+use std::sync::OnceLock;
+
+/// Where whisper inference lands on this machine, which decides how big
+/// a model it can afford.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WhisperDevice {
+    /// Bare-metal Apple Silicon: ggml's Metal backend.
+    Metal,
+    /// Everywhere else: Linux and Windows builds carry no GPU backend,
+    /// Intel Macs are not worth a Metal-sized model, and a macOS virtual
+    /// machine only sees a paravirtual GPU slower than its own CPU.
+    Cpu,
+}
+
+/// The device this process routes whisper to, probed once and cached:
+/// the model registry asks on every path lookup.
+#[must_use]
+pub fn whisper_device() -> WhisperDevice {
+    static DEVICE: OnceLock<WhisperDevice> = OnceLock::new();
+    *DEVICE.get_or_init(|| whisper_device_for(apple_silicon(), is_virtual_machine()))
+}
+
+/// Pure decision: Metal only on real Apple Silicon.
+#[must_use]
+pub fn whisper_device_for(apple_silicon: bool, virtual_machine: bool) -> WhisperDevice {
+    if apple_silicon && !virtual_machine {
+        WhisperDevice::Metal
+    } else {
+        WhisperDevice::Cpu
+    }
+}
+
+const fn apple_silicon() -> bool {
+    cfg!(all(target_os = "macos", target_arch = "aarch64"))
+}
+
 /// True when the kernel reports it is running under a hypervisor, or
 /// the CPU brand string carries the "(Virtual)" marker Apple's
 /// Virtualization framework exposes to guests. Virtual machines only
@@ -43,7 +79,26 @@ pub(crate) fn command_stdout(program: &str, args: &[&str]) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::virtualized_from;
+    use super::{virtualized_from, whisper_device, whisper_device_for, WhisperDevice};
+
+    #[test]
+    fn metal_is_for_bare_metal_apple_silicon_only() {
+        assert_eq!(whisper_device_for(true, false), WhisperDevice::Metal);
+        // A macOS VM only sees a paravirtual GPU slower than its CPU.
+        assert_eq!(whisper_device_for(true, true), WhisperDevice::Cpu);
+        // Linux, Windows and Intel Macs: no GPU backend worth routing to.
+        assert_eq!(whisper_device_for(false, false), WhisperDevice::Cpu);
+        assert_eq!(whisper_device_for(false, true), WhisperDevice::Cpu);
+    }
+
+    #[test]
+    fn this_host_gets_metal_exactly_on_real_apple_silicon() {
+        let apple_silicon = cfg!(all(target_os = "macos", target_arch = "aarch64"));
+        assert_eq!(
+            whisper_device(),
+            whisper_device_for(apple_silicon, super::is_virtual_machine())
+        );
+    }
 
     #[test]
     fn hypervisor_flag_marks_a_virtual_machine() {
