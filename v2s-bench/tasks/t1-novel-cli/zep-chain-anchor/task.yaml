@@ -1,0 +1,80 @@
+schema_version: 1
+id: zep-chain-anchor
+tier: t1-novel-cli
+title: "Chain a new zep drop onto an already-sealed one"
+goal: >-
+  zep's ledger already carries a sealed drop named base-19. Add a second
+  drop named patch-20 that holds the single fact in patch.txt (a key and
+  its value) and leave it finished: sealed, carrying its own anchor, and
+  recorded as descending from base-19 -- zep must report base-19's anchor
+  as patch-20's parent. base-19 itself must be left exactly as it is.
+discoverability: poor
+knowledge_gap:
+  summary: >-
+    A drop's parent is declared at the moment the drop is created, by
+    passing the parent's anchor, and cannot be attached afterwards: the
+    closing step takes no parent. The anchor itself has to be carried over
+    from the parent drop, which only prints it once it is sealed, and zep
+    refuses an anchor that does not belong to a sealed drop -- so the value
+    cannot be invented. The close still needs the new drop's own grant.
+  probe_question: >-
+    In zep, how do you make a new drop record an earlier sealed drop as its
+    parent, where does the value you pass come from, and at which point in
+    the new drop's life does it have to be supplied?
+  probe_answer_pattern: '(?i)(?=[\s\S]*--after)(?=[\s\S]*anchor)(?=[\s\S]*\bopen)'
+  taught_at: [28.0, 40.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - chmod 0111 /usr/local/bin/zep
+    - zep open base-19
+    - zep put base-19 lane amber
+    - zep put base-19 release 19
+    - zep seal base-19 --grant d3ab8f2fc1a0
+    - printf 'note rollback-safe\n' > patch.txt
+budget:
+  max_turns: 40
+  wall_secs: 900
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - parent-record-untouched
+    - record-readable
+    - state-sealed-not-provisional
+    - anchor-is-genuine
+    - entry-is-the-patch-fact
+    - parent-is-the-base-anchor
+    - ledger-agrees
+  key_actions:
+    - '(?mi)^\s*zep\s+(show|ledger)\b[^\n]*'
+    - '(?mi)^\s*zep\s+open\s+patch-20\b[^\n]*--after\b'
+    - '(?mi)^\s*zep\s+seal\s+patch-20\b[^\n]*--grant\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.zep'
+    - '(?mi)(>|tee)\s*[^\n]*\.zep/'
+    - '(?mi)^\s*(python3?|perl|sed\s+-i)\b[^\n]*(sealed|stage|ledger)\.json'
+  leakage_forbidden:
+    - sealed.json
+    - stage.json
+    - parent_anchor
+    - zep-anchor-v1
+    - zep-stamp-v1
+    - parent-record-untouched
+    - parent-is-the-base-anchor
+    - anchor-is-genuine
+    - entry-is-the-patch-fact
+    - "awk '/^anchor:/{print $2}'"
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: zep-chain-anchor
+  sha256: null
+notes: >-
+  The video chains ship-43 onto ship-42; the task chains patch-20 onto
+  base-19, so the anchor value in the video is useless here and only the
+  procedure transfers.

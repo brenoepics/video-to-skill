@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://v2s.dev/bench/schemas/task.schema.json",
+  "title": "v2s-bench task definition",
+  "description": "One benchmark task. Lives at tasks/<tier>/<id>/task.yaml. The checker lives beside it in check/ and is never visible to skill generation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "tier",
+    "title",
+    "goal",
+    "knowledge_gap",
+    "environment",
+    "check",
+    "video",
+    "oracle"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Validated for compatibility in code rather than pinned here, so a v2 record can still be read by a v1 reader that knows how."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64,
+      "description": "Kebab-case, unique across the suite."
+    },
+    "tier": {
+      "enum": [
+        "t1-novel-cli",
+        "t2-real-cli",
+        "t3-gui",
+        "t4-game"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 20,
+      "description": "The task prompt shown to the agent, identical across all arms. Must state the objective without leaking the procedure."
+    },
+    "knowledge_gap": {
+      "type": "object",
+      "description": "The specific thing the video teaches that is required for success. The reason this task can show an effect at all.",
+      "required": [
+        "summary",
+        "probe_question",
+        "probe_answer_pattern",
+        "taught_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 10
+        },
+        "probe_question": {
+          "type": "string",
+          "description": "Asked of the model cold, no tools, to measure headroom (see docs/preregistration.md section 5)."
+        },
+        "probe_answer_pattern": {
+          "type": "string",
+          "description": "Python regex, case-insensitive, that a correct probe answer must match."
+        },
+        "taught_at": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "Timestamps in the source video, in seconds, where the gap is taught."
+        }
+      }
+    },
+    "discoverability": {
+      "enum": [
+        "good",
+        "poor"
+      ],
+      "default": "good",
+      "description": "Whether a competent agent could find the procedure from on-box documentation. Reported as a stratum: it is the main determinant of whether a skill is worth having."
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "image",
+        "workdir"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string",
+          "description": "Container image reference. Resolved to a digest at run time and recorded."
+        },
+        "workdir": {
+          "type": "string"
+        },
+        "setup": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Commands run before the agent starts. Must be deterministic."
+        },
+        "network": {
+          "enum": [
+            "none",
+            "api-only",
+            "bridge"
+          ],
+          "default": "api-only",
+          "description": "Egress policy, identical for every arm. `none` is only usable when the agent runs outside the task container or needs no API (the stub). `api-only` is the normal case: the agent needs to reach its model endpoint, while the task itself must not be solvable by fetching from the open internet -- enforced by an allowlisting proxy, and the effective policy is recorded per trial. `bridge` is unrestricted egress and is recorded as a limitation, not a policy."
+        },
+        "display": {
+          "type": "boolean",
+          "default": false,
+          "description": "Provision Xvfb and a window manager (tier t3-gui)."
+        },
+        "seedable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Environment accepts a seed for deterministic initial state (tier t4-game)."
+        },
+        "gui_only": {
+          "type": "boolean",
+          "default": false,
+          "description": "True when the task must be solved through the GUI. Roughly 15% of tasks in published GUI suites are silently solvable from a terminal, so a skill that says 'just run this command' can manufacture a large meaningless lift. The harness records action modality either way."
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_turns": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 40
+        },
+        "wall_secs": {
+          "type": "integer",
+          "minimum": 10,
+          "default": 600
+        },
+        "max_usd": {
+          "type": "number",
+          "minimum": 0,
+          "default": 2.0
+        }
+      },
+      "description": "Identical for every arm on a given task. An arm that wins on budget is not compared fairly."
+    },
+    "check": {
+      "type": "object",
+      "required": [
+        "entrypoint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entrypoint": {
+          "type": "string",
+          "description": "Executable in check/, run after the agent stops. Prints one assertion-result JSON object to stdout."
+        },
+        "required_assertions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Assertion ids that must all pass for the trial to count as success."
+        },
+        "key_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Python regexes over the executed-command log. Measures procedure fidelity independently of task success."
+        },
+        "forbidden_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Regexes whose match is recorded as a policy violation (hypothesis H7)."
+        },
+        "score": {
+          "type": "object",
+          "description": "Optional graded outcome alongside the binary endpoint (tier t4-game).",
+          "additionalProperties": false,
+          "properties": {
+            "metric": {
+              "type": "string"
+            },
+            "milestones": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "leakage_forbidden": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Literal strings that must NOT appear in any skill supplied to any arm: checker filenames, magic constants, oracle commands. Without this a skill becomes a hidden answer key. Enforced by `v2sbench validate --blind`."
+        }
+      }
+    },
+    "video": {
+      "type": "object",
+      "required": [
+        "tier",
+        "ref"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tier": {
+          "enum": [
+            "hermetic",
+            "real"
+          ],
+          "description": "hermetic = rendered deterministically from a recipe; real = CC/public-domain URL. Never averaged together."
+        },
+        "ref": {
+          "type": "string",
+          "description": "Recipe id under videos/recipes/ (hermetic) or manifest key under videos/manifest.yaml (real)."
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Required for real videos. A mismatch invalidates the row; the harness refuses to score it."
+        }
+      }
+    },
+    "saturated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set by the calibration run. Excluded from the primary endpoint, reported in an appendix."
+    },
+    "license": {
+      "type": "string",
+      "description": "Required when any part of the task is adapted from a third-party suite."
+    },
+    "attribution": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "oracle": {
+      "type": "object",
+      "description": "A known-good solution that MUST pass the checker before any agent trial is run. Independent measurements put the broken-task rate in borrowed agent benchmarks at 10-15%; an oracle gate is the cheapest defence, and it also proves the task is achievable (admission criterion 3).",
+      "required": [
+        "entrypoint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "entrypoint": {
+          "type": "string",
+          "description": "Executable in oracle/, run in a fresh environment. Must drive the real tool, not write the expected end state directly."
+        },
+        "modality": {
+          "enum": [
+            "shell",
+            "gui",
+            "mixed"
+          ],
+          "description": "How the oracle solves it. A GUI task whose oracle is pure shell is not a GUI task."
+        }
+      }
+    },
+    "feedback_bandwidth": {
+      "enum": [
+        "high",
+        "low"
+      ],
+      "default": "high",
+      "description": "Whether a wrong attempt yields a diagnostic error (high) or silently produces a plausible-looking wrong result (low). A published null attributes its result to environments that already correct the agent: where feedback is high, trial-and-error substitutes for instruction. Reported as a stratum and expected to be the main moderator."
+    },
+    "placebo_source": {
+      "type": "string",
+      "description": "Recipe id or manifest key of the DIFFERENT video used to build this task's placebo material (arm A5). Same tool family, wrong procedure."
+    }
+  }
+}

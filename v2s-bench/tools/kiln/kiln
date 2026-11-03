@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""kiln -- the shard roller.
+
+kiln reads a lane description from ./kiln.profile, primes the lane, and
+fires batches: one rollup artifact per firing, built from the shards the
+lane's glob matches. A lane must be primed before it can be fired, and a
+profile edited after priming makes the state stale.
+
+The profile is a plain "key: value" file. Its keys are:
+
+    fire-lane     the lane name; also the artifact's filename prefix
+    shard-glob    which files make up a batch
+    hold-count    how many shards one batch holds -- the LAST n in
+                  name order, so a lane keeps rolling forward
+    prior-batch   optional; chains this firing onto an earlier batch
+
+State lives under ./.kiln/ and artifacts under ./out/. Deterministic:
+no network, no timestamps, no randomness.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+VERSION = "kiln 1.9.0"
+ROOT = ".kiln"
+PROFILE = "kiln.profile"
+OUT = "out"
+LANE_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+REQUIRED = ("fire-lane", "shard-glob", "hold-count")
+
+HELP = """kiln 1.9.0 -- shard roller
+usage: kiln [prime|fire|peek] [--version]
+(lane configuration: see the operations handbook)
+"""
+
+
+def die(msg: str, code: int = 2) -> None:
+    sys.stderr.write("kiln: " + msg + "\n")
+    raise SystemExit(code)
+
+
+def inside(rel: str) -> Path:
+    base = Path.cwd().resolve()
+    target = Path(rel)
+    full = (target if target.is_absolute() else base / target).resolve()
+    if full != base and base not in full.parents:
+        die("refusing a path outside the work directory: " + rel, 8)
+    return full
+
+
+def canon(obj: object) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+
+
+def digest(tag: str, payload: str, width: int) -> str:
+    return hashlib.sha256((tag + "\n" + payload).encode("utf-8")).hexdigest()[:width]
+
+
+def profile_text() -> str:
+    path = inside(PROFILE)
+    if not path.is_file():
+        die("profile absent: ./" + PROFILE, 3)
+    return path.read_text(encoding="utf-8")
+
+
+def parse_profile(text: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        key, sep, value = stripped.partition(":")
+        if not sep:
+            die("profile malformed", 3)
+        fields[key.strip()] = value.strip()
+    for key in REQUIRED:
+        if not fields.get(key):
+            die("profile incomplete", 3)
+    if not LANE_RE.match(fields["fire-lane"]):
+        die("profile incomplete", 3)
+    if not fields["hold-count"].isdigit() or int(fields["hold-count"]) < 1:
+        die("profile incomplete", 3)
+    return fields
+
+
+def state_path() -> Path:
+    return inside(ROOT) / "state.json"
+
+
+def load_state() -> dict:
+    path = state_path()
+    if not path.is_file():
+        die("lane not primed", 4)
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        die("state unreadable", 4)
+        raise AssertionError("unreachable")
+
+
+def state_stamp(state: dict) -> str:
+    bare = {k: v for k, v in state.items() if k != "stamp"}
+    return digest("kiln-state-v1", canon(bare), 16)
+
+
+def save_state(state: dict) -> None:
+    state = {k: v for k, v in state.items() if k != "stamp"}
+    state["stamp"] = state_stamp(state)
+    path = state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(canon(state) + "\n", encoding="utf-8")
+
+
+def shards(glob: str) -> list[Path]:
+    if glob.startswith("/") or ".." in glob:
+        die("shard-glob must stay in the work directory", 8)
+    return sorted(p for p in Path.cwd().glob(glob) if p.is_file())
+
+
+def cmd_prime(args: list[str]) -> int:
+    if args:
+        die("usage: kiln prime", 2)
+    text = profile_text()
+    fields = parse_profile(text)
+    prior = fields.get("prior-batch") or None
+    if prior is not None and not (inside(ROOT) / "batches" / (prior + ".json")).is_file():
+        die("unknown prior batch: " + prior, 7)
+    matched = shards(fields["shard-glob"])
+    old = {}
+    if state_path().is_file():
+        try:
+            old = json.loads(state_path().read_text(encoding="utf-8"))
+        except ValueError:
+            old = {}
+    save_state(
+        {
+            "lane": fields["fire-lane"],
+            "glob": fields["shard-glob"],
+            "hold": int(fields["hold-count"]),
+            "prior": prior,
+            "primed": True,
+            "profile_stamp": digest("kiln-profile-v1", text, 16),
+            "last_batch": old.get("last_batch"),
+        }
+    )
+    print("primed lane " + fields["fire-lane"])
+    print("shards: %d matched" % len(matched))
+    print("hold: %d" % int(fields["hold-count"]))
+    print("prior: " + (prior or "-"))
+    return 0
+
+
+def cmd_fire(args: list[str]) -> int:
+    if args:
+        die("usage: kiln fire", 2)
+    state = load_state()
+    if state.get("stamp") != state_stamp(state):
+        die("state unreadable", 4)
+    text = profile_text()
+    if digest("kiln-profile-v1", text, 16) != state.get("profile_stamp"):
+        die("state stale", 5)
+    matched = shards(state["glob"])
+    if not matched:
+        die("no shards matched", 6)
+    held = matched[-int(state["hold"]) :]
+    prior = state.get("prior") or "-"
+    body = "".join(
+        "-- %s\n%s" % (p.name, p.read_text(encoding="utf-8")) for p in held
+    )
+    batch = digest("kiln-batch-v1", state["lane"] + "\n" + prior + "\n" + body, 8)
+    artifact = "%s/%s-%s.rollup" % (OUT, state["lane"], batch)
+    header = "# kiln rollup\nlane: %s\nbatch: %s\nprior: %s\nshards: %d\n--\n" % (
+        state["lane"],
+        batch,
+        prior,
+        len(held),
+    )
+    target = inside(artifact)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(header + body, encoding="utf-8")
+    record = {
+        "batch": batch,
+        "lane": state["lane"],
+        "prior": state.get("prior"),
+        "shards": [p.name for p in held],
+        "artifact": artifact,
+    }
+    record["stamp"] = digest("kiln-batch-rec-v1", canon(record), 16)
+    rec_path = inside(ROOT) / "batches" / (batch + ".json")
+    rec_path.parent.mkdir(parents=True, exist_ok=True)
+    rec_path.write_text(canon(record) + "\n", encoding="utf-8")
+    state["last_batch"] = batch
+    save_state(state)
+    print("fired " + state["lane"])
+    print("batch: " + batch)
+    print("prior: " + prior)
+    print("wrote " + artifact)
+    return 0
+
+
+def cmd_peek(args: list[str]) -> int:
+    if args:
+        die("usage: kiln peek", 2)
+    state = load_state()
+    print("lane: " + str(state.get("lane")))
+    print("primed: " + ("yes" if state.get("primed") else "no"))
+    print("glob: " + str(state.get("glob")))
+    print("hold: %s" % state.get("hold"))
+    print("prior: " + (state.get("prior") or "-"))
+    print("last batch: " + (state.get("last_batch") or "-"))
+    fresh = state_path().is_file() and digest("kiln-profile-v1", profile_text(), 16) == state.get(
+        "profile_stamp"
+    )
+    print("profile: " + ("fresh" if fresh else "stale"))
+    return 0
+
+
+COMMANDS = {"prime": cmd_prime, "fire": cmd_fire, "peek": cmd_peek}
+
+
+def main(argv: list[str]) -> int:
+    args = list(argv)
+    if not args or args[0] in ("--help", "-h", "help"):
+        sys.stdout.write(HELP)
+        return 0
+    if args[0] in ("--version", "-V"):
+        print(VERSION)
+        return 0
+    cmd = args.pop(0)
+    if cmd not in COMMANDS:
+        die("unknown command: " + cmd, 2)
+    if "--help" in args or "-h" in args:
+        sys.stdout.write(HELP)
+        return 0
+    return COMMANDS[cmd](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

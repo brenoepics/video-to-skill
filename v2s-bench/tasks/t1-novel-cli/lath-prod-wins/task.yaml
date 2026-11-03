@@ -1,0 +1,71 @@
+schema_version: 1
+id: lath-prod-wins
+tier: t1-novel-cli
+title: "Merge two lath layers so the production layer wins"
+goal: >-
+  Two lath layers already exist in this tree: base and prod. Produce
+  build/app.json holding the merged configuration of both, in which every
+  key prod defines wins over base's value for the same key, and keys only
+  base defines are still present. The file must be the one lath itself
+  wrote from those layers, and lath's own record of the merge must describe
+  exactly that file.
+discoverability: good
+knowledge_gap:
+  summary: >-
+    lath precedence is first-wins: the layer stacked FIRST supplies a
+    contested key and later layers only fill in keys nobody earlier set.
+    Stacking base before prod -- the order a last-wins convention would
+    suggest -- merges cleanly, exits 0, and quietly produces base's values
+    for every contested key. Only stacked layers take part in a merge at
+    all.
+  probe_question: >-
+    In lath, which of two stacked layers wins a key they both define, and in
+    what order must you stack prod and base so that prod's values win?
+  probe_answer_pattern: '(?i)(?=[\s\S]*(first|earliest)[^\n]{0,40}(wins|win|takes precedence|precedence|highest))(?=[\s\S]*(stack\s+prod[\s\S]{0,80}stack\s+base|prod[^\n]{0,40}(first|before base)))'
+  taught_at: [24.0, 32.0, 44.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - lath init
+    - lath set base 8080 port
+    - lath set base eu-west region
+    - lath set base 30 timeout
+    - lath set prod 60 timeout
+    - lath set prod on trace
+budget:
+  max_turns: 30
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - merged-file-exists
+    - merged-content-exact
+    - prod-wins-the-conflict
+    - flatten-record-matches-file
+  key_actions:
+    - '(?mi)^\s*lath\s+stack\s+prod\b[\s\S]*^\s*lath\s+stack\s+base\b'
+    - '(?mi)^\s*lath\s+flatten\b[^\n]*build/app\.json'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.lath'
+    - '(?mi)(>|tee)\s*[^\n]*\.lath/'
+    - '(?mi)^\s*(python3?|perl|sed\s+-i|jq)\b[^\n]*build/app\.json'
+  leakage_forbidden:
+    - lath-fp-v1
+    - lath-flatten-v1
+    - last-flatten.json
+    - merged-content-exact
+    - prod-wins-the-conflict
+    - flatten-record-matches-file
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: lath-prod-wins
+  sha256: null
+notes: >-
+  The video merges layers called stage and edge into a different output
+  path, so the precedence rule is the only transferable part.

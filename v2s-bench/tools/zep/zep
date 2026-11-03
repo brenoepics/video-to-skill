@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""zep -- the drop ledger.
+
+A drop is a named batch of key/value facts. A drop is opened, entries are
+staged into it, and then it is closed. Closing a drop with its grant nonce
+seals it and computes an anchor; closing it without the grant leaves a
+provisional record that carries no anchor and cannot be chained from.
+
+State lives under ./.zep/ and nowhere else. No network, no timestamps, no
+randomness: the same inputs always produce the same bytes.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+VERSION = "zep 0.4.2"
+ROOT = ".zep"
+NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+
+HELP = """zep 0.4.2
+usage: zep <cmd> [...]
+
+  open    begin a drop
+  put     stage an entry
+  seal    close a drop
+  show    print a drop
+  ledger  list drops
+  grant   grant info
+
+options: --version  --help
+note: seal also accepts --token for compatibility.
+"""
+
+
+def die(msg: str, code: int = 2) -> None:
+    sys.stderr.write("zep: " + msg + "\n")
+    raise SystemExit(code)
+
+
+def inside(rel: str) -> Path:
+    """Resolve rel under the work directory, refusing any escape."""
+    base = Path.cwd().resolve()
+    target = Path(rel)
+    full = (target if target.is_absolute() else base / target).resolve()
+    if full != base and base not in full.parents:
+        die("refusing a path outside the work directory: " + rel, 5)
+    return full
+
+
+def canon(obj: object) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+
+
+def digest(tag: str, payload: str, width: int) -> str:
+    return hashlib.sha256((tag + "\n" + payload).encode("utf-8")).hexdigest()[:width]
+
+
+def grant_for(name: str) -> str:
+    return digest("zep-grant-v1", name, 12)
+
+
+def anchor_for(name: str, entries: list[dict], parent: str | None) -> str:
+    body = "".join("%s=%s\n" % (e["key"], e["value"]) for e in entries)
+    return digest("zep-anchor-v1", name + "\n" + body + (parent or "-"), 16)
+
+
+def stamp_for(record: dict) -> str:
+    bare = {k: v for k, v in record.items() if k != "stamp"}
+    return digest("zep-stamp-v1", canon(bare), 16)
+
+
+def drop_dir(name: str) -> Path:
+    return inside(ROOT) / "drops" / name
+
+
+def read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        die("unreadable state: " + str(path), 6)
+        raise AssertionError("unreachable")
+
+
+def write_json(path: Path, obj: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(canon(obj) + "\n", encoding="utf-8")
+
+
+def load_ledger() -> dict:
+    path = inside(ROOT) / "ledger.json"
+    if not path.exists():
+        return {"version": 1, "drops": {}}
+    return read_json(path)
+
+
+def save_ledger(ledger: dict) -> None:
+    write_json(inside(ROOT) / "ledger.json", ledger)
+
+
+def note_state(name: str, state: str, anchor: str | None) -> None:
+    ledger = load_ledger()
+    ledger["drops"][name] = {"state": state, "anchor": anchor}
+    save_ledger(ledger)
+
+
+def check_name(name: str) -> str:
+    if not NAME_RE.match(name):
+        die("bad drop name: " + name, 2)
+    return name
+
+
+def sealed_path(name: str) -> Path:
+    return drop_dir(name) / "sealed.json"
+
+
+def find_anchor(anchor: str) -> str | None:
+    """The drop a sealed anchor belongs to, or None."""
+    drops = inside(ROOT) / "drops"
+    if not drops.is_dir():
+        return None
+    for child in sorted(drops.iterdir()):
+        rec_path = child / "sealed.json"
+        if not rec_path.is_file():
+            continue
+        rec = read_json(rec_path)
+        if rec.get("state") == "sealed" and rec.get("anchor") == anchor:
+            return str(rec.get("name"))
+    return None
+
+
+def take_opt(args: list[str], flag: str) -> str | None:
+    if flag not in args:
+        return None
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        die("option " + flag + " needs a value", 2)
+    value = args[idx + 1]
+    del args[idx : idx + 2]
+    return value
+
+
+def no_strays(args: list[str]) -> None:
+    for arg in args:
+        if arg.startswith("-"):
+            die("unknown option: " + arg, 2)
+
+
+def cmd_open(args: list[str]) -> int:
+    after = take_opt(args, "--after")
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: zep open <name> [--after <anchor>]", 2)
+    name = check_name(args[0])
+    if drop_dir(name).exists():
+        die("drop " + name + " already exists", 3)
+    if after is not None and find_anchor(after) is None:
+        die("unknown anchor: " + after, 4)
+    stage = {"name": name, "entries": [], "after": after}
+    write_json(drop_dir(name) / "stage.json", stage)
+    (drop_dir(name) / "grant").write_text(grant_for(name) + "\n", encoding="utf-8")
+    note_state(name, "open", None)
+    print("drop " + name + " opened")
+    print("grant: " + grant_for(name))
+    print("grant file: %s/drops/%s/grant" % (ROOT, name))
+    if after is not None:
+        print("after: " + after)
+    return 0
+
+
+def cmd_put(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 3:
+        die("usage: zep put <name> <key> <value>", 2)
+    name, key, value = check_name(args[0]), args[1], args[2]
+    stage_path = drop_dir(name) / "stage.json"
+    if not stage_path.is_file():
+        die("no such drop: " + name, 3)
+    record = sealed_path(name)
+    if record.is_file() and read_json(record).get("state") == "sealed":
+        die("drop " + name + " is sealed", 3)
+    stage = read_json(stage_path)
+    entries = [e for e in stage["entries"] if e["key"] != key]
+    entries.append({"key": key, "value": value})
+    stage["entries"] = entries
+    write_json(stage_path, stage)
+    print("staged %s in %s (%d total)" % (key, name, len(entries)))
+    return 0
+
+
+def cmd_seal(args: list[str]) -> int:
+    grant = take_opt(args, "--grant")
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: zep seal <name> [--grant <nonce>]", 2)
+    name = check_name(args[0])
+    stage_path = drop_dir(name) / "stage.json"
+    if not stage_path.is_file():
+        die("no such drop: " + name, 3)
+    record = sealed_path(name)
+    if record.is_file() and read_json(record).get("state") == "sealed":
+        die("drop " + name + " is already sealed", 3)
+    stage = read_json(stage_path)
+    entries = stage["entries"]
+    if not entries:
+        die("nothing staged in " + name, 3)
+    if grant is None:
+        out = {
+            "name": name,
+            "state": "provisional",
+            "entries": entries,
+            "anchor": None,
+            "parent_anchor": stage.get("after"),
+        }
+        out["stamp"] = stamp_for(out)
+        write_json(record, out)
+        note_state(name, "provisional", None)
+        print("closed %s (%d entries)" % (name, len(entries)))
+        print("state: provisional")
+        return 0
+    if grant != grant_for(name):
+        die("grant mismatch for " + name, 4)
+    anchor = anchor_for(name, entries, stage.get("after"))
+    out = {
+        "name": name,
+        "state": "sealed",
+        "entries": entries,
+        "anchor": anchor,
+        "parent_anchor": stage.get("after"),
+    }
+    out["stamp"] = stamp_for(out)
+    write_json(record, out)
+    note_state(name, "sealed", anchor)
+    print("sealed %s (%d entries)" % (name, len(entries)))
+    print("anchor: " + anchor)
+    return 0
+
+
+def cmd_show(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: zep show <name>", 2)
+    name = check_name(args[0])
+    stage_path = drop_dir(name) / "stage.json"
+    if not stage_path.is_file():
+        die("no such drop: " + name, 3)
+    stage = read_json(stage_path)
+    record = sealed_path(name)
+    rec = read_json(record) if record.is_file() else None
+    state = rec["state"] if rec else "open"
+    entries = rec["entries"] if rec else stage["entries"]
+    print("drop: " + name)
+    print("state: " + state)
+    print("entries: %d" % len(entries))
+    print("anchor: " + ((rec and rec.get("anchor")) or "-"))
+    print("parent: " + (stage.get("after") or "-"))
+    for entry in entries:
+        print("  %s = %s" % (entry["key"], entry["value"]))
+    return 0
+
+
+def cmd_ledger(args: list[str]) -> int:
+    no_strays(args)
+    if args:
+        die("usage: zep ledger", 2)
+    ledger = load_ledger()
+    if not ledger["drops"]:
+        print("no drops")
+        return 0
+    for name in sorted(ledger["drops"]):
+        row = ledger["drops"][name]
+        print("%-12s %-11s %s" % (name, row["state"], row.get("anchor") or "-"))
+    return 0
+
+
+def cmd_grant(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: zep grant <name>", 2)
+    name = check_name(args[0])
+    path = drop_dir(name) / "grant"
+    if not path.is_file():
+        die("no such drop: " + name, 3)
+    print("grant: " + path.read_text(encoding="utf-8").strip())
+    print("grant file: %s/drops/%s/grant" % (ROOT, name))
+    return 0
+
+
+COMMANDS = {
+    "open": cmd_open,
+    "put": cmd_put,
+    "seal": cmd_seal,
+    "show": cmd_show,
+    "ledger": cmd_ledger,
+    "grant": cmd_grant,
+}
+
+
+def main(argv: list[str]) -> int:
+    args = list(argv)
+    if not args or args[0] in ("--help", "-h", "help"):
+        sys.stdout.write(HELP)
+        return 0
+    if args[0] in ("--version", "-V"):
+        print(VERSION)
+        return 0
+    cmd = args.pop(0)
+    if cmd not in COMMANDS:
+        die("unknown command: " + cmd, 2)
+    if "--help" in args or "-h" in args:
+        sys.stdout.write(HELP)
+        return 0
+    return COMMANDS[cmd](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

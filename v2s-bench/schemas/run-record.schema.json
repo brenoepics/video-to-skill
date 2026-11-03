@@ -1,0 +1,430 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://v2s.dev/bench/schemas/run-record.schema.json",
+  "title": "v2s-bench run record",
+  "description": "One trial = one (task, arm, seed). Append-only and immutable. Every published figure is recomputable from a set of these by `v2sbench verify-results`.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "trial_id",
+    "run_id",
+    "task",
+    "arm",
+    "seed",
+    "outcome",
+    "provenance"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "trial_id": {
+      "type": "string",
+      "description": "Stable hash of (run_id, task, arm, seed)."
+    },
+    "run_id": {
+      "type": "string",
+      "description": "Identifies the batch; shared by every trial in one `v2sbench run`."
+    },
+    "task": {
+      "type": "object",
+      "required": [
+        "id",
+        "tier",
+        "suite_version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "suite_version": {
+          "type": "string"
+        },
+        "discoverability": {
+          "enum": [
+            "good",
+            "poor"
+          ]
+        },
+        "headroom_band": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "saturated",
+            "unknown"
+          ]
+        },
+        "saturated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "arm": {
+      "enum": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6"
+      ]
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "outcome": {
+      "type": "object",
+      "required": [
+        "status",
+        "success"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "ok",
+            "error",
+            "timeout",
+            "budget_exceeded",
+            "refused"
+          ],
+          "description": "`error` trials are excluded from the endpoint and their rate is published per arm. They are never counted as failures."
+        },
+        "success": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "null when status != ok."
+        },
+        "assertions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "passed"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "score": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "error_detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "turns": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wall_secs": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tokens_in": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tokens_out": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "usd_cost": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "first_try": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "key_action_hit": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "key_actions_matched": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hallucinated_cmds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policy_violations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "skill_cited": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether the trace shows the supplied skill was actually read. A skill arm that wins without this is evidence of a harness leak."
+        },
+        "action_modality": {
+          "enum": [
+            "shell",
+            "gui",
+            "mixed",
+            "unknown"
+          ],
+          "description": "How the agent actually acted. Reported per arm: a lift obtained by bypassing the GUI on a GUI task is not the lift being claimed."
+        },
+        "skill_steps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Step count of the supplied skill. Compactness is a known moderator -- compact skills have been measured to help several times more than comprehensive documentation -- so it is recorded as a covariate, not assumed away."
+        },
+        "turns_to_first_success": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      }
+    },
+    "material": {
+      "type": "object",
+      "description": "What context this arm was given. The audit trail for the only intended difference between arms.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "none",
+            "v2s-skill",
+            "transcript-skill",
+            "v2s-skill-unverified",
+            "human-skill",
+            "placebo-skill",
+            "raw-transcript"
+          ]
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Hash of the exact bytes injected."
+        },
+        "chars": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "verified_steps": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The v2s badge, e.g. \"7/9\"."
+        },
+        "blind_check": {
+          "enum": [
+            "pass",
+            "fail",
+            "skipped"
+          ],
+          "description": "Grader-blind string check (preregistration section 3.2)."
+        }
+      }
+    },
+    "video": {
+      "type": "object",
+      "properties": {
+        "tier": {
+          "enum": [
+            "hermetic",
+            "real"
+          ]
+        },
+        "ref": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "harness_version",
+        "model",
+        "started_at"
+      ],
+      "description": "A figure without this is not published.",
+      "properties": {
+        "harness_version": {
+          "type": "string"
+        },
+        "suite_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prereg_commit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The frozen pre-registration this run was executed under."
+        },
+        "model": {
+          "type": "string",
+          "description": "Exact model id, never a marketing name or alias."
+        },
+        "model_params": {
+          "type": "object",
+          "description": "temperature, top_p, thinking budget, max_tokens \u2014 all sampling params that affect the result."
+        },
+        "agent_adapter": {
+          "type": "string"
+        },
+        "agent_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "image_digest": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sandbox_backend": {
+          "enum": [
+            "docker",
+            "local",
+            "bubblewrap"
+          ]
+        },
+        "host": {
+          "type": "object"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "is_mock": {
+          "type": "boolean",
+          "default": false,
+          "description": "True for records produced by the stub agent or `--mock`. Mock records can never be aggregated into a published figure; the report builder refuses to mix them with real ones."
+        },
+        "harness_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Content hash of the harness itself. Harness changes have been shown to swing the same model's score on the same tasks by tens of points, so the harness is pinned exactly like the model."
+        }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "description": "Enough to audit the trial without shipping the full transcript.",
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The executed-command log, in order."
+        },
+        "transcript_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Relative path to the full gzipped trace artifact, released separately."
+        },
+        "transcript_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "extra": {
+      "type": "object",
+      "description": "Pass-through for execution-backend fields we do not model (e.g. a third-party trajectory format). Never read by the analysis; present so a backend's own metadata survives without forcing a schema bump."
+    }
+  }
+}

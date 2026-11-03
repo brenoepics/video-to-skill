@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://v2s.dev/bench/schemas/recipe.schema.json",
+  "title": "Hermetic screencast recipe",
+  "description": "A tutorial video described as data. Rendered deterministically to mp4 by `v2sbench render`; no video bytes are ever committed. Intentionally shape-compatible with crates/extractor/eval/<id>/recipe.json in the video-to-skill repository so recipes are portable between the intrinsic and extrinsic evaluations.",
+  "type": "object",
+  "required": ["schema_version", "id", "title", "width", "height", "fps", "duration_secs", "stills"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "title": { "type": "string" },
+    "width": { "type": "integer", "enum": [1280, 1920] },
+    "height": { "type": "integer", "enum": [720, 1080] },
+    "fps": { "type": "integer", "minimum": 5, "maximum": 30 },
+    "duration_secs": { "type": "number", "exclusiveMinimum": 0 },
+    "stills": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Keyed screen states. Each still holds from its `t` until the next. Every still after the first that is not `continuous` is a gold visual change.",
+      "items": {
+        "type": "object",
+        "required": ["t"],
+        "additionalProperties": false,
+        "properties": {
+          "t": { "type": "number", "minimum": 0 },
+          "step": { "type": "string", "description": "Kebab-case step label; stills sharing a label form that step's span." },
+          "continuous": { "type": "boolean", "default": false, "description": "Part of a scroll or streaming output rather than a discrete change." },
+          "terminal": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "prompt": { "type": "string", "default": "$ " },
+              "lines": { "type": "array", "items": { "type": "string" }, "description": "Scrollback above the current prompt." },
+              "type": { "type": "string", "description": "The command shown typed at the prompt. Read off pixels by the extractor; this is the ground truth a transcript cannot carry." },
+              "output": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "dialog": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "rows": { "type": "array", "items": { "type": "string" } },
+              "buttons": { "type": "array", "items": { "type": "string" } },
+              "focus": { "type": "string", "description": "Button or row drawn with focus, and where the synthetic cursor is placed." }
+            }
+          },
+          "slide": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "heading": { "type": "string" },
+              "bullets": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "desktop": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": { "status": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "narration": {
+      "type": "array",
+      "description": "Spoken cues, synthesised by TTS and muxed as the audio track. Write these the way a narrator really speaks -- vague about exact syntax -- so the transcript-only arm is a fair representation of what narration alone carries.",
+      "items": {
+        "type": "object",
+        "required": ["t", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "t": { "type": "number", "minimum": 0 },
+          "text": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

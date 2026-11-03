@@ -1,0 +1,416 @@
+#!/usr/bin/env python3
+"""lath -- the layered config compiler.
+
+Values are staged into named layers, the layers are stacked into a
+precedence order, and `flatten` merges them into one JSON file. Two
+things about lath surprise people, so both are spelled out in `lath
+help`: `set` takes the value before the key, and the FIRST layer stacked
+wins.
+
+State lives under ./.lath/ and nowhere else. Deterministic: no network,
+no timestamps, no randomness.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+VERSION = "lath 2.3.0"
+ROOT = ".lath"
+LAYER_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,47}$")
+
+HELP = """lath 2.3.0 -- layered config compiler
+
+usage: lath <command> [arguments]
+
+  init                            create .lath/ in the current directory
+  set <layer> <value> <key>       stage a value in a layer
+  unset <layer> <key>             drop a key from a layer
+  stack <layer>                   append a layer to the precedence order
+  unstack <layer>                 remove a layer from the precedence order
+  layers                          show the precedence order
+  show <layer>                    print one layer's keys
+  flatten --out <path>            merge the stacked layers into a file
+  help [<command>]                long help, per command
+
+options:
+  --version                       print the version and exit
+  --help                          print this text
+
+two rules worth reading twice:
+  * set takes the VALUE first and the KEY second
+  * the FIRST layer stacked wins a conflict, not the last
+
+run `lath help set` or `lath help stack` for the long version.
+"""
+
+TOPICS = {
+    "init": """lath init
+
+  Create .lath/ in the current directory. Every other command needs it
+  and will refuse to run outside a lath tree.
+""",
+    "set": """lath set <layer> <value> <key>
+
+  Stage one value in one layer, creating the layer if needed.
+
+  The VALUE comes BEFORE the KEY. lath stores records as (value, key)
+  pairs internally and the command line mirrors that order, so a plain
+  reading of the line is "set, in layer base, the value 8080, as port":
+
+      lath set base 8080 port
+      lath set base eu-west region
+
+  Writing it the other way round is accepted -- it stages the key
+  "8080" holding the value "port" -- so check `lath show <layer>`
+  afterwards.
+""",
+    "unset": """lath unset <layer> <key>
+
+  Remove a key from a layer. Takes the key, not the value.
+""",
+    "stack": """lath stack <layer>
+
+  Append a layer to the precedence order.
+
+  Precedence is first-wins: the FIRST layer stacked wins a conflict,
+  and layers after it only fill in keys nobody earlier set. So to let
+  prod override base, stack prod first:
+
+      lath stack prod
+      lath stack base
+
+  `lath layers` prints the order with position 1 at the top, which is
+  the layer that wins.
+""",
+    "unstack": """lath unstack <layer>
+
+  Remove a layer from the precedence order. The layer's keys stay on
+  disk; it simply stops contributing to flatten.
+""",
+    "layers": """lath layers
+
+  Print the precedence order, position 1 first, and list any layers on
+  disk that are not stacked.
+""",
+    "show": """lath show <layer>
+
+  Print one layer's keys and values, key order sorted.
+""",
+    "flatten": """lath flatten --out <path>
+
+  Merge every stacked layer under first-wins precedence and write the
+  result to <path> as a JSON object of string values. Parent
+  directories are created. --out is required.
+
+  flatten prints a fingerprint: a digest of the merged result, stable
+  across machines and independent of the output path. Pin it somewhere
+  if you need to prove which merge produced a file.
+
+  A layer edited by hand, outside lath, makes flatten refuse: lath
+  keeps a digest per layer in .lath/index.json and checks it first.
+""",
+}
+
+
+def die(msg: str, code: int = 2) -> None:
+    sys.stderr.write("lath: " + msg + "\n")
+    raise SystemExit(code)
+
+
+def inside(rel: str) -> Path:
+    base = Path.cwd().resolve()
+    target = Path(rel)
+    full = (target if target.is_absolute() else base / target).resolve()
+    if full != base and base not in full.parents:
+        die("refusing a path outside the work directory: " + rel, 5)
+    return full
+
+
+def canon(obj: object) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+
+
+def digest(tag: str, payload: str, width: int) -> str:
+    return hashlib.sha256((tag + "\n" + payload).encode("utf-8")).hexdigest()[:width]
+
+
+def root() -> Path:
+    path = inside(ROOT)
+    if not path.is_dir():
+        die("not a lath tree (run lath init)", 6)
+    return path
+
+
+def layer_path(name: str) -> Path:
+    return root() / "layers" / (name + ".kv")
+
+
+def layer_stamp(name: str, text: str) -> str:
+    return digest("lath-layer-v1", name + "\n" + text, 16)
+
+
+def read_layer(name: str) -> dict[str, str]:
+    path = layer_path(name)
+    if not path.is_file():
+        return {}
+    pairs: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        key, _, value = line.partition("\t")
+        pairs[key] = value
+    return pairs
+
+
+def write_layer(name: str, pairs: dict[str, str]) -> None:
+    path = layer_path(name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = "".join("%s\t%s\n" % (k, pairs[k]) for k in sorted(pairs))
+    path.write_text(text, encoding="utf-8")
+    index = read_index()
+    index["layers"][name] = layer_stamp(name, text)
+    write_index(index)
+
+
+def read_index() -> dict:
+    path = root() / "index.json"
+    if not path.is_file():
+        return {"version": 1, "layers": {}}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        die("unreadable index", 6)
+        raise AssertionError("unreachable")
+
+
+def write_index(index: dict) -> None:
+    (root() / "index.json").write_text(canon(index) + "\n", encoding="utf-8")
+
+
+def read_order() -> list[str]:
+    path = root() / "order"
+    if not path.is_file():
+        return []
+    return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def write_order(order: list[str]) -> None:
+    (root() / "order").write_text("".join(name + "\n" for name in order), encoding="utf-8")
+
+
+def all_layers() -> list[str]:
+    folder = root() / "layers"
+    if not folder.is_dir():
+        return []
+    return sorted(p.stem for p in folder.glob("*.kv"))
+
+
+def check_layer(name: str) -> str:
+    if not LAYER_RE.match(name):
+        die("bad layer name: " + name, 2)
+    return name
+
+
+def take_opt(args: list[str], flag: str) -> str | None:
+    if flag not in args:
+        return None
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        die("option " + flag + " needs a value", 2)
+    value = args[idx + 1]
+    del args[idx : idx + 2]
+    return value
+
+
+def no_strays(args: list[str]) -> None:
+    for arg in args:
+        if arg.startswith("--"):
+            die("unknown option: " + arg, 2)
+
+
+def cmd_init(args: list[str]) -> int:
+    no_strays(args)
+    if args:
+        die("usage: lath init", 2)
+    path = inside(ROOT)
+    if path.is_dir():
+        print("already a lath tree")
+        return 0
+    (path / "layers").mkdir(parents=True)
+    write_order([])
+    write_index({"version": 1, "layers": {}})
+    print("lath tree created in .lath")
+    return 0
+
+
+def cmd_set(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 3:
+        die("usage: lath set <layer> <value> <key>", 2)
+    name, value, key = check_layer(args[0]), args[1], args[2]
+    if not KEY_RE.match(key):
+        die("bad key: " + key, 2)
+    if "\t" in value or "\n" in value:
+        die("value may not contain a tab or a newline", 2)
+    pairs = read_layer(name)
+    pairs[key] = value
+    write_layer(name, pairs)
+    print("%s: %s = %s" % (name, key, value))
+    return 0
+
+
+def cmd_unset(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 2:
+        die("usage: lath unset <layer> <key>", 2)
+    name, key = check_layer(args[0]), args[1]
+    pairs = read_layer(name)
+    if key not in pairs:
+        die("%s has no key %s" % (name, key), 3)
+    del pairs[key]
+    write_layer(name, pairs)
+    print("%s: dropped %s" % (name, key))
+    return 0
+
+
+def cmd_stack(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: lath stack <layer>", 2)
+    name = check_layer(args[0])
+    if not layer_path(name).is_file():
+        die("no such layer: " + name, 3)
+    order = read_order()
+    if name in order:
+        die(name + " is already stacked", 3)
+    order.append(name)
+    write_order(order)
+    print("stacked %s at position %d" % (name, len(order)))
+    return 0
+
+
+def cmd_unstack(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: lath unstack <layer>", 2)
+    name = check_layer(args[0])
+    order = read_order()
+    if name not in order:
+        die(name + " is not stacked", 3)
+    order.remove(name)
+    write_order(order)
+    print("unstacked " + name)
+    return 0
+
+
+def cmd_layers(args: list[str]) -> int:
+    no_strays(args)
+    if args:
+        die("usage: lath layers", 2)
+    order = read_order()
+    if not order:
+        print("nothing stacked")
+    else:
+        print("order (first wins):")
+        for position, name in enumerate(order, start=1):
+            print("  %d %s" % (position, name))
+    spare = [name for name in all_layers() if name not in order]
+    if spare:
+        print("unstacked: " + " ".join(spare))
+    return 0
+
+
+def cmd_show(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: lath show <layer>", 2)
+    name = check_layer(args[0])
+    if not layer_path(name).is_file():
+        die("no such layer: " + name, 3)
+    pairs = read_layer(name)
+    print("layer: " + name)
+    for key in sorted(pairs):
+        print("  %s = %s" % (key, pairs[key]))
+    return 0
+
+
+def cmd_flatten(args: list[str]) -> int:
+    out = take_opt(args, "--out")
+    no_strays(args)
+    if args or out is None:
+        die("usage: lath flatten --out <path>", 2)
+    order = read_order()
+    if not order:
+        die("no layers stacked", 3)
+    index = read_index()
+    merged: dict[str, str] = {}
+    for name in order:
+        path = layer_path(name)
+        if not path.is_file():
+            die("stacked layer is missing: " + name, 3)
+        text = path.read_text(encoding="utf-8")
+        if index["layers"].get(name) != layer_stamp(name, text):
+            die("layer edited outside lath: " + name, 7)
+        for key, value in read_layer(name).items():
+            merged.setdefault(key, value)
+    target = inside(out)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(merged, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    fingerprint = digest("lath-fp-v1", canon(merged), 16)
+    record = {"out": out, "fingerprint": fingerprint, "order": order, "keys": merged}
+    record["stamp"] = digest("lath-flatten-v1", canon(record), 16)
+    (root() / "last-flatten.json").write_text(canon(record) + "\n", encoding="utf-8")
+    print("flattened %d layers, %d keys" % (len(order), len(merged)))
+    print("fingerprint: " + fingerprint)
+    print("wrote " + out)
+    return 0
+
+
+def cmd_help(args: list[str]) -> int:
+    if not args:
+        sys.stdout.write(HELP)
+        return 0
+    topic = args[0]
+    if topic not in TOPICS:
+        die("no help topic: " + topic, 2)
+    sys.stdout.write(TOPICS[topic])
+    return 0
+
+
+COMMANDS = {
+    "init": cmd_init,
+    "set": cmd_set,
+    "unset": cmd_unset,
+    "stack": cmd_stack,
+    "unstack": cmd_unstack,
+    "layers": cmd_layers,
+    "show": cmd_show,
+    "flatten": cmd_flatten,
+    "help": cmd_help,
+}
+
+
+def main(argv: list[str]) -> int:
+    args = list(argv)
+    if not args or args[0] in ("--help", "-h"):
+        sys.stdout.write(HELP)
+        return 0
+    if args[0] in ("--version", "-V"):
+        print(VERSION)
+        return 0
+    cmd = args.pop(0)
+    if cmd not in COMMANDS:
+        die("unknown command: " + cmd, 2)
+    if cmd != "help" and ("--help" in args or "-h" in args):
+        return cmd_help([cmd])
+    return COMMANDS[cmd](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

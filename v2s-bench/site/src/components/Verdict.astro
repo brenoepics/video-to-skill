@@ -1,0 +1,39 @@
+---
+/**
+ * A computed verdict.
+ *
+ * All four render at one visual weight: same surface, same border, same type
+ * size, no colour. `not-supported` is a finding and is shown as one -- it is
+ * not a warning and not an error. The glyph is a second, non-colour channel;
+ * the word is what carries the meaning.
+ */
+import type { Verdict } from '../lib/types';
+
+interface Props {
+  verdict: Verdict;
+  /** Hide the word, for dense table cells. The aria-label keeps it. */
+  compact?: boolean;
+}
+
+const { verdict, compact = false } = Astro.props;
+
+const LABEL: Record<Verdict, string> = {
+  supported: 'supported',
+  'not-supported': 'not supported',
+  inconclusive: 'inconclusive',
+  'insufficient-data': 'insufficient data',
+};
+
+/** Filled = yes, hollow = no, half = unclear, dash = nothing measured. */
+const GLYPH: Record<Verdict, string> = {
+  supported: '●',
+  'not-supported': '○',
+  inconclusive: '◐',
+  'insufficient-data': '—',
+};
+---
+
+<span class={`verdict verdict--${verdict}`} aria-label={`Verdict: ${LABEL[verdict]}`}>
+  <span class="verdict__glyph" aria-hidden="true">{GLYPH[verdict]}</span>
+  {compact ? <span class="visually-hidden">{LABEL[verdict]}</span> : LABEL[verdict]}
+</span>

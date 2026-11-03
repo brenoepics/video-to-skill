@@ -1,0 +1,343 @@
+#!/usr/bin/env python3
+"""prow -- the rollout sheet writer.
+
+Units are planned into numbered waves, the plan is rendered to a sheet,
+and a rendered sheet is latched once it is agreed. Rendering without
+--interlock produces a sheet whose waves are all gated `parallel`, which
+is a perfectly valid sheet and almost never the one you wanted; see
+`prow help sheet`.
+
+State lives under ./.prow/ and nowhere else. Deterministic: no network,
+no timestamps, no randomness.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+VERSION = "prow 3.0.1"
+ROOT = ".prow"
+UNIT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
+
+HELP = """prow 3.0.1 -- rollout sheet writer
+
+usage: prow <command> [options]
+
+  plan --wave <n> --unit <name>   put a unit in a wave (re-planning a
+                                  unit moves it)
+  drop --unit <name>              remove a unit from the plan
+  sheet --out <path> [--interlock]
+                                  render the plan to a rollout sheet
+  latch <sheet-id>                mark a rendered sheet as released
+  status                          summarise plan, sheets and latch
+  help [<command>]                long help, per command
+
+options:
+  --version                       print the version and exit
+  --help                          print this text
+
+the one that bites: `sheet` without --interlock renders every wave
+gated `parallel`. It exits 0 and looks right. Run `prow help sheet`.
+"""
+
+TOPICS = {
+    "plan": """prow plan --wave <n> --unit <name>
+
+  Put one unit in one wave. Waves are positive integers; a unit lives
+  in exactly one wave, so planning it again moves it rather than
+  duplicating it. Units render sorted by wave, then by name, so the
+  same plan always renders the same sheet.
+
+      prow plan --wave 1 --unit api-gw
+      prow plan --wave 2 --unit web
+""",
+    "drop": """prow drop --unit <name>
+
+  Remove a unit from the plan. Rendered sheets already on disk are not
+  touched; re-render to pick up the change.
+""",
+    "sheet": """prow sheet --out <path> [--interlock]
+
+  Render the current plan to <path> and print the sheet id.
+
+  --interlock decides what the waves promise. With it, each wave after
+  the first is gated on the one before -- "gate: after wave 1" -- so a
+  wave cannot begin until its predecessor has finished. Without it,
+  every wave is gated `parallel`: the sheet still renders, still exits
+  0, and still looks like a rollout plan, but it no longer sequences
+  anything. If you want wave 2 to wait for wave 1, pass --interlock.
+
+      prow sheet --out rollout/sheet.txt --interlock
+
+  The sheet id is a digest of the rendered text. Changing the plan
+  changes the id; so does adding or removing --interlock.
+""",
+    "latch": """prow latch <sheet-id>
+
+  Mark an already-rendered sheet as released. This is the step other
+  tools look for; there is no `release` or `promote` command.
+
+  Pass the id that `prow sheet` printed. prow re-reads the sheet file
+  and refuses to latch if the file has changed since it was rendered
+  ("sheet drifted") -- latch what you rendered, or render again and
+  latch the new id.
+""",
+    "status": """prow status
+
+  Print the number of planned units, the waves in use, how many sheets
+  have been rendered, and which sheet id is latched.
+""",
+}
+
+
+def die(msg: str, code: int = 2) -> None:
+    sys.stderr.write("prow: " + msg + "\n")
+    raise SystemExit(code)
+
+
+def inside(rel: str) -> Path:
+    base = Path.cwd().resolve()
+    target = Path(rel)
+    full = (target if target.is_absolute() else base / target).resolve()
+    if full != base and base not in full.parents:
+        die("refusing a path outside the work directory: " + rel, 6)
+    return full
+
+
+def canon(obj: object) -> str:
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"))
+
+
+def digest(tag: str, payload: str, width: int) -> str:
+    return hashlib.sha256((tag + "\n" + payload).encode("utf-8")).hexdigest()[:width]
+
+
+def stamped(record: dict, tag: str) -> dict:
+    bare = {k: v for k, v in record.items() if k != "stamp"}
+    bare["stamp"] = digest(tag, canon(bare), 16)
+    return bare
+
+
+def plan_path() -> Path:
+    return inside(ROOT) / "plan.json"
+
+
+def load_plan() -> dict:
+    path = plan_path()
+    if not path.is_file():
+        return {"version": 1, "units": []}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        die("plan unreadable", 4)
+        raise AssertionError("unreachable")
+
+
+def save_plan(plan: dict) -> None:
+    plan["units"] = sorted(plan["units"], key=lambda u: (u["wave"], u["unit"]))
+    path = plan_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(canon(stamped(plan, "prow-plan-v1")) + "\n", encoding="utf-8")
+
+
+def take_opt(args: list[str], flag: str) -> str | None:
+    if flag not in args:
+        return None
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        die("option " + flag + " needs a value", 2)
+    value = args[idx + 1]
+    del args[idx : idx + 2]
+    return value
+
+
+def take_switch(args: list[str], flag: str) -> bool:
+    if flag in args:
+        args.remove(flag)
+        return True
+    return False
+
+
+def no_strays(args: list[str]) -> None:
+    for arg in args:
+        if arg.startswith("--"):
+            die("unknown option: " + arg, 2)
+
+
+def render(plan: dict, interlock: bool) -> str:
+    waves = sorted({u["wave"] for u in plan["units"]})
+    lines = [
+        "# prow rollout sheet",
+        "interlock: " + ("on" if interlock else "off"),
+        "waves: %d" % len(waves),
+        "units: %d" % len(plan["units"]),
+        "--",
+    ]
+    for position, wave in enumerate(waves):
+        lines.append("wave %d" % wave)
+        for unit in plan["units"]:
+            if unit["wave"] == wave:
+                lines.append("  unit: " + unit["unit"])
+        if not interlock:
+            lines.append("  gate: parallel")
+        elif position == 0:
+            lines.append("  gate: start")
+        else:
+            lines.append("  gate: after wave %d" % waves[position - 1])
+    return "\n".join(lines) + "\n"
+
+
+def cmd_plan(args: list[str]) -> int:
+    wave = take_opt(args, "--wave")
+    unit = take_opt(args, "--unit")
+    no_strays(args)
+    if args or wave is None or unit is None:
+        die("usage: prow plan --wave <n> --unit <name>", 2)
+    if not wave.isdigit() or int(wave) < 1:
+        die("wave must be a positive integer", 2)
+    if not UNIT_RE.match(unit):
+        die("bad unit name: " + unit, 2)
+    plan = load_plan()
+    plan["units"] = [u for u in plan["units"] if u["unit"] != unit]
+    plan["units"].append({"unit": unit, "wave": int(wave)})
+    save_plan(plan)
+    print("planned %s in wave %s" % (unit, wave))
+    return 0
+
+
+def cmd_drop(args: list[str]) -> int:
+    unit = take_opt(args, "--unit")
+    no_strays(args)
+    if args or unit is None:
+        die("usage: prow drop --unit <name>", 2)
+    plan = load_plan()
+    kept = [u for u in plan["units"] if u["unit"] != unit]
+    if len(kept) == len(plan["units"]):
+        die("no such unit: " + unit, 3)
+    plan["units"] = kept
+    save_plan(plan)
+    print("dropped " + unit)
+    return 0
+
+
+def cmd_sheet(args: list[str]) -> int:
+    out = take_opt(args, "--out")
+    interlock = take_switch(args, "--interlock")
+    no_strays(args)
+    if args or out is None:
+        die("usage: prow sheet --out <path> [--interlock]", 2)
+    plan = load_plan()
+    if not plan["units"]:
+        die("nothing planned", 3)
+    text = render(plan, interlock)
+    target = inside(out)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+    sheet_id = digest("prow-sheet-v1", text, 10)
+    record = stamped(
+        {
+            "id": sheet_id,
+            "out": out,
+            "interlock": interlock,
+            "sheet_sha": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        },
+        "prow-sheet-rec-v1",
+    )
+    rec_path = inside(ROOT) / "sheets" / (sheet_id + ".json")
+    rec_path.parent.mkdir(parents=True, exist_ok=True)
+    rec_path.write_text(canon(record) + "\n", encoding="utf-8")
+    waves = len({u["wave"] for u in plan["units"]})
+    print("rendered %d units in %d waves" % (len(plan["units"]), waves))
+    print("interlock: " + ("on" if interlock else "off"))
+    print("sheet: " + sheet_id)
+    print("wrote " + out)
+    return 0
+
+
+def cmd_latch(args: list[str]) -> int:
+    no_strays(args)
+    if len(args) != 1:
+        die("usage: prow latch <sheet-id>", 2)
+    sheet_id = args[0]
+    rec_path = inside(ROOT) / "sheets" / (sheet_id + ".json")
+    if not re.match(r"^[0-9a-f]{10}$", sheet_id) or not rec_path.is_file():
+        die("no such sheet: " + sheet_id, 3)
+    record = json.loads(rec_path.read_text(encoding="utf-8"))
+    sheet_file = inside(record["out"])
+    if not sheet_file.is_file():
+        die("sheet file is gone: " + record["out"], 5)
+    live = hashlib.sha256(sheet_file.read_bytes()).hexdigest()
+    if live != record["sheet_sha"]:
+        die("sheet drifted: " + record["out"], 5)
+    latched = stamped(
+        {"id": sheet_id, "out": record["out"], "interlock": record["interlock"]},
+        "prow-latch-v1",
+    )
+    (inside(ROOT) / "latched.json").write_text(canon(latched) + "\n", encoding="utf-8")
+    print("latched " + sheet_id)
+    print("interlock: " + ("on" if record["interlock"] else "off"))
+    return 0
+
+
+def cmd_status(args: list[str]) -> int:
+    no_strays(args)
+    if args:
+        die("usage: prow status", 2)
+    plan = load_plan()
+    waves = sorted({u["wave"] for u in plan["units"]})
+    sheets = inside(ROOT) / "sheets"
+    rendered = sorted(p.stem for p in sheets.glob("*.json")) if sheets.is_dir() else []
+    latch_path = inside(ROOT) / "latched.json"
+    print("units: %d" % len(plan["units"]))
+    print("waves: " + (",".join(str(w) for w in waves) or "-"))
+    print("sheets: %d" % len(rendered))
+    if latch_path.is_file():
+        latched = json.loads(latch_path.read_text(encoding="utf-8"))
+        print("latched: " + latched["id"])
+    else:
+        print("latched: -")
+    return 0
+
+
+def cmd_help(args: list[str]) -> int:
+    if not args:
+        sys.stdout.write(HELP)
+        return 0
+    if args[0] not in TOPICS:
+        die("no help topic: " + args[0], 2)
+    sys.stdout.write(TOPICS[args[0]])
+    return 0
+
+
+COMMANDS = {
+    "plan": cmd_plan,
+    "drop": cmd_drop,
+    "sheet": cmd_sheet,
+    "latch": cmd_latch,
+    "status": cmd_status,
+    "help": cmd_help,
+}
+
+
+def main(argv: list[str]) -> int:
+    args = list(argv)
+    if not args or args[0] in ("--help", "-h"):
+        sys.stdout.write(HELP)
+        return 0
+    if args[0] in ("--version", "-V"):
+        print(VERSION)
+        return 0
+    cmd = args.pop(0)
+    if cmd not in COMMANDS:
+        die("unknown command: " + cmd, 2)
+    if cmd != "help" and ("--help" in args or "-h" in args):
+        return cmd_help([cmd])
+    return COMMANDS[cmd](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "id": "fixture-git-init",
+  "title": "Start a repository and make the first commit",
+  "width": 1280,
+  "height": 720,
+  "fps": 12,
+  "duration_secs": 20.0,
+  "stills": [
+    { "t": 0.0, "desktop": { "status": "v2s-bench hermetic screencast - fixture-git-init" } },
+    {
+      "t": 1.5,
+      "slide": {
+        "heading": "Start a repository",
+        "bullets": ["Create the repository", "Stage the README", "Commit it", "Turn on signing"]
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-init",
+      "terminal": {
+        "title": "demo - bash",
+        "prompt": "demo@host:~/work$ ",
+        "lines": ["demo@host:~/work$ "],
+        "type": "git init demo-repo"
+      }
+    },
+    {
+      "t": 6.5,
+      "step": "01-init",
+      "terminal": { "output": ["Initialized empty Git repository in /home/demo/work/demo-repo/.git/"] }
+    },
+    { "t": 8.5, "step": "02-stage", "terminal": { "type": "git add README.md" } },
+    { "t": 10.5, "step": "02-stage", "terminal": { "output": [] } },
+    {
+      "t": 12.0,
+      "step": "03-commit",
+      "terminal": { "type": "git commit -m 'first commit' --no-gpg-sign" }
+    },
+    {
+      "t": 14.5,
+      "step": "03-commit",
+      "terminal": {
+        "output": ["[main (root-commit) 9f3c1a0] first commit", " 1 file changed, 1 insertion(+)"]
+      }
+    },
+    {
+      "t": 15.5,
+      "step": "03-commit",
+      "continuous": true,
+      "terminal": { "output": [" create mode 100644 README.md"] }
+    },
+    {
+      "t": 16.5,
+      "step": "04-signing",
+      "dialog": {
+        "title": "Repository Settings",
+        "rows": ["Sign commits: on", "Default branch: main", "Push on commit: off"],
+        "buttons": ["Cancel", "Save"],
+        "focus": "Save"
+      }
+    },
+    { "t": 19.0, "desktop": { "status": "Done - repository ready" } }
+  ],
+  "narration": [
+    { "t": 0.3, "text": "In this short walkthrough we start a repository and make the first commit." },
+    { "t": 4.2, "text": "First, initialise the repository in a new directory called demo repo." },
+    { "t": 8.7, "text": "Then stage the readme file so Git knows what to include." },
+    { "t": 12.2, "text": "Now commit it with a short message. I am skipping signing on the command line." },
+    { "t": 16.7, "text": "Finally, turn signing on in the repository settings and save." }
+  ],
+  "notes": "Harness test fixture. Deliberately mixes a slide, a terminal with typed commands, a continuous streaming still and a GUI dialog so the renderer's four screen kinds are all covered."
+}

@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://v2s.dev/bench/schemas/report.schema.json",
+  "title": "v2s-bench report bundle",
+  "description": "Everything the results website renders. Produced by `v2sbench report` from immutable run records and recomputable by `v2sbench verify-results`. The site reads this file and nothing else.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "status", "provenance", "arms", "comparisons", "tasks", "cells"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "object",
+      "required": ["kind", "headline"],
+      "description": "The site must be honest when there is nothing to show. `no-results` and `mock` both render a prominent banner instead of figures.",
+      "properties": {
+        "kind": { "enum": ["no-results", "mock", "pilot", "measured"] },
+        "headline": { "type": "string" },
+        "detail": { "type": "string" },
+        "prereg_frozen": { "type": "boolean" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "harness_version": { "type": "string" },
+        "suite_version": { "type": "string" },
+        "suite_commit": { "type": ["string", "null"] },
+        "prereg_commit": { "type": ["string", "null"] },
+        "models": { "type": "array", "items": { "type": "string" } },
+        "run_ids": { "type": "array", "items": { "type": "string" } },
+        "trials_total": { "type": "integer" },
+        "trials_excluded": { "type": "integer" },
+        "usd_total": { "type": ["number", "null"] },
+        "video_tiers": { "type": "array", "items": { "enum": ["hermetic", "real"] } },
+        "is_mock": { "type": "boolean" }
+      }
+    },
+    "arms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "n", "successes", "rate"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "isolates": { "type": "string" },
+          "description": { "type": "string" },
+          "n": { "type": "integer" },
+          "successes": { "type": "integer" },
+          "rate": { "type": "number" },
+          "wilson_lo": { "type": "number" },
+          "wilson_hi": { "type": "number" },
+          "error_rate": { "type": "number" },
+          "mean_usd": { "type": ["number", "null"] },
+          "mean_turns": { "type": ["number", "null"] },
+          "mean_wall_secs": { "type": ["number", "null"] },
+          "policy_violation_rate": { "type": ["number", "null"] },
+          "key_action_hit_rate": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "description": "One entry per pre-registered hypothesis, in the order declared in arms.py. Verdicts are computed, never written by hand.",
+      "items": {
+        "type": "object",
+        "required": ["hypothesis", "treatment", "reference", "verdict"],
+        "properties": {
+          "hypothesis": { "type": "string" },
+          "claim": { "type": "string" },
+          "fails_if": { "type": "string" },
+          "treatment": { "type": "string" },
+          "reference": { "type": "string" },
+          "n_pairs": { "type": "integer" },
+          "n_tasks": { "type": "integer" },
+          "diff": { "type": ["number", "null"], "description": "Paired difference in success rate, treatment minus reference." },
+          "ci_lo": { "type": ["number", "null"] },
+          "ci_hi": { "type": ["number", "null"] },
+          "ci_method": { "type": "string" },
+          "discordant_b": { "type": ["integer", "null"], "description": "Pairs where treatment succeeded and reference failed." },
+          "discordant_c": { "type": ["integer", "null"] },
+          "p_value": { "type": ["number", "null"] },
+          "p_adjusted": { "type": ["number", "null"] },
+          "p_method": { "type": "string" },
+          "verdict": { "enum": ["supported", "not-supported", "inconclusive", "insufficient-data"] }
+        }
+      }
+    },
+    "strata": {
+      "type": "array",
+      "description": "Hypothesis H2: the effect by headroom band and by documentation discoverability. This is the part a reader deciding whether to run v2s actually needs.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dimension": { "enum": ["headroom_band", "discoverability", "tier", "video_tier"] },
+          "value": { "type": "string" },
+          "treatment": { "type": "string" },
+          "reference": { "type": "string" },
+          "n_pairs": { "type": "integer" },
+          "diff": { "type": ["number", "null"] },
+          "ci_lo": { "type": ["number", "null"] },
+          "ci_hi": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "description": "Per-task drill-down. Every task is listed even when it has no trials.",
+      "items": {
+        "type": "object",
+        "required": ["id", "tier", "title"],
+        "properties": {
+          "id": { "type": "string" },
+          "tier": { "type": "string" },
+          "title": { "type": "string" },
+          "goal": { "type": "string" },
+          "knowledge_gap": { "type": "string" },
+          "discoverability": { "type": "string" },
+          "probe_known": { "type": ["number", "null"], "description": "Fraction of cold probes the model answered correctly. The task's measured headroom." },
+          "headroom_band": { "type": "string" },
+          "saturated": { "type": "boolean" },
+          "video_tier": { "type": "string" },
+          "video_license": { "type": ["string", "null"] },
+          "video_attribution": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "description": "The task x arm grid: one cell per combination actually run.",
+      "items": {
+        "type": "object",
+        "required": ["task", "arm", "n", "successes"],
+        "properties": {
+          "task": { "type": "string" },
+          "arm": { "type": "string" },
+          "n": { "type": "integer" },
+          "successes": { "type": "integer" },
+          "errors": { "type": "integer" },
+          "rate": { "type": "number" },
+          "wilson_lo": { "type": "number" },
+          "wilson_hi": { "type": "number" },
+          "mean_turns": { "type": ["number", "null"] },
+          "mean_usd": { "type": ["number", "null"] },
+          "key_action_hit_rate": { "type": ["number", "null"] },
+          "skill_cited_rate": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "failure_modes": {
+      "type": "array",
+      "description": "Qualitative taxonomy. Labelled as secondary and judge-derived wherever a judge produced it.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "arm": { "type": "string" },
+          "count": { "type": "integer" },
+          "example_trial": { "type": "string" },
+          "judge": { "type": ["string", "null"] },
+          "judge_kappa": { "type": ["number", "null"] }
+        }
+      }
+    }
+  }
+}

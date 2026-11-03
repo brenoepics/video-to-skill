@@ -1,0 +1,76 @@
+schema_version: 1
+id: kiln-author-profile
+tier: t1-novel-cli
+title: "Get a kiln lane ready to fire from a written work order"
+goal: >-
+  lane-order.txt describes a kiln lane in prose. kiln currently holds no
+  state for it. Leave kiln holding valid, up-to-date state for that lane
+  exactly as the order describes it -- the lane name, the set of shards and
+  how many shards a batch holds -- and ready to fire. Do not produce a
+  rollup artifact: kiln must be prepared, not fired.
+discoverability: poor
+knowledge_gap:
+  summary: >-
+    kiln takes its lane description from a file called kiln.profile in the
+    working directory -- not a dotfile, not a path under the state
+    directory -- written as "key: value" lines whose keys are fire-lane,
+    shard-glob and hold-count. kiln's own help does not name the file or
+    any of the keys, and an incomplete profile is rejected with one terse
+    line that names neither. The step that turns the profile into state is
+    called prime.
+  probe_question: >-
+    The kiln shard roller reads its lane description from a file. What is
+    that file called, where does kiln look for it, which keys must it
+    contain, and which subcommand turns it into kiln's own state?
+  probe_answer_pattern: '(?i)(?=[\s\S]*kiln\.profile)(?=[\s\S]*fire-lane)(?=[\s\S]*shard-glob)(?=[\s\S]*hold-count)(?=[\s\S]*\bprime\b)'
+  taught_at: [14.0, 20.0, 32.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - chmod 0111 /usr/local/bin/kiln
+    - mkdir -p shards
+    - printf 'intake ok\n' > shards/01-intake.txt
+    - printf 'sweep ok\n' > shards/02-sweep.txt
+    - printf 'merge ok\n' > shards/03-merge.txt
+    - printf 'audit ok\n' > shards/04-audit.txt
+    - printf 'pack ok\n' > shards/05-pack.txt
+    - "printf 'LANE ORDER 7714\\nlane name = amber\\nshards = every .txt file under shards/\\nbatch holds = 3\\nstatus wanted = prepared, not fired\\n' > lane-order.txt"
+budget:
+  max_turns: 30
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - profile-is-well-formed
+    - state-matches-the-order
+    - state-written-by-kiln
+    - state-is-fresh
+    - nothing-fired-yet
+  key_actions:
+    - '(?mi)^\s*kiln\s+prime\b'
+    - '(?mi)(>|tee|cat|printf|echo)[^\n]*kiln\.profile'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*(\.kiln|shards)'
+    - '(?mi)(>|tee)\s*[^\n]*\.kiln/'
+  leakage_forbidden:
+    - kiln-state-v1
+    - kiln-profile-v1
+    - state.json
+    - profile-is-well-formed
+    - state-matches-the-order
+    - state-written-by-kiln
+    - nothing-fired-yet
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: kiln-author-profile
+  sha256: null
+notes: >-
+  The video prepares a lane called cobalt over a different shard directory
+  and a different hold count, so only the file name, the key names and the
+  preparation step transfer.

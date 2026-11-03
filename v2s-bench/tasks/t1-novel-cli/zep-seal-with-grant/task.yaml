@@ -1,0 +1,74 @@
+schema_version: 1
+id: zep-seal-with-grant
+tier: t1-novel-cli
+title: "Finish an open zep drop so the ledger records it as sealed"
+goal: >-
+  The work directory already contains a zep drop named rc-7 holding three
+  staged entries. Finish it. When you stop, zep's ledger must record rc-7
+  as sealed and carrying an anchor, and the drop must still hold exactly
+  the three entries it was given, unchanged. A drop that zep records
+  without an anchor is not finished.
+discoverability: poor
+knowledge_gap:
+  summary: >-
+    zep seals a drop only when the close is given that drop's grant nonce.
+    zep wrote the nonce beside the drop when it was opened and reprints it
+    on request. Closing the drop without the nonce exits 0, prints a
+    plausible confirmation, and leaves the drop recorded as provisional
+    with no anchor -- so the wrong procedure looks like the right one.
+  probe_question: >-
+    In the zep drop ledger, what does `zep seal` have to be given for a
+    drop to end up sealed and carrying an anchor rather than provisional,
+    and where does that value come from?
+  probe_answer_pattern: '(?i)(?=[\s\S]*--grant)(?=[\s\S]*(\.zep/drops|grant file|zep grant))'
+  taught_at: [22.0, 34.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - chmod 0111 /usr/local/bin/zep
+    - zep open rc-7
+    - zep put rc-7 port 8080
+    - zep put rc-7 region eu-west
+    - zep put rc-7 build 441
+budget:
+  max_turns: 20
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - record-readable
+    - state-sealed-not-provisional
+    - anchor-is-genuine
+    - entries-intact
+    - ledger-agrees
+  key_actions:
+    - '(?mi)^\s*zep\s+seal\s+rc-7\b[^\n]*--grant\b'
+    - '(?mi)^\s*(zep\s+grant\s+rc-7|cat\s+[^\n]*\.zep/drops/rc-7/grant)'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.zep'
+    - '(?mi)(>|tee)\s*[^\n]*\.zep/'
+    - '(?mi)^\s*(python3?|perl|sed\s+-i)\b[^\n]*sealed\.json'
+  leakage_forbidden:
+    - sealed.json
+    - zep-anchor-v1
+    - zep-stamp-v1
+    - record-readable
+    - state-sealed-not-provisional
+    - anchor-is-genuine
+    - entries-intact
+    - ledger-agrees
+    - "sed -n 's/^grant: //p'"
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: zep-seal-with-grant
+  sha256: null
+notes: >-
+  The video teaches the procedure on a different drop (ship-42), so success
+  requires carrying the procedure across names rather than replaying a
+  transcript.

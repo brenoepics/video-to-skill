@@ -1,0 +1,27 @@
+# Rendered videos and intermediate extraction bundles: never committed.
+# Hermetic videos are regenerated from videos/recipes/ by `v2sbench render`.
+.cache/
+*.mp4
+*.wav
+
+# Trial records from local runs. Published runs are committed deliberately,
+# under results/runs/, by the workflow that produced them.
+results/runs/
+results/report.json
+results/probes.json
+
+# Generated arm materials. Built by `v2sbench build-materials`; a committed
+# skill would be a skill nobody can verify came out of the pipeline.
+artifacts/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Astro
+node_modules/
+dist/
+.astro/

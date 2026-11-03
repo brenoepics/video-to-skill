@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 26" width="26" height="26">
+  <style>
+    :root { color-scheme: light dark; }
+    .ink { fill: none; stroke: #0b0b0b; }
+    .solid { fill: #0b0b0b; }
+    @media (prefers-color-scheme: dark) {
+      .ink { stroke: #f0efec; }
+      .solid { fill: #f0efec; }
+    }
+  </style>
+  <rect class="ink" x="1" y="1" width="24" height="24" rx="6" stroke-width="1.5"/>
+  <path class="solid" d="M8 8.2 L13 13 L8 17.8 Z"/>
+  <path class="ink" d="M15.5 9.5h3.2M15.5 13h3.2M15.5 16.5h3.2" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,83 @@
+schema_version: 1
+id: lath-pin-fingerprint
+tier: t1-novel-cli
+title: "Pin a lath merge's fingerprint into the next merge"
+goal: >-
+  The layers in this lath tree are already stacked in the order they should
+  be. Produce two files. build/app.json must hold the merged configuration
+  of the stacked layers as they stand now. dist/app.json must hold the same
+  configuration plus one extra key, pinned_from, whose value is the
+  fingerprint lath reported for the merge that produced build/app.json.
+  That extra key has to be contributed by a lath layer named release and
+  the file has to be one lath wrote -- not a copy you edited.
+discoverability: good
+knowledge_gap:
+  summary: >-
+    The fingerprint is only ever printed by the merge itself, so it has to
+    be carried out of that output into the next command as a VALUE -- which
+    means it goes before the key name in lath's staging command -- and the
+    layer carrying it only reaches the output once it is stacked. The
+    second merge has a different fingerprint from the first, so the pinned
+    value is the earlier one and cannot be read off the finished file.
+  probe_question: >-
+    In lath, you have just flattened the stacked layers and want the
+    fingerprint that flatten printed to end up as a key called pinned_from
+    in the next flatten's output. Give the commands you would run, in
+    order.
+  probe_answer_pattern: '(?i)(?=[\s\S]*lath\s+set\s+\S+\s+\S{6,}\s+pinned_from)(?=[\s\S]*lath\s+stack\s+\S+)(?=[\s\S]*lath\s+flatten[^\n]*--out)'
+  taught_at: [20.0, 36.0, 48.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - lath init
+    - lath set base 8080 port
+    - lath set base eu-west region
+    - lath set base 30 timeout
+    - lath set prod 60 timeout
+    - lath set prod on trace
+    - lath stack prod
+    - lath stack base
+budget:
+  max_turns: 40
+  wall_secs: 900
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - build-file-exact
+    - release-layer-holds-the-fingerprint
+    - dist-file-exact
+    - dist-written-by-lath
+    - pin-is-the-earlier-fingerprint
+  key_actions:
+    - '(?mi)^\s*lath\s+flatten\b[^\n]*build/app\.json'
+    - '(?mi)^\s*lath\s+set\s+release\s+\S+\s+pinned_from\b'
+    - '(?mi)^\s*lath\s+stack\s+release\b'
+    - '(?mi)^\s*lath\s+flatten\b[^\n]*dist/app\.json'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.lath'
+    - '(?mi)(>|tee)\s*[^\n]*\.lath/'
+    - '(?mi)^\s*(cp|mv|python3?|perl|sed\s+-i|jq)\b[^\n]*dist/app\.json'
+  leakage_forbidden:
+    - 6c7fe426b465514c
+    - lath-fp-v1
+    - lath-flatten-v1
+    - lath-layer-v1
+    - last-flatten.json
+    - release.kv
+    - pin-is-the-earlier-fingerprint
+    - dist-written-by-lath
+    - build-file-exact
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: lath-pin-fingerprint
+  sha256: null
+notes: >-
+  The video pins a fingerprint under a different key name into a different
+  layer, so the value in the video is useless here; only the carry-forward
+  procedure transfers.

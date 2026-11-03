@@ -1,0 +1,63 @@
+schema_version: 1
+id: lath-stage-pair
+tier: t1-novel-cli
+title: "Stage two settings into a lath layer"
+goal: >-
+  The work directory is an initialised lath tree with no layers in it yet.
+  Leave it holding one layer named base with exactly two keys: port, whose
+  value is 8080, and region, whose value is eu-west. lath's own view of the
+  layer must agree -- asking lath to show base must print those two keys
+  holding those two values, and nothing else.
+discoverability: good
+knowledge_gap:
+  summary: >-
+    lath's staging command takes the layer, then the VALUE, then the key --
+    the opposite way round from every other key/value CLI. The reversed
+    order is accepted without any error: it stages a key named after the
+    value, so the mistake is only visible if you look at the layer
+    afterwards.
+  probe_question: >-
+    In the lath config tool, what is the positional argument order of
+    `lath set`, and what happens if you give the key before the value?
+  probe_answer_pattern: '(?i)(?=[\s\S]*(<layer>\s+<value>\s+<key>|layer[^\n]{0,24}value[^\n]{0,24}key|value (comes |goes )?(first|before)))(?=[\s\S]*(accept|no error|without (an )?error|without complaint|silently|wrong key|key named|swapped|reversed))'
+  taught_at: [16.0, 28.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - lath init
+budget:
+  max_turns: 20
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - layer-exists
+    - keys-are-port-and-region
+    - no-value-shaped-keys
+    - layer-written-by-lath
+  key_actions:
+    - '(?mi)^\s*lath\s+set\s+base\s+8080\s+port\b'
+    - '(?mi)^\s*lath\s+set\s+base\s+eu-west\s+region\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.lath'
+    - '(?mi)(>|tee)\s*[^\n]*\.lath/'
+  leakage_forbidden:
+    - lath-layer-v1
+    - base.kv
+    - index.json
+    - keys-are-port-and-region
+    - no-value-shaped-keys
+    - layer-written-by-lath
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: lath-stage-pair
+  sha256: null
+notes: >-
+  The video stages host and tier into a layer called edge; the task asks
+  for port and region in base, so only the argument order transfers.

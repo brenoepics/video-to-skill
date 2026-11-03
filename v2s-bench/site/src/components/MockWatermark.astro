@@ -1,0 +1,55 @@
+---
+/**
+ * The in-figure half of the mock treatment.
+ *
+ * A banner at the top of the page is not enough: a screenshot of one chart,
+ * cropped, has to carry the warning with it. This paints repeating diagonal
+ * text across the whole figure, in the reserved warning hue, at an opacity
+ * that is unmissable without making the figure unreadable.
+ *
+ * It is part of the rendered SVG, not an overlay the browser might drop: it
+ * is in the page source, scales with the figure, and appears in any
+ * screenshot, print or PDF of it.
+ */
+interface Props {
+  /** Unique per figure, because SVG pattern ids are document-global. */
+  id: string;
+  text?: string;
+}
+
+const { id, text = 'MOCK DATA — NOT A MEASUREMENT' } = Astro.props;
+const patternId = `wm-${id}`;
+---
+
+<svg class="watermark" width="100%" height="100%" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern
+      id={patternId}
+      patternUnits="userSpaceOnUse"
+      width="300"
+      height="104"
+      patternTransform="rotate(-22)"
+    >
+      <text x="0" y="22" class="watermark__text">{text}</text>
+      <text x="150" y="74" class="watermark__text">{text}</text>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill={`url(#${patternId})`}></rect>
+</svg>
+
+<style>
+  .watermark__text {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    fill: var(--status-warning);
+    opacity: 0.42;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .watermark__text {
+      opacity: 0.34;
+    }
+  }
+</style>

@@ -1,0 +1,70 @@
+---
+/**
+ * Every chart on this site is wrapped in this component, and no page draws a
+ * chart any other way. That is what makes the honesty rules mechanical:
+ *
+ *  - when the gate says there are no results, the chart slot is never
+ *    rendered and an empty state takes its place;
+ *  - when the gate says the bundle is mock, the figure is outlined, labelled
+ *    and watermarked, with no way to opt out;
+ *  - every figure carries a text alternative, so no value is reachable only
+ *    through a graphic.
+ */
+import type { Gate } from '../lib/report';
+import EmptyFigure from './EmptyFigure.astro';
+import MockWatermark from './MockWatermark.astro';
+
+interface Props {
+  /** Stable id: used for the heading, aria wiring and the watermark pattern. */
+  id: string;
+  title: string;
+  sub?: string;
+  gate: Gate;
+  /** Prose description of what the figure shows. Required. */
+  alt: string;
+  /** Shown instead of the figure when there are no results. */
+  emptyTitle?: string;
+  emptyBody?: string;
+}
+
+const {
+  id,
+  title,
+  sub,
+  gate,
+  alt,
+  emptyTitle = 'Nothing to plot yet.',
+  emptyBody =
+    'No trials have been recorded, so there is no estimate to draw. This space stays empty rather than showing a chart of zeros.',
+} = Astro.props;
+---
+
+<figure class:list={['figure', gate.isMock && 'figure--mock']} aria-labelledby={`${id}-title`}>
+  <div class="figure__head">
+    <h3 class="figure__title" id={`${id}-title`}>{title}</h3>
+    {
+      gate.figureLabel && (
+        <span class:list={['chip', gate.isMock && 'chip--mock']}>{gate.figureLabel}</span>
+      )
+    }
+  </div>
+  {sub && <p class="figure__sub">{sub}</p>}
+
+  {
+    gate.showFigures ? (
+      <>
+        <div class="figure__body">
+          <slot />
+          {gate.isMock && <MockWatermark id={id} />}
+        </div>
+        <details class="figure__alt">
+          <summary>Text description</summary>
+          <p>{alt}</p>
+          <slot name="alt" />
+        </details>
+      </>
+    ) : (
+      <EmptyFigure title={emptyTitle} body={emptyBody} />
+    )
+  }
+</figure>

@@ -1,0 +1,75 @@
+schema_version: 1
+id: zep-stage-three-facts
+tier: t1-novel-cli
+title: "Record three handover facts as a finished zep drop"
+goal: >-
+  handover.txt lists three facts, one per line, each a key followed by its
+  value. Record all three in a zep drop named hotfix-3 and leave that drop
+  finished: when you stop, zep's ledger must show hotfix-3 sealed and
+  carrying an anchor, and the drop must hold exactly those three keys with
+  exactly those values and nothing else.
+discoverability: poor
+knowledge_gap:
+  summary: >-
+    A zep drop has to exist before anything can be staged into it, every
+    entry has to be staged before the drop is closed (zep refuses to stage
+    into a sealed drop and refuses to close an empty one), and the close
+    only seals when it carries the drop's grant nonce. Get the order
+    wrong and you end up with either nothing or a provisional record.
+  probe_question: >-
+    Starting from an empty zep work directory, in what order do you create
+    a drop called hotfix-3, give it three key/value entries, and end up
+    with it sealed and anchored -- and which of those steps becomes
+    impossible once the drop has been closed?
+  probe_answer_pattern: '(?i)(?=[\s\S]*--grant)(?=[\s\S]*\bopen\b[\s\S]{0,400}\bput\b[\s\S]{0,400}\bseal\b)'
+  taught_at: [10.0, 22.0, 40.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - chmod 0111 /usr/local/bin/zep
+    - printf 'lane amber\nwindow 30m\nowner payments\n' > handover.txt
+budget:
+  max_turns: 30
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - record-readable
+    - state-sealed-not-provisional
+    - anchor-is-genuine
+    - entries-are-the-three-facts
+    - stage-matches-record
+    - ledger-agrees
+  key_actions:
+    - '(?mi)^\s*zep\s+open\s+hotfix-3\b'
+    - '(?mi)^\s*zep\s+put\s+hotfix-3\s+lane\s+amber\b'
+    - '(?mi)^\s*zep\s+seal\s+hotfix-3\b[^\n]*--grant\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.zep'
+    - '(?mi)(>|tee)\s*[^\n]*\.zep/'
+    - '(?mi)^\s*(python3?|perl|sed\s+-i)\b[^\n]*(sealed|stage)\.json'
+  leakage_forbidden:
+    - sealed.json
+    - stage.json
+    - zep-anchor-v1
+    - zep-stamp-v1
+    - record-readable
+    - state-sealed-not-provisional
+    - anchor-is-genuine
+    - entries-are-the-three-facts
+    - stage-matches-record
+    - ledger-agrees
+    - "while read -r key value"
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: zep-stage-three-facts
+  sha256: null
+notes: >-
+  The video teaches the same procedure on a drop named ship-42 with
+  different keys, so the agent has to carry the ordering across names.
