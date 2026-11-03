@@ -1,0 +1,58 @@
+# Real-video tier: source screencasts, referenced and never redistributed.
+#
+# No video bytes live in this repository. Each entry names a URL, a sha256
+# of the downloaded file, and an explicit licence. `v2sbench build-materials`
+# refuses to score a row whose hash does not match, so a video that is
+# re-encoded or replaced upstream invalidates its row loudly instead of
+# silently changing the experiment underneath a published figure.
+#
+# Admission rules, from docs/preregistration.md section 7.3:
+#
+#   * Creative Commons or public domain only. "No licence stated" is not a
+#     licence: if the page does not say, the video is not eligible.
+#     YouTube shows "Creative Commons Attribution" in its description panel
+#     when a creator has selected it; anything else there means no.
+#   * `license` records the exact identifier (CC-BY-4.0, CC-BY-3.0, CC0-1.0,
+#     public-domain). `attribution` records what we must display, and it is
+#     rendered on the results site next to every figure derived from it.
+#   * `sha256` is of the file as downloaded by the pinned yt-dlp/ffmpeg
+#     invocation, which is recorded on the trial. A different downloader
+#     may produce different bytes; that is why the tool versions are part
+#     of the record rather than assumed.
+#
+# Reproducibility boundary, stated plainly: this tier is reproducible only
+# while the URL resolves and the bytes still match. That is weaker than the
+# hermetic tier, and it buys external validity the hermetic tier cannot.
+# The two are reported separately and never averaged.
+
+schema_version: 1
+
+videos: []
+  # Template — copy, do not uncomment in place:
+  #
+  # - key: jq-streaming-large-json
+  #   url: https://www.youtube.com/watch?v=XXXXXXXXXXX
+  #   title: "Streaming very large JSON with jq"
+  #   creator: "Example Creator"
+  #   license: CC-BY-4.0
+  #   attribution: "Streaming very large JSON with jq by Example Creator (CC BY 4.0)"
+  #   license_evidence: "CC BY shown in the YouTube description panel, checked 2026-11-03"
+  #   sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+  #   duration_secs: 412
+  #   teaches: >-
+  #     The --stream form and how to reassemble paths, which the narration
+  #     never spells out and the on-screen text does.
+  #   used_by: [jq-stream-reassemble]
+  #   placebo_for: [jq-select-nested]
+
+# Why this file is empty
+#
+# Populating it requires finding real CC-licensed screencasts that teach a
+# procedure one of our tasks needs, and verifying each licence on the page
+# rather than inferring it. That is deliberate manual work and it has not
+# been done, so the real-video tier has no entries yet and every task
+# currently declares `video.tier: hermetic`.
+#
+# An empty list is the honest state. The alternative -- plausible-looking
+# placeholder entries -- would be worse than nothing, because a row here
+# carries an implicit claim that someone checked the licence.

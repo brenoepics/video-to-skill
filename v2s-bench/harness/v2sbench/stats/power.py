@@ -25,11 +25,21 @@ The two knobs, and which one matters
 ``rho`` is the correlation *between arms* within a (task, seed) cell.
 Section 8.1 reports that rho is the higher-leverage knob by a wide
 margin: at N=100/K=5 the MDE moves 15.0 -> 8.7pp as rho goes 0 -> 0.8,
-but only 9.9 -> 11.9pp as icc goes 0.3 -> 0.9. That asymmetry is why
-section 8.3 spends its effort on holding the pairing tight
-(time-interleaved arms, identical container digests, byte-identical
-prompts) rather than on adding trials: raising rho buys more than raising
-K, and it is free.
+but only 9.9 -> 11.9pp as icc goes 0.3 -> 0.9. This simulation reproduces
+the rho direction and magnitude, and **contradicts the icc direction**:
+here a higher icc *lowers* the MDE. The reason is that section 8.1 uses a
+design-effect model, where icc inflates the variance of the task-level
+mean while the marginal Bernoulli variance stays fixed, whereas this
+generator is generative -- icc *is* the beta-binomial icc, so raising it
+pushes the per-task rates towards 0 and 1 and shrinks the per-trial
+``p(1-p)`` that dominates the variance here. Both models are defensible
+and they are not the same model; the pilot measures the real quantity and
+settles it. ``tests/test_stats_power.py`` pins the divergence so it is
+read as known rather than found later.
+
+Either way the practical conclusion is unchanged, and it is the one
+section 8.3 acts on: raising rho buys more than raising K, and it is
+free.
 
 The generator, stated so it can be disputed
 -------------------------------------------

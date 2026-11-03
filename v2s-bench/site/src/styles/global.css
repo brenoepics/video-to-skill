@@ -22,6 +22,7 @@
   --text-muted: #6b6964;
   --grid: #e1e0d9;
   --axis: #c3c2b7;
+  --rule: #a9a79e;
   --border: rgba(11, 11, 11, 0.12);
   --border-strong: rgba(11, 11, 11, 0.22);
 
@@ -58,6 +59,7 @@
     --text-muted: #9e9c95;
     --grid: #2c2c2a;
     --axis: #44443f;
+    --rule: #56564f;
     --border: rgba(255, 255, 255, 0.14);
     --border-strong: rgba(255, 255, 255, 0.26);
 
@@ -389,15 +391,18 @@ main {
   border-radius: var(--radius);
   background: var(--surface-1);
   padding: 1rem 1.1rem;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.25rem 0.85rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.banner__content {
+  min-width: 0;
 }
 
 .banner__icon {
-  grid-row: 1 / span 3;
-  align-self: start;
-  margin-top: 0.15rem;
+  flex: none;
+  margin-top: 0.35rem;
 }
 
 .banner__kind {
@@ -997,12 +1002,10 @@ main {
     display: none;
   }
 
-  .banner,
   .empty {
     grid-template-columns: 1fr;
   }
 
-  .banner__icon,
   .empty__icon {
     grid-row: auto;
   }

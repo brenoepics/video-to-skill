@@ -83,8 +83,7 @@ export function rateScale(): Scale {
 export function diffScale(values: Array<number | null | undefined>): Scale {
   const finite = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
   const widest = finite.reduce((acc, v) => Math.max(acc, Math.abs(v)), 0);
-  const bound = niceBound(widest * 1.08);
-  const step = niceStep(bound);
+  const { bound, step } = niceDomain(widest * 1.04);
   const ticks: number[] = [];
   for (let v = -bound; v <= bound + 1e-9; v += step) ticks.push(roundTo(v, 6));
   return linearScale(-bound, bound, ticks, (v) => {
@@ -95,16 +94,21 @@ export function diffScale(values: Array<number | null | undefined>): Scale {
   });
 }
 
-const BOUNDS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1];
+/**
+ * Candidate tick steps, smallest first. The bound is snapped up to a whole
+ * number of steps so zero is always a tick and both ends are labelled, and
+ * at most three steps fit on each side so the labels never collide on a
+ * phone-width column.
+ */
+const STEPS = [0.05, 0.1, 0.25, 0.5];
+const MAX_STEPS_PER_SIDE = 3;
 
-function niceBound(v: number): number {
-  for (const b of BOUNDS) if (v <= b + 1e-9) return b;
-  return 1;
-}
-
-function niceStep(bound: number): number {
-  for (const s of [0.05, 0.1, 0.2, 0.25, 0.5]) if (bound / s <= 5 + 1e-9) return s;
-  return 0.5;
+function niceDomain(raw: number): { bound: number; step: number } {
+  for (const step of STEPS) {
+    const k = Math.max(1, Math.ceil(raw / step - 1e-9));
+    if (k <= MAX_STEPS_PER_SIDE) return { bound: k * step, step };
+  }
+  return { bound: 1, step: 0.5 };
 }
 
 /**
@@ -112,7 +116,7 @@ function niceStep(bound: number): number {
  * baseline arm's rate. Painted above the gridlines (CSS paints the first
  * background layer on top), so compose it before `scale.gridImage()`.
  */
-export function referenceLine(scale: Scale, value: number, color = 'var(--text-secondary)'): string {
+export function referenceLine(scale: Scale, value: number, color = 'var(--rule)'): string {
   return line(scale.at(value), color);
 }
 

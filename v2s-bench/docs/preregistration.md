@@ -245,7 +245,35 @@ conditions, and H8's measured gap is a **floor** on the gap a user with
 dozens of installed skills would see. Every A1 and H8 figure carries that
 caveat.
 
-### 5.3 Exclusion is declared on the probe, never on the outcome
+### 5.3 The two moderators are collinear in tier 1
+
+Recorded because it limits what the stratification can conclude, and it
+would otherwise be found by a reader rather than by us.
+
+Tier 1's twelve tasks occupy only three of the four
+`discoverability × feedback_bandwidth` cells, because each invented tool
+has a fixed character and all of its tasks inherit it:
+
+| | `feedback_bandwidth: high` | `feedback_bandwidth: low` |
+|---|---|---|
+| `discoverability: poor` | 3 (one tool) | 3 (one tool) |
+| `discoverability: good` | **0** | 6 (two tools) |
+
+Two consequences:
+
+1. With the `good × high` cell empty, **the two axes cannot be separated
+   within tier 1**. An apparent discoverability effect there could equally
+   be a feedback-bandwidth effect.
+2. Each occupied cell is carried by one or two tools, so a cell-level
+   effect is confounded with that tool's personality.
+
+Tier 2 is where this is repaired: real tools vary in documentation quality
+and error-message quality independently, so the suite targets balanced
+coverage of all four cells with each cell spread across several tools. Any
+stratified estimate reported for tier 1 alone carries this caveat; the
+pooled estimate is the one to read for moderator claims.
+
+### 5.4 Exclusion is declared on the probe, never on the outcome
 
 The closest prior work excludes "tasks with no measurable separation
 between conditions as low-signal." **That is selection on the outcome and
@@ -396,7 +424,7 @@ interval and say so**, rather than a verdict.
   is reported as an estimate only — no p-value, no verdict.
 - **Stopping rule:** N fixed in advance. No peeking-and-extending; any
   extension is an amendment with its own analysis.
-- **Exclusions:** §5.3 only, plus trials whose harness or container errored
+- **Exclusions:** §5.4 only, plus trials whose harness or container errored
   (recorded `error`, reported as a rate per arm, never silently dropped and
   never counted as failures).
 
@@ -468,7 +496,8 @@ becoming the headline — is the worst thing this project could do.
 | Threat | Mitigation | Residual risk |
 |---|---|---|
 | **We built the tool we are grading** | Pre-registration; grader-blind materials; real-pipeline placebo; ablations designed so a null is visible; raw records released; suite runnable by third parties | Non-zero. Independent replication invited |
-| **Task selection bias** | Admission criteria fixed in advance; probes published; discoverability and feedback-bandwidth splits reported; T1 tools specified before their videos existed; **no outcome-based exclusion** (§5.3) | Choice of domains remains ours |
+| **Task selection bias** | Admission criteria fixed in advance; probes published; discoverability and feedback-bandwidth splits reported; T1 tools specified before their videos existed; **no outcome-based exclusion** (§5.4) | Choice of domains remains ours |
+| **Collinear moderators** | Known and measured: see §5.3 | In T1 the two moderators cannot be separated at all |
 | **Contamination** | T1 tools novel by construction; probe scores published | T2–T4 contaminated to an unknown degree; probes bound it |
 | **Weak-baseline inflation** | §3.1, enforced in code: identical tools, budgets, retries | Prompt quality is a judgement call; the prompt is committed |
 | **Context-length / priming confound** | Real-pipeline placebo matched on length, register and provenance formatting (§3.3) | Cannot match topical relevance; A5 is a bound, not an exact control |
