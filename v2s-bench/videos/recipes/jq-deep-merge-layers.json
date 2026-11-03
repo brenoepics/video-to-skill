@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "id": "jq-deep-merge-layers",
+  "title": "Folding two layers of worker configuration into one",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 58.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "worker-config - bash",
+        "lines": [
+          "$ cat defaults.json worker.json",
+          "... (2 earlier lines scrolled off)",
+          "  \"retry\": { \"attempts\": 3, \"backoff\": \"linear\" },",
+          "  \"workers\": 4",
+          "}",
+          "{",
+          "  \"queue\": { \"prefetch\": 64 },",
+          "  \"retry\": { \"attempts\": 7 },",
+          "  \"workers\": 8",
+          "}",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-the-obvious-fold",
+      "terminal": {
+        "type": "jq -s add defaults.json worker.json"
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-the-obvious-fold",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "{",
+          "  \"queue\": {",
+          "    \"prefetch\": 64",
+          "  },",
+          "  \"retry\": {",
+          "    \"attempts\": 7",
+          "  },",
+          "  \"workers\": 8",
+          "}"
+        ]
+      }
+    },
+    {
+      "t": 15.5,
+      "step": "02-what-went-missing",
+      "terminal": {
+        "type": "jq -s add defaults.json worker.json | jq -S 'keys_unsorted'"
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "02-what-went-missing",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "[",
+          "  \"queue\",",
+          "  \"retry\",",
+          "  \"workers\"",
+          "]"
+        ]
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "03-the-fold-that-recurses",
+      "terminal": {
+        "type": "jq -n 'reduce inputs as $l ({}; . * $l)' defaults.json worker.json"
+      }
+    },
+    {
+      "t": 27.5,
+      "step": "03-the-fold-that-recurses",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "... (4 earlier lines scrolled off)",
+          "    \"ack\": \"auto\"",
+          "  },",
+          "  \"retry\": {",
+          "    \"attempts\": 7,",
+          "    \"backoff\": \"linear\"",
+          "  },",
+          "  \"workers\": 8",
+          "}"
+        ]
+      }
+    },
+    {
+      "t": 34.5,
+      "step": "04-write-it-out",
+      "terminal": {
+        "type": "jq -n 'reduce inputs as $l ({}; . * $l)' \\"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "04-write-it-out",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  defaults.json worker.json > effective.json"
+      },
+      "continuous": true
+    },
+    {
+      "t": 39.5,
+      "step": "04-write-it-out",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 46.5,
+      "step": "05-nothing-lost",
+      "terminal": {
+        "type": "jq -c '.queue, .retry' effective.json"
+      }
+    },
+    {
+      "t": 49.0,
+      "step": "05-nothing-lost",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "{\"name\":\"ingest\",\"prefetch\":64,\"ack\":\"auto\"}",
+          "{\"attempts\":7,\"backoff\":\"linear\"}"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "Two layers of worker settings. The second is meant to override only the things it actually mentions."
+    },
+    {
+      "t": 6.5,
+      "text": "The fold everyone reaches for first. Watch what comes out."
+    },
+    {
+      "t": 16.0,
+      "text": "Every setting the override was silent about has gone with it. The override replaced each object instead of going into it."
+    },
+    {
+      "t": 25.5,
+      "text": "The other way of combining two objects goes down inside them. Start from nothing, bring each file in, in order."
+    },
+    {
+      "t": 37.5,
+      "text": "Same fold, written out."
+    },
+    {
+      "t": 47.0,
+      "text": "Overrides applied, and everything beside them still here."
+    }
+  ],
+  "notes": "Queue-worker keys, two layers; the task has three layers of a different service."
+}

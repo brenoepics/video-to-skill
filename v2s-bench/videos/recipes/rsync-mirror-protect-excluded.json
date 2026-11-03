@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "id": "rsync-mirror-protect-excluded",
+  "title": "Mirroring a tree without sweeping away what only the target has",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 45.9,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "publish - bash",
+        "lines": [
+          "$ find www -type f | sort",
+          "www/guide.md",
+          "www/index.md",
+          "www/old.md",
+          "www/stats/counts",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-mirror-the-obvious-way",
+      "terminal": {
+        "type": "rsync -a --delete docs/ www2/ && find www2 -type f | sort"
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-mirror-the-obvious-way",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "www2/.cache/blob",
+          "www2/guide.md",
+          "www2/index.md"
+        ]
+      }
+    },
+    {
+      "t": 15.5,
+      "step": "02-hide-two-names-from-it",
+      "terminal": {
+        "type": "rsync -a --delete --exclude=/.cache/ --exclude=/stats/ \\"
+      }
+    },
+    {
+      "t": 17.7,
+      "step": "02-hide-two-names-from-it",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  docs/ www/"
+      },
+      "continuous": true
+    },
+    {
+      "t": 19.9,
+      "step": "02-hide-two-names-from-it",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 26.4,
+      "step": "03-what-the-target-holds",
+      "terminal": {
+        "type": "find www -type f | sort"
+      }
+    },
+    {
+      "t": 28.9,
+      "step": "03-what-the-target-holds",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "www/guide.md",
+          "www/index.md",
+          "www/stats/counts"
+        ]
+      }
+    },
+    {
+      "t": 35.4,
+      "step": "04-the-trailing-slash",
+      "terminal": {
+        "type": "rsync -an --delete --exclude=/.cache/ docs www/ | head -4"
+      }
+    },
+    {
+      "t": 37.9,
+      "step": "04-the-trailing-slash",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "This is the published copy. One page has been withdrawn upstream, and the counters belong to the server -- they exist only here."
+    },
+    {
+      "t": 6.5,
+      "text": "Mirror it the obvious way into a scratch copy and look at the damage. The build cache got published and the server's own folder was swept away, with nothing said about either."
+    },
+    {
+      "t": 18.2,
+      "text": "Now the same mirror with two names hidden from it. One of them exists only in the source and one only in the target, and the single rule covers both jobs at once -- which is the part worth understanding."
+    },
+    {
+      "t": 26.9,
+      "text": "Pages brought up to date, the withdrawn one gone, the build cache never published, and the counters still there."
+    },
+    {
+      "t": 35.9,
+      "text": "One last thing, and it is only a punctuation mark: drop it from the source and you nest the whole directory inside the target instead of mirroring its contents. This is a dry run, so look at the names it is about to write."
+    }
+  ],
+  "notes": "Docs published into www with a protected counters folder; the task protects a different directory."
+}

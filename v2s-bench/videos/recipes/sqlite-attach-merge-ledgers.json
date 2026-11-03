@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "id": "sqlite-attach-merge-ledgers",
+  "title": "Folding one table into another across two database files",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 46.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "stations - bash",
+        "lines": [
+          "$ sqlite3 -box station.db 'select * from readings order by id;'",
+          "\u250c\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2510",
+          "\u2502 id \u2502 taken \u2502 mm \u2502",
+          "\u251c\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2524",
+          "\u2502 1  \u2502 06:00 \u2502 4  \u2502",
+          "\u2502 3  \u2502 18:00 \u2502 11 \u2502",
+          "\u2514\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2518",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-one-file-at-a-time",
+      "terminal": {
+        "type": "sqlite3 station.db 'insert into readings select * from f.readings;'"
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-one-file-at-a-time",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Error: in prepare, no such table: f.readings"
+        ]
+      }
+    },
+    {
+      "t": 14.5,
+      "step": "02-bring-the-file-in",
+      "terminal": {
+        "type": "sqlite3 station.db \"attach database 'field.db' as f;\" \\"
+      }
+    },
+    {
+      "t": 17.0,
+      "step": "02-bring-the-file-in",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  \"insert into readings select * from f.readings;\""
+      },
+      "continuous": true
+    },
+    {
+      "t": 19.5,
+      "step": "02-bring-the-file-in",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Error: stepping, UNIQUE constraint failed: readings.id (19)"
+        ]
+      }
+    },
+    {
+      "t": 25.5,
+      "step": "03-say-who-wins",
+      "terminal": {
+        "type": "sqlite3 station.db \"attach database 'field.db' as f;\" \\"
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "03-say-who-wins",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  \"insert or ignore into readings select * from f.readings;\""
+      },
+      "continuous": true
+    },
+    {
+      "t": 30.5,
+      "step": "03-say-who-wins",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 36.5,
+      "step": "04-what-landed",
+      "terminal": {
+        "type": "sqlite3 -box station.db 'select * from readings order by id;'"
+      }
+    },
+    {
+      "t": 39.0,
+      "step": "04-what-landed",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "\u250c\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2510",
+          "\u2502 id \u2502 taken \u2502 mm \u2502",
+          "\u251c\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2524",
+          "\u2502 1  \u2502 06:00 \u2502 4  \u2502",
+          "\u2502 2  \u2502 12:00 \u2502 7  \u2502",
+          "\u2502 3  \u2502 18:00 \u2502 11 \u2502",
+          "\u2514\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2518"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "Two files, a table of the same shape in each, and one identifier that appears in both."
+    },
+    {
+      "t": 6.5,
+      "text": "A connection only sees the file you opened. The other table simply is not there, and it says which name it could not find."
+    },
+    {
+      "t": 17.5,
+      "text": "Bring the second file in under a name of its own, in the same session, and now it can be read across. The overlapping identifier collides, and it names the column."
+    },
+    {
+      "t": 28.5,
+      "text": "The insert has to be told what to do when they collide. There is more than one answer and only one of them keeps the row that was already here."
+    },
+    {
+      "t": 37.0,
+      "text": "Three rows. The reading that was already here still reads as it did, not as the incoming file had it."
+    }
+  ],
+  "notes": "A readings table between differently named databases; the task uses other files and other rows."
+}

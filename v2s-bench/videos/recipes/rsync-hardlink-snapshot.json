@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "id": "rsync-hardlink-snapshot",
+  "title": "A second snapshot that shares what did not change",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 57.9,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "backups - bash",
+        "lines": [
+          "$ ls snaps; cat snaps/w17/sent mail/sent",
+          "w17",
+          "sent v1",
+          "sent v2, with the Friday thread",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-a-plain-copy",
+      "terminal": {
+        "type": "rsync -a --delete mail/ snaps/w18/"
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-a-plain-copy",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 14.0,
+      "step": "02-look-at-the-numbers",
+      "terminal": {
+        "type": "stat -c '%i %h %n' snaps/w1?/inbox"
+      }
+    },
+    {
+      "t": 16.5,
+      "step": "02-look-at-the-numbers",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "730397 1 snaps/w17/inbox",
+          "730762 1 snaps/w18/inbox"
+        ]
+      }
+    },
+    {
+      "t": 23.0,
+      "step": "03-start-again",
+      "terminal": {
+        "type": "rm -rf snaps/w18"
+      }
+    },
+    {
+      "t": 25.5,
+      "step": "03-start-again",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 29.5,
+      "step": "04-the-obvious-spelling",
+      "terminal": {
+        "type": "rsync -a --delete --link-dest=snaps/w17 mail/ snaps/w18/"
+      }
+    },
+    {
+      "t": 32.0,
+      "step": "04-the-obvious-spelling",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "--link-dest arg does not exist: snaps/w17"
+        ]
+      }
+    },
+    {
+      "t": 38.5,
+      "step": "05-the-other-spelling",
+      "terminal": {
+        "type": "rm -rf snaps/w18 && \\"
+      }
+    },
+    {
+      "t": 40.7,
+      "step": "05-the-other-spelling",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  rsync -a --delete --link-dest=../w17 mail/ snaps/w18/"
+      },
+      "continuous": true
+    },
+    {
+      "t": 42.9,
+      "step": "05-the-other-spelling",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 47.9,
+      "step": "06-one-file-two-names",
+      "terminal": {
+        "type": "stat -c '%i %h %n' snaps/w1?/inbox snaps/w1?/sent"
+      }
+    },
+    {
+      "t": 50.4,
+      "step": "06-one-file-two-names",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "730397 2 snaps/w17/inbox",
+          "730397 2 snaps/w18/inbox",
+          "730748 1 snaps/w17/sent",
+          "730762 1 snaps/w18/sent"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "Last week's snapshot is here, and one of the two files has moved on since."
+    },
+    {
+      "t": 6.5,
+      "text": "A plain copy first. No complaint, and the result looks right."
+    },
+    {
+      "t": 14.5,
+      "text": "But look at what is on disk. Two separate files holding identical bytes, each with one name. That is the cost nobody sees."
+    },
+    {
+      "t": 23.5,
+      "text": "Start again."
+    },
+    {
+      "t": 30.0,
+      "text": "This time rsync is pointed at last week's copy to compare against. Written this way it finds nothing -- read what it says about the path, because the path is not resolved from where you are standing."
+    },
+    {
+      "t": 41.2,
+      "text": "Spelled the other way it does find it. The difference is on screen."
+    },
+    {
+      "t": 48.4,
+      "text": "Now the unchanged file is one file with two names, and the one that changed is its own copy in each week."
+    }
+  ],
+  "notes": "Weekly mail snapshots; the task's trees, dates and changed file all differ."
+}

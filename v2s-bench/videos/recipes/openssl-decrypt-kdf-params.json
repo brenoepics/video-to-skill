@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "id": "openssl-decrypt-kdf-params",
+  "title": "Opening a sealed file whose key stretching was not the default",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 45.8,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "handover - bash",
+        "lines": [
+          "$ cat SEALED.txt",
+          "Sealed with AES-256-CBC and a salt.",
+          "The key was stretched with one hundred thousand rounds",
+          "of PBKDF2 taken over SHA-384, not the default digest.",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-restate-most-of-it",
+      "terminal": {
+        "type": "openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 \\"
+      }
+    },
+    {
+      "t": 8.2,
+      "step": "01-restate-most-of-it",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -in notes.enc -out notes.txt -pass file:pass.txt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 10.4,
+      "step": "01-restate-most-of-it",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "bad decrypt",
+          "40D7F3EF737F0000:error:1C800064:Provider routines:ossl_cipher_unpadb"
+        ]
+      }
+    },
+    {
+      "t": 16.9,
+      "step": "02-a-file-of-nonsense",
+      "terminal": {
+        "type": "wc -c notes.txt; head -c 16 notes.txt | od -An -c | head -1"
+      }
+    },
+    {
+      "t": 19.4,
+      "step": "02-a-file-of-nonsense",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "32 notes.txt",
+          " 245 306   6 210 317 261   x   S   < 276   ; 354 252 264 331   f"
+        ]
+      }
+    },
+    {
+      "t": 25.9,
+      "step": "03-restate-the-last-one",
+      "terminal": {
+        "type": "openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha384 \\"
+      }
+    },
+    {
+      "t": 28.1,
+      "step": "03-restate-the-last-one",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -in notes.enc -out notes.txt -pass file:pass.txt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 30.3,
+      "step": "03-restate-the-last-one",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 36.3,
+      "step": "04-it-opens",
+      "terminal": {
+        "type": "cat notes.txt"
+      }
+    },
+    {
+      "t": 38.8,
+      "step": "04-it-opens",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "relief crew: blue watch",
+          "berth: 7A"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "The note says how this was sealed. None of it is recorded inside the file, so all of it has to be said again to open it."
+    },
+    {
+      "t": 8.7,
+      "text": "Restate the cipher, the stretching and the round count, and it still refuses. Read the error: it names a source file in a provider library and tells you nothing about which of your parameters is wrong."
+    },
+    {
+      "t": 17.4,
+      "text": "And it wrote a file anyway, before it noticed. Nonsense, of roughly the right size -- so a check that only looked for the file would have said this worked."
+    },
+    {
+      "t": 28.6,
+      "text": "There is one more thing to restate, and it is the one whose default is not what was used. It is on screen."
+    },
+    {
+      "t": 36.8,
+      "text": "And it opens."
+    }
+  ],
+  "notes": "A different round count and digest; the task's archive was sealed with other values."
+}

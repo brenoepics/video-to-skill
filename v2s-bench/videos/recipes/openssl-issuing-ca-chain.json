@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "id": "openssl-issuing-ca-chain",
+  "title": "Making a signed certificate into an actual issuing CA",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 62.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "pki - bash",
+        "lines": [
+          "$ ls *.csr *.crt *.key",
+          "root.crt",
+          "root.key",
+          "sub.csr",
+          "sub.key",
+          "web.csr",
+          "web.key",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 5.0,
+      "step": "01-sign-the-intermediate-plainly",
+      "terminal": {
+        "type": "openssl x509 -req -in sub.csr -CA root.crt -CAkey root.key \\"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-sign-the-intermediate-plainly",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -days 730 -sha256 -out sub.crt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 9.0,
+      "step": "01-sign-the-intermediate-plainly",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Certificate request self-signature ok",
+          "subject=O = Tidewater, CN = Tidewater Sub"
+        ]
+      }
+    },
+    {
+      "t": 14.0,
+      "step": "02-the-chain-is-refused",
+      "terminal": {
+        "type": "openssl x509 -req -in web.csr -CA sub.crt -CAkey sub.key -days 90 \\"
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "02-the-chain-is-refused",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -sha256 -out web.crt 2>/dev/null; \\"
+      },
+      "continuous": true
+    },
+    {
+      "t": 18.0,
+      "step": "02-the-chain-is-refused",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  openssl verify -CAfile root.crt -untrusted sub.crt web.crt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 20.0,
+      "step": "02-the-chain-is-refused",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "O = Tidewater, CN = Tidewater Sub",
+          "error 79 at 1 depth lookup: invalid CA certificate",
+          "error web.crt: verification failed"
+        ]
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "03-write-what-it-is-missing",
+      "terminal": {
+        "type": "printf '%s\\n' '[sub_ca]' \\"
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "03-write-what-it-is-missing",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  'basicConstraints=critical,CA:TRUE,pathlen:1' \\"
+      },
+      "continuous": true
+    },
+    {
+      "t": 30.0,
+      "step": "03-write-what-it-is-missing",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  'keyUsage=critical,keyCertSign,cRLSign' > sub.ext; cat sub.ext"
+      },
+      "continuous": true
+    },
+    {
+      "t": 32.0,
+      "step": "03-write-what-it-is-missing",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "[sub_ca]",
+          "basicConstraints=critical,CA:TRUE,pathlen:1",
+          "keyUsage=critical,keyCertSign,cRLSign"
+        ]
+      }
+    },
+    {
+      "t": 38.0,
+      "step": "04-sign-it-again-with-those",
+      "terminal": {
+        "type": "openssl x509 -req -in sub.csr -CA root.crt -CAkey root.key \\"
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "04-sign-it-again-with-those",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -days 730 -sha256 -extfile sub.ext \\"
+      },
+      "continuous": true
+    },
+    {
+      "t": 42.0,
+      "step": "04-sign-it-again-with-those",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -extensions sub_ca -out sub.crt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 44.0,
+      "step": "04-sign-it-again-with-those",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Certificate request self-signature ok",
+          "subject=O = Tidewater, CN = Tidewater Sub"
+        ]
+      }
+    },
+    {
+      "t": 49.0,
+      "step": "05-now-the-chain-stands",
+      "terminal": {
+        "type": "openssl x509 -req -in web.csr -CA sub.crt -CAkey sub.key -days 90 \\"
+      }
+    },
+    {
+      "t": 51.0,
+      "step": "05-now-the-chain-stands",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -sha256 -out web.crt 2>/dev/null; \\"
+      },
+      "continuous": true
+    },
+    {
+      "t": 53.0,
+      "step": "05-now-the-chain-stands",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  openssl verify -CAfile root.crt -untrusted sub.crt web.crt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 55.0,
+      "step": "05-now-the-chain-stands",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "web.crt: OK"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "A root, and two requests waiting: one for an intermediate, one for a host underneath it."
+    },
+    {
+      "t": 7.5,
+      "text": "Sign the intermediate the ordinary way first."
+    },
+    {
+      "t": 18.5,
+      "text": "Every signature in that chain is correct and it is still refused. Read where it says the problem is, and at what depth."
+    },
+    {
+      "t": 30.5,
+      "text": "Signing never conferred that. It has to be stated, with the depth allowed beneath it -- and the depth is a choice, so take it from what you are building, not from here."
+    },
+    {
+      "t": 42.5,
+      "text": "Sign the intermediate again, handing those over at signing time."
+    },
+    {
+      "t": 53.5,
+      "text": "Host signed by the intermediate, intermediate by the root, and only the root trusted. That stands up."
+    }
+  ],
+  "notes": "A two-deep chain for another organisation; the task needs a different depth and different subjects."
+}

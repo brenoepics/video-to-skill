@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "id": "git-rescue-dangling-commit",
+  "title": "Finding a commit nothing points at any more",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 55.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "tidewater - bash",
+        "lines": [
+          "$ git log --oneline --all",
+          "c2eacbd second cut",
+          "bf3b16d first cut",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-the-usual-route-is-empty",
+      "terminal": {
+        "type": "git reflog"
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-the-usual-route-is-empty",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "c2eacbd HEAD@{0}: reset: moving to main",
+          "c2eacbd HEAD@{1}: commit: second cut",
+          "bf3b16d HEAD@{2}: commit (initial): first cut"
+        ]
+      }
+    },
+    {
+      "t": 14.5,
+      "step": "02-audit-the-object-store",
+      "terminal": {
+        "type": "git fsck --no-progress"
+      }
+    },
+    {
+      "t": 17.0,
+      "step": "02-audit-the-object-store",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "dangling commit ceef27d32f107aff10447b0b6c76d25c8049cda7"
+        ]
+      }
+    },
+    {
+      "t": 23.5,
+      "step": "03-look-at-what-turned-up",
+      "terminal": {
+        "type": "git log -1 --format='%h %cI %s' \\"
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "03-look-at-what-turned-up",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  $(git fsck --no-progress | sed -n 's/^dangling commit //p')"
+      },
+      "continuous": true
+    },
+    {
+      "t": 28.5,
+      "step": "03-look-at-what-turned-up",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "ceef27d 2026-07-05T00:00:00+00:00 sketch the tide table"
+        ]
+      }
+    },
+    {
+      "t": 35.0,
+      "step": "04-put-a-branch-back-on-it",
+      "terminal": {
+        "type": "git branch recovered \\"
+      }
+    },
+    {
+      "t": 37.5,
+      "step": "04-put-a-branch-back-on-it",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  $(git fsck --no-progress | sed -n 's/^dangling commit //p')"
+      },
+      "continuous": true
+    },
+    {
+      "t": 40.0,
+      "step": "04-put-a-branch-back-on-it",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 45.5,
+      "step": "05-reachable-again",
+      "terminal": {
+        "type": "git log --oneline recovered"
+      }
+    },
+    {
+      "t": 48.0,
+      "step": "05-reachable-again",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "ceef27d sketch the tide table",
+          "c2eacbd second cut",
+          "bf3b16d first cut"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "The branch that work was committed on has been deleted. There is no sign of it here."
+    },
+    {
+      "t": 6.5,
+      "text": "The log of where HEAD has been does not have it either, because it was never checked out. The usual recovery route finds nothing."
+    },
+    {
+      "t": 15.0,
+      "text": "So ask git to audit its own object store for things nothing points at. The subcommand is on screen."
+    },
+    {
+      "t": 26.5,
+      "text": "There it is, with the committer record it was made with -- which is the part a fresh commit of the same files could never match."
+    },
+    {
+      "t": 38.0,
+      "text": "Put a branch back on it and it is reachable again. No commit was made and nothing was rewritten."
+    },
+    {
+      "t": 46.0,
+      "text": "Same commit, now on a branch."
+    }
+  ],
+  "notes": "A different repository and branch name; the task's commit, subject and dates differ."
+}

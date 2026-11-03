@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "id": "jq-recover-truncated-array",
+  "title": "Getting the finished records out of a file that was cut off",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 48.5,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "build-log - bash",
+        "lines": [
+          "$ tail -4 builds.json",
+          "  { \"id\": \"b-104\", \"secs\": 91, \"status\": \"pass\" },",
+          "  { \"id\": \"b-105\", \"secs\": 77, \"status\": \"pass\" },",
+          "  { \"id\": \"b-106\", \"secs\": 4",
+          "    , \"status\": \"ru",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-ordinary-read-refuses",
+      "terminal": {
+        "type": "jq -c '.[]' builds.json"
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-ordinary-read-refuses",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "jq: parse error: Unfinished string at EOF at line 8, column 19"
+        ]
+      }
+    },
+    {
+      "t": 15.5,
+      "step": "02-parse-as-it-goes",
+      "terminal": {
+        "type": "jq -cn --stream 'fromstream(1|truncate_stream(inputs))' builds.json"
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "02-parse-as-it-goes",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "{\"id\":\"b-101\",\"secs\":94,\"status\":\"pass\"}",
+          "{\"id\":\"b-102\",\"secs\":88,\"status\":\"pass\"}",
+          "{\"id\":\"b-103\",\"secs\":12,\"status\":\"fail\"}",
+          "{\"id\":\"b-104\",\"secs\":91,\"status\":\"pass\"}",
+          "{\"id\":\"b-105\",\"secs\":77,\"status\":\"pass\"}",
+          "jq: error (at builds.json:7): Unfinished string at EOF at line 8, co"
+        ]
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "03-write-the-rows",
+      "terminal": {
+        "type": "jq -cn --stream 'fromstream(1|truncate_stream(inputs))' \\"
+      }
+    },
+    {
+      "t": 27.5,
+      "step": "03-write-the-rows",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  builds.json > rows.jsonl 2>/dev/null; wc -l < rows.jsonl"
+      },
+      "continuous": true
+    },
+    {
+      "t": 30.0,
+      "step": "03-write-the-rows",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "5"
+        ]
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "04-file-untouched",
+      "terminal": {
+        "type": "jq -e . builds.json >/dev/null; echo \"exit $?\""
+      }
+    },
+    {
+      "t": 39.5,
+      "step": "04-file-untouched",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "exit 5",
+          "jq: parse error: Unfinished string at EOF at line 8, column 19"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "The writer was killed partway through. The end of this file is half a record."
+    },
+    {
+      "t": 6.5,
+      "text": "Read it the ordinary way and you get nothing at all. It reads the whole value before it emits any of it, so one bad record costs you the lot."
+    },
+    {
+      "t": 16.0,
+      "text": "The other parser hands out what it has as it goes, so everything it finished before the damage survives. Five of the six, and nothing guessed for the last one."
+    },
+    {
+      "t": 28.0,
+      "text": "Written out, one record a line. It still complains about the damage on the way past, which is fine -- the records are out."
+    },
+    {
+      "t": 37.5,
+      "text": "And the damaged file is still damaged. We read around it rather than repairing it."
+    }
+  ],
+  "notes": "Build rows, six records, one cut short; the task's file holds different records."
+}

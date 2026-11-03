@@ -150,7 +150,15 @@ def _provision(box, task, root: Path) -> None:
     if tools.is_dir():
         box.exec(["mkdir", "-p", box.bin_dir])
         for tool_dir in sorted(tools.iterdir()):
+            # Anything under tools/ with the executable bit becomes a command
+            # in the task container, so a helper script dropped here would
+            # silently become part of the environment under test. Names
+            # starting with _ or . are not tools.
+            if not tool_dir.is_dir() or tool_dir.name.startswith((".", "_")):
+                continue
             for script in sorted(tool_dir.glob("*")):
+                if script.name.startswith((".", "_")) or script.name.startswith("test_"):
+                    continue
                 if script.is_file() and script.stat().st_mode & 0o111:
                     target = f"{box.bin_dir}/{script.stem}"
                     box.put(script, target)

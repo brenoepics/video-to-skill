@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "id": "ffmpeg-stack-dual-camera",
+  "title": "Stacking two captures and keeping the sound you want",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 40.4,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "review - bash",
+        "lines": [
+          "$ ffprobe -v error -show_entries format=duration \\",
+          "Argument 'bottom.mp4' provided as input filename, but 'top.mp4' was ",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 5.0,
+      "step": "01-named-output-refuses",
+      "terminal": {
+        "type": "ffmpeg -y -hide_banner -loglevel error -i top.mp4 -i bottom.mp4 \\"
+      }
+    },
+    {
+      "t": 7.2,
+      "step": "01-named-output-refuses",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -filter_complex \"[0:v][1:v]vstack=inputs=2[g]\" out.mp4"
+      },
+      "continuous": true
+    },
+    {
+      "t": 9.4,
+      "step": "01-named-output-refuses",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "[fc#0 @ 0x5594084ae540] Filter vstack:default has an unconnected out",
+          "Error : Invalid argument"
+        ]
+      }
+    },
+    {
+      "t": 15.4,
+      "step": "02-wire-it-by-hand",
+      "terminal": {
+        "type": "ffmpeg -y -hide_banner -loglevel error -i top.mp4 -i bottom.mp4 \\"
+      }
+    },
+    {
+      "t": 17.6,
+      "step": "02-wire-it-by-hand",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -filter_complex \"[0:v][1:v]vstack=inputs=2[g]\" \\"
+      },
+      "continuous": true
+    },
+    {
+      "t": 19.8,
+      "step": "02-wire-it-by-hand",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -map \"[g]\" -map 0:a -shortest stacked.mp4"
+      },
+      "continuous": true
+    },
+    {
+      "t": 22.0,
+      "step": "02-wire-it-by-hand",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "03-check-the-result",
+      "terminal": {
+        "type": "ffprobe -v error -show_entries stream=codec_type,height \\"
+      }
+    },
+    {
+      "t": 30.2,
+      "step": "03-check-the-result",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -show_entries format=duration -of default=nw=1 stacked.mp4"
+      },
+      "continuous": true
+    },
+    {
+      "t": 32.4,
+      "step": "03-check-the-result",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "codec_type=video",
+          "height=288",
+          "codec_type=audio",
+          "duration=3.008000"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "Two captures of the same session. Different lengths, and each brought its own sound."
+    },
+    {
+      "t": 7.7,
+      "text": "Give the graph's result a name of its own and ffmpeg stops choosing for you. It says so plainly."
+    },
+    {
+      "t": 20.3,
+      "text": "So we say what goes in: the graph's result, then the one sound track we want out of the two, and a limit so it ends with whichever input runs out first. Three separate decisions."
+    },
+    {
+      "t": 30.7,
+      "text": "One picture of twice the height, one sound track, and it ends with the shorter of the two."
+    }
+  ],
+  "notes": "Vertical stack keeping the FIRST input's audio; the task wants the other axis and the other input."
+}

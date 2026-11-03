@@ -1,9 +1,15 @@
 {
   "frozen": {
     "env/2048/PROTOCOL.md": "18ce4a66356f71b20aed36d6d9952a1fa7bf567cb4355a5ed57d1779810014bb",
-    "env/2048/v2s_game_2048.py": "02d4609213ca0f3bd1e01d0f1c86b7ea31ed8d0b8eaa149b5f52dd15d9fac068"
+    "env/2048/v2s_game_2048.py": "02d4609213ca0f3bd1e01d0f1c86b7ea31ed8d0b8eaa149b5f52dd15d9fac068",
+    "env/crafter/PACKAGE.sha256.json": "51173dcb30a9b28f4def7580b1dd9db11e1fcf67af2b63a27b39bc659381ebbe",
+    "env/crafter/PROTOCOL.md": "0e6a0b60c89ce805cd51145ff3db0cde6310b66c8840f57de9ab5488eba63357",
+    "env/crafter/requirements.txt": "39208a6c9c28384bce043361d71ee9bf78ef3966f89a8860dc60a7dd8401363d",
+    "env/crafter/v2s_game_crafter.py": "41b2ef52d30ffeb7a29165fe8135e917d15315771b8798a610c77ba62187ebd4"
   },
   "mirrors": {
+    "tasks/t4-game/crafter-first-pickaxe/check/PACKAGE.sha256.json": "env/crafter/PACKAGE.sha256.json",
+    "tasks/t4-game/crafter-first-pickaxe/files/v2s-game": "env/crafter/v2s_game_crafter.py",
     "tasks/t4-game/g2048-two-boards/files/v2s-game": "env/2048/v2s_game_2048.py"
   },
   "schema_version": 1

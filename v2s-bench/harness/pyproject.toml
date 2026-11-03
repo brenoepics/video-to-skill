@@ -39,3 +39,10 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# A rescued one-shot generator: it builds the tier-1 recipes by running the
+# real tools and capturing real output. Its percent-formatting and long
+# literal lines are the screen content it emits, not style choices, and
+# rewriting them risks changing what the videos show. Kept as-is on purpose.
+"tools/make_tier1_recipes.py" = ["UP031", "E501", "RUF005"]

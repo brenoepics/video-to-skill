@@ -1,0 +1,142 @@
+schema_version: 1
+id: crafter-first-pickaxe
+tier: t4-game
+title: "HARNESS DIAGNOSTIC (calibration rung): Crafter, first pickaxe and first stone"
+goal: >-
+  A Crafter episode is already running in this directory, played through
+  the `v2s-game` command. Survive and work your way up to mining stone.
+  When you stop, the episode must have unlocked all four of these
+  achievements: collect_wood, place_table, make_wood_pickaxe and
+  collect_stone. You have 1000 steps and the episode cannot be restarted,
+  so a step spent on an action that does nothing is a step gone.
+  `v2s-game help` states the interface, the observation format and the
+  seventeen actions; it does not state what any action requires.
+discoverability: poor
+feedback_bandwidth: silent
+knowledge_gap:
+  summary: >-
+    Crafter's tech tree has requirements that the game never states and
+    never complains about. A crafting table is not a recipe you know, it
+    is an object you have to PLACE: it costs two wood, it has to go on a
+    walkable tile in front of you, and `make_wood_pickaxe` only works
+    while you are standing within one tile of it. Stone cannot be mined
+    at all until that pickaxe exists -- facing a stone tile and using
+    `do` without one is accepted, changes nothing and says nothing. So
+    the required order is: chop enough wood (one wood per tree, and the
+    tree is gone), place the table, craft beside it, and only then go
+    looking for stone. An agent that tries to craft without placing a
+    table, or mines stone first, burns its step budget on actions that
+    look like they ran.
+  probe_question: >-
+    In Crafter, you are standing on grass with two wood in your
+    inventory and want a wood pickaxe. What exactly has to be true for
+    `make_wood_pickaxe` to succeed, and what does the game do if it is
+    not true? And what is the one thing you must already have before
+    `do` on a stone tile gives you any stone?
+  probe_answer_pattern: '(?i)(?=[\s\S]*(place|placed|placing)[\s\S]{0,40}table)(?=[\s\S]*(near|nearby|next to|adjacent|within|beside|standing))(?=[\s\S]*(nothing happens|does nothing|no effect|silently|no error|no message|wastes? the step))(?=[\s\S]*wood[_ ]?pickaxe)'
+  taught_at: [24.0, 46.0, 74.0]
+environment:
+  image: v2sbench/t4-game-crafter:0.1
+  workdir: /work
+  network: none
+  seedable: true
+  setup:
+    - install -m 0755 v2s-game /usr/local/bin/v2s-game && rm -f v2s-game
+    - V2S_GAME_PROVISION=1 v2s-game init --seed 7 --steps 1000 >/dev/null
+budget:
+  max_turns: 60
+  wall_secs: 1800
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - journal-present
+    - episode-as-provisioned
+    - crafter-unmodified
+    - run-not-restarted
+    - actions-replay
+    - journal-is-consistent
+    - tool-chain-complete
+  key_actions:
+    - '(?mi)^\s*v2s-game\s+help\b'
+    - '(?mi)^\s*v2s-game\s+do\b[^\n]*\bplace_table\b'
+    - '(?mi)^\s*v2s-game\s+do\b[^\n]*\bmake_wood_pickaxe\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\b[^\n]*\.v2s-game\b'
+    - '(?mi)v2s-game\s+init\b'
+    - '(?mi)(>|>>|tee)\s*[^\n]*\.v2s-game/'
+    - '(?mi)^\s*(python3?|perl|sed\s+-i)\b[^\n]*(journal\.jsonl|site-packages/crafter)'
+  score:
+    metric: >-
+      Number of Crafter's 22 achievements unlocked, recomputed by the
+      checker from its own replay of the journal. Secondary endpoint: the
+      binary endpoint is the four-achievement tool chain.
+    milestones:
+      - collect_wood
+      - place_table
+      - make_wood_pickaxe
+      - collect_stone
+      - tool-chain-complete
+      - collect_drink
+      - eat_cow
+      - place_stone
+      - collect_coal
+      - make_stone_pickaxe
+      - make_stone_sword
+      - wake_up
+  leakage_forbidden:
+    - check.py
+    - play.py
+    - PACKAGE.sha256
+    - journal-present
+    - episode-as-provisioned
+    - crafter-unmodified
+    - actions-replay
+    - journal-is-consistent
+    - tool-chain-complete
+    - seed 7
+    - seed=7
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: crafter-first-pickaxe
+  sha256: null
+license: >-
+  Crafter is MIT and ships its own assets (Danijar Hafner,
+  github.com/danijar/crafter). Nothing is vendored here: the package is
+  installed at image-build time from env/crafter/requirements.txt, which
+  pins every distribution by version and sha256.
+attribution: >-
+  Crafter, Hafner 2021 (arXiv:2109.06780), MIT. The documentation effect
+  this rung calibrates against is SPRING (arXiv:2305.15486) and
+  Read-and-Reward (arXiv:2302.04449).
+notes: >-
+  THIS TASK IS A HARNESS DIAGNOSTIC AND MUST NEVER BE REPORTED AS A v2s
+  RESULT (docs/preregistration.md 4.3). Feeding a model the paper
+  describing this environment is independently reported to have beaten
+  every RL baseline with no interaction (27.3 against DreamerV3's 14.5),
+  and Crafter's leaderboard keeps a separate External Knowledge category,
+  so the documentation effect here is known to be large and is not
+  evidence about our pipeline. Its only job is to answer "can this
+  harness detect a known-large effect at all" -- if it cannot, our nulls
+  elsewhere are uninformative. Expected bands, measured before any model
+  was run: a random policy over 40 episodes of 1000 steps unlocks 2.45
+  achievements on average and reaches this chain 0% of the time
+  (collect_wood 0.28, place_table 0.05, make_wood_pickaxe 0.00,
+  collect_stone 0.00), so the floor is clean; the scripted oracle reaches
+  the chain on 8 of 12 seeds and on the pinned seed in 32 steps with 5
+  achievements. Published LLM-agent results on Crafter put a no-skill arm
+  in the 20-50% band for a chain this deep, which is where we expect A0;
+  that figure is borrowed, not measured here, and the real band will be
+  whatever the baseline arm does. The oracle's two failure modes on other
+  seeds are dying to night-time creatures and failing to find stone by
+  wandering: it has no combat or shelter logic, on purpose, because it is
+  meant to be the taught procedure rather than a strong agent. The seed
+  is pinned in `setup` for every trial because the harness does not
+  interpolate the trial seed into setup commands; see docs/game-tier.md.
+  Residual bypass: a .pyc whose header matches its source would be loaded
+  in preference to the source and would sidestep the checker's hash check
+  on Crafter's rules; the image sets PYTHONDONTWRITEBYTECODE and clears
+  the caches, which raises the cost without eliminating it.

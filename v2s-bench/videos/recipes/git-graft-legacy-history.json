@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "id": "git-graft-legacy-history",
+  "title": "Joining an import onto the history it came from",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 42.5,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "tidewater - bash",
+        "lines": [
+          "$ git log --oneline --all",
+          "c8fe6a2 first local patch",
+          "0567354 drop in the vendor tree",
+          "65a8f6b last of the old work",
+          "99aa214 the original tree",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-find-the-parentless-commit",
+      "terminal": {
+        "type": "git rev-list --max-parents=0 trunk"
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-find-the-parentless-commit",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "056735405e4bcad09194e1a01cd58a252e1cd0f5"
+        ]
+      }
+    },
+    {
+      "t": 14.5,
+      "step": "02-stand-something-in-its-place",
+      "terminal": {
+        "type": "git replace --graft $(git rev-list --max-parents=0 trunk) upstream"
+      }
+    },
+    {
+      "t": 17.0,
+      "step": "02-stand-something-in-its-place",
+      "terminal": {
+        "prompt": "$ ",
+        "output": []
+      }
+    },
+    {
+      "t": 23.5,
+      "step": "03-the-walk-now-continues",
+      "terminal": {
+        "type": "git log --oneline trunk"
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "03-the-walk-now-continues",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "c8fe6a2 first local patch",
+          "0567354 drop in the vendor tree",
+          "65a8f6b last of the old work",
+          "99aa214 the original tree"
+        ]
+      }
+    },
+    {
+      "t": 32.0,
+      "step": "04-nothing-was-rewritten",
+      "terminal": {
+        "type": "git --no-replace-objects log --oneline trunk"
+      }
+    },
+    {
+      "t": 34.5,
+      "step": "04-nothing-was-rewritten",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "c8fe6a2 first local patch",
+          "0567354 drop in the vendor tree"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "This repository starts at a vendor drop. Everything that came before it is sitting on another branch with no connection to it."
+    },
+    {
+      "t": 6.5,
+      "text": "First, which commit is the one with no parent."
+    },
+    {
+      "t": 15.0,
+      "text": "Now git is told to stand a different commit in its place whenever it walks history -- one that does know about the older parent. One command, and the shape of it is on screen."
+    },
+    {
+      "t": 24.0,
+      "text": "And the log runs straight back through the old work."
+    },
+    {
+      "t": 32.5,
+      "text": "Nothing was rewritten to do it. Ask git to ignore the substitution and the two original commits are exactly as they were, same identities and all. A rebase would not leave you that."
+    }
+  ],
+  "notes": "Branches named trunk and upstream with other subjects; the task's branches and commits differ."
+}

@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "id": "git-bisect-first-bad",
+  "title": "Letting git find the commit that broke a check",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 40.5,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "tidewater - bash",
+        "lines": [
+          "$ ./verify.sh; echo \"tip says $?\"",
+          "tip says 125",
+          "4ae1e61 tidy the comments",
+          "0c97693 point at the notes",
+          "b304734 take one pass instead of looping",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 5.0,
+      "step": "01-hand-git-both-ends",
+      "terminal": {
+        "type": "git bisect start main main~7"
+      }
+    },
+    {
+      "t": 7.5,
+      "step": "01-hand-git-both-ends",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Bisecting: 3 revisions left to test after this (roughly 2 steps)",
+          "[c3e19d06c3f51f1aaa328462603fb7552f65dc75] begin an argument check"
+        ]
+      }
+    },
+    {
+      "t": 13.5,
+      "step": "02-let-it-drive-the-check",
+      "terminal": {
+        "type": "git bisect run ./verify.sh"
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "02-let-it-drive-the-check",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "... (9 earlier lines scrolled off)",
+          "running './verify.sh'",
+          "There are only 'skip'ped commits left to test.",
+          "The first bad commit could be any of:",
+          "0c976932f70d762b6316524e31aa9765d83c103e",
+          "b304734a4e561c8a1ce553c8ff4fa12255a9eb84",
+          "4ae1e61c081e0eff54eb7517319d8dc55005d9da",
+          "We cannot bisect more!",
+          "error: bisect run cannot continue any more"
+        ]
+      }
+    },
+    {
+      "t": 23.0,
+      "step": "03-let-go-afterwards",
+      "terminal": {
+        "type": "git bisect reset"
+      }
+    },
+    {
+      "t": 25.5,
+      "step": "03-let-go-afterwards",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Previous HEAD position was b304734 take one pass instead of looping",
+          "Switched to branch 'main'"
+        ]
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "04-back-where-we-started",
+      "terminal": {
+        "type": "git status -sb"
+      }
+    },
+    {
+      "t": 33.5,
+      "step": "04-back-where-we-started",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "## main"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "Eight commits. The check passes at the oldest one and fails at the tip, and nobody knows which commit did it."
+    },
+    {
+      "t": 5.5,
+      "text": "Hand git both ends of the range. The order they go in catches people out, so read it off the screen rather than guessing."
+    },
+    {
+      "t": 14.0,
+      "text": "Now let it run the check itself. Watch it step over a revision it cannot judge: the script reports that case apart from passing and failing, and git treats it accordingly."
+    },
+    {
+      "t": 23.5,
+      "text": "And let go when it is done, or you are left parked on a detached revision with the search still open."
+    },
+    {
+      "t": 31.5,
+      "text": "Back on the branch, clean, nothing in progress."
+    }
+  ],
+  "notes": "A different helper and eight commits; the task's repository, verdict script and subjects all differ."
+}

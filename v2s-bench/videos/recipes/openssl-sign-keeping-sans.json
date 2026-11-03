@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "id": "openssl-sign-keeping-sans",
+  "title": "Signing a request so the certificate keeps what it asked for",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 52.3,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "pki - bash",
+        "lines": [
+          "$ openssl req -in mq.csr -noout -text | grep -A2 'Requested Ext'",
+          "            Requested Extensions:",
+          "                X509v3 Subject Alternative Name: ",
+          "                    DNS:mq.example.test, DNS:mq.svc.example.test",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-sign-it-the-usual-way",
+      "terminal": {
+        "type": "openssl x509 -req -in mq.csr -CA ca.crt -CAkey ca.key \\"
+      }
+    },
+    {
+      "t": 8.2,
+      "step": "01-sign-it-the-usual-way",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -days 90 -sha256 -out mq.crt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 10.4,
+      "step": "01-sign-it-the-usual-way",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Certificate request self-signature ok",
+          "subject=O = Tidewater, CN = mq.example.test"
+        ]
+      }
+    },
+    {
+      "t": 15.9,
+      "step": "02-the-names-are-gone",
+      "terminal": {
+        "type": "openssl x509 -in mq.crt -noout -ext subjectAltName"
+      }
+    },
+    {
+      "t": 18.4,
+      "step": "02-the-names-are-gone",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "No extensions in certificate"
+        ]
+      }
+    },
+    {
+      "t": 24.4,
+      "step": "03-and-it-verifies-anyway",
+      "terminal": {
+        "type": "openssl verify -CAfile ca.crt mq.crt"
+      }
+    },
+    {
+      "t": 26.9,
+      "step": "03-and-it-verifies-anyway",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "mq.crt: OK"
+        ]
+      }
+    },
+    {
+      "t": 32.9,
+      "step": "04-ask-for-them-at-signing-time",
+      "terminal": {
+        "type": "openssl x509 -req -in mq.csr -CA ca.crt -CAkey ca.key \\"
+      }
+    },
+    {
+      "t": 35.1,
+      "step": "04-ask-for-them-at-signing-time",
+      "terminal": {
+        "prompt": "> ",
+        "type": "  -days 90 -sha256 -copy_extensions copy -out mq.crt"
+      },
+      "continuous": true
+    },
+    {
+      "t": 37.3,
+      "step": "04-ask-for-them-at-signing-time",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "Certificate request self-signature ok",
+          "subject=O = Tidewater, CN = mq.example.test"
+        ]
+      }
+    },
+    {
+      "t": 42.8,
+      "step": "05-now-they-are-there",
+      "terminal": {
+        "type": "openssl x509 -in mq.crt -noout -ext subjectAltName"
+      }
+    },
+    {
+      "t": 45.3,
+      "step": "05-now-they-are-there",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "X509v3 Subject Alternative Name: ",
+          "    DNS:mq.example.test, DNS:mq.svc.example.test"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.6,
+      "text": "The request asks for two names besides the common name. That is what the clients will actually check."
+    },
+    {
+      "t": 8.7,
+      "text": "Sign it the usual way. Confirmation printed, no warnings."
+    },
+    {
+      "t": 16.4,
+      "text": "And the names it asked for are not on the certificate. A request is only ever a request."
+    },
+    {
+      "t": 24.9,
+      "text": "Worse, it verifies. This is exactly how a certificate like this gets shipped and then rejected by everything that checks names properly."
+    },
+    {
+      "t": 35.6,
+      "text": "The signing step has to be told to take them over. One more piece on the command line, and it is on screen."
+    },
+    {
+      "t": 43.3,
+      "text": "Now the names are on the certificate."
+    }
+  ],
+  "notes": "A different host and CA; the task's request asks for other names and other usages."
+}
