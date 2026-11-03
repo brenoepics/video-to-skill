@@ -43,7 +43,7 @@
         "prompt": "$ ",
         "output": [
           "bad decrypt",
-          "40D7F3EF737F0000:error:1C800064:Provider routines:ossl_cipher_unpadb"
+          "40A78C7B557F0000:error:1C800064:Provider routines:ossl_cipher_unpadb"
         ]
       }
     },
@@ -61,7 +61,7 @@
         "prompt": "$ ",
         "output": [
           "32 notes.txt",
-          " 245 306   6 210 317 261   x   S   < 276   ; 354 252 264 331   f"
+          " 214 243 304   t   c 343 203 311 275   i 327   @ 362 275 201   x"
         ]
       }
     },

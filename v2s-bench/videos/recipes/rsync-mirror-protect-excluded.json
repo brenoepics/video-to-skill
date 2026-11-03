@@ -87,7 +87,7 @@
       "t": 35.4,
       "step": "04-the-trailing-slash",
       "terminal": {
-        "type": "rsync -an --delete --exclude=/.cache/ docs www/ | head -4"
+        "type": "rsync -anv --delete --exclude=/.cache/ docs www/ | head -6"
       }
     },
     {
@@ -95,7 +95,14 @@
       "step": "04-the-trailing-slash",
       "terminal": {
         "prompt": "$ ",
-        "output": []
+        "output": [
+          "sending incremental file list",
+          "docs/",
+          "docs/guide.md",
+          "docs/index.md",
+          "docs/.cache/",
+          "docs/.cache/blob"
+        ]
       }
     }
   ],

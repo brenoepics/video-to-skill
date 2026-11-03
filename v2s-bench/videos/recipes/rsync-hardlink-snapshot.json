@@ -48,8 +48,8 @@
       "terminal": {
         "prompt": "$ ",
         "output": [
-          "730397 1 snaps/w17/inbox",
-          "730762 1 snaps/w18/inbox"
+          "664390 1 snaps/w17/inbox",
+          "664393 1 snaps/w18/inbox"
         ]
       }
     },
@@ -122,10 +122,10 @@
       "terminal": {
         "prompt": "$ ",
         "output": [
-          "730397 2 snaps/w17/inbox",
-          "730397 2 snaps/w18/inbox",
-          "730748 1 snaps/w17/sent",
-          "730762 1 snaps/w18/sent"
+          "664390 2 snaps/w17/inbox",
+          "664390 2 snaps/w18/inbox",
+          "664391 1 snaps/w17/sent",
+          "664393 1 snaps/w18/sent"
         ]
       }
     }
@@ -149,7 +149,7 @@
     },
     {
       "t": 30.0,
-      "text": "This time rsync is pointed at last week's copy to compare against. Written this way it finds nothing -- read what it says about the path, because the path is not resolved from where you are standing."
+      "text": "This time rsync is pointed at last week's copy to compare against. Written this way it finds nothing, and it tells you so about the path. There is another way to spell the same place."
     },
     {
       "t": 41.2,

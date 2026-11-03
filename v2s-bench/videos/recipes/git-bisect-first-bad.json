@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 40.5,
+  "duration_secs": 49.0,
   "stills": [
     {
       "t": 0.0,
@@ -13,24 +13,44 @@
         "title": "tidewater - bash",
         "lines": [
           "$ ./verify.sh; echo \"tip says $?\"",
-          "tip says 125",
-          "4ae1e61 tidy the comments",
-          "0c97693 point at the notes",
-          "b304734 take one pass instead of looping",
+          "tip says 1",
+          "960ba76 tidy the comments",
+          "a2216e9 point at the notes",
+          "1026f25 take one pass instead of looping",
           "$ "
         ]
       }
     },
     {
       "t": 5.0,
-      "step": "01-hand-git-both-ends",
+      "step": "01-what-the-check-can-say",
+      "terminal": {
+        "type": "cat verify.sh"
+      }
+    },
+    {
+      "t": 7.5,
+      "step": "01-what-the-check-can-say",
+      "terminal": {
+        "prompt": "$ ",
+        "output": [
+          "#!/bin/sh",
+          "# 0 good, 1 bad, 125 cannot say",
+          "sh -n ./fold.sh 2>/dev/null || exit 125",
+          "[ \"$(sh ./fold.sh 23)\" = 3 ]"
+        ]
+      }
+    },
+    {
+      "t": 13.5,
+      "step": "02-hand-git-both-ends",
       "terminal": {
         "type": "git bisect start main main~7"
       }
     },
     {
-      "t": 7.5,
-      "step": "01-hand-git-both-ends",
+      "t": 16.0,
+      "step": "02-hand-git-both-ends",
       "terminal": {
         "prompt": "$ ",
         "output": [
@@ -40,58 +60,64 @@
       }
     },
     {
-      "t": 13.5,
-      "step": "02-let-it-drive-the-check",
+      "t": 22.0,
+      "step": "03-let-it-drive-the-check",
       "terminal": {
         "type": "git bisect run ./verify.sh"
       }
     },
     {
-      "t": 16.0,
-      "step": "02-let-it-drive-the-check",
+      "t": 24.5,
+      "step": "03-let-it-drive-the-check",
       "terminal": {
         "prompt": "$ ",
         "output": [
-          "... (9 earlier lines scrolled off)",
           "running './verify.sh'",
-          "There are only 'skip'ped commits left to test.",
-          "The first bad commit could be any of:",
-          "0c976932f70d762b6316524e31aa9765d83c103e",
-          "b304734a4e561c8a1ce553c8ff4fa12255a9eb84",
-          "4ae1e61c081e0eff54eb7517319d8dc55005d9da",
-          "We cannot bisect more!",
-          "error: bisect run cannot continue any more"
+          "Bisecting: 3 revisions left to test after this (roughly 2 steps)",
+          "[da2e6554dcbd8638a4b91274036b1c64f0f2e4d0] back out the argument che",
+          "running './verify.sh'",
+          "Bisecting: 1 revision left to test after this (roughly 1 step)",
+          "[1026f258c10f533289c9986bf37bb03b2c09577b] take one pass instead of ",
+          "running './verify.sh'",
+          "1026f258c10f533289c9986bf37bb03b2c09577b is the first bad commit",
+          "commit 1026f258c10f533289c9986bf37bb03b2c09577b",
+          "Author: Tide <t@example.invalid>",
+          "Date:   Mon Apr 6 00:00:00 2026 +0000",
+          "    take one pass instead of looping",
+          " fold.sh | 2 +-",
+          " 1 file changed, 1 insertion(+), 1 deletion(-)",
+          "bisect found first bad commit"
         ]
       }
     },
     {
-      "t": 23.0,
-      "step": "03-let-go-afterwards",
+      "t": 31.5,
+      "step": "04-let-go-afterwards",
       "terminal": {
         "type": "git bisect reset"
       }
     },
     {
-      "t": 25.5,
-      "step": "03-let-go-afterwards",
+      "t": 34.0,
+      "step": "04-let-go-afterwards",
       "terminal": {
         "prompt": "$ ",
         "output": [
-          "Previous HEAD position was b304734 take one pass instead of looping",
+          "Previous HEAD position was 1026f25 take one pass instead of looping",
           "Switched to branch 'main'"
         ]
       }
     },
     {
-      "t": 31.0,
-      "step": "04-back-where-we-started",
+      "t": 39.5,
+      "step": "05-back-where-we-started",
       "terminal": {
         "type": "git status -sb"
       }
     },
     {
-      "t": 33.5,
-      "step": "04-back-where-we-started",
+      "t": 42.0,
+      "step": "05-back-where-we-started",
       "terminal": {
         "prompt": "$ ",
         "output": [
@@ -107,18 +133,22 @@
     },
     {
       "t": 5.5,
-      "text": "Hand git both ends of the range. The order they go in catches people out, so read it off the screen rather than guessing."
+      "text": "The check has three answers, not two. The third one is for a revision it cannot judge at all, and it matters in a moment."
     },
     {
       "t": 14.0,
+      "text": "Hand git both ends of the range. The order they go in catches people out, so read it off the screen rather than guessing."
+    },
+    {
+      "t": 22.5,
       "text": "Now let it run the check itself. Watch it step over a revision it cannot judge: the script reports that case apart from passing and failing, and git treats it accordingly."
     },
     {
-      "t": 23.5,
+      "t": 32.0,
       "text": "And let go when it is done, or you are left parked on a detached revision with the search still open."
     },
     {
-      "t": 31.5,
+      "t": 40.0,
       "text": "Back on the branch, clean, nothing in progress."
     }
   ],
