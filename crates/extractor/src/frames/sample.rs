@@ -79,10 +79,32 @@ impl SampledFrame {
 /// Decode `media` once and return one thumbnail per `1/fps` seconds.
 pub fn sample_thumbnails(tools: &Toolchain, media: &Path, fps: f64) -> Result<Vec<SampledFrame>> {
     let filter = format!("fps={fps},scale={THUMB_W}x{THUMB_H},format=yuv420p");
+    let mut frames = Vec::new();
+    stream_raw(tools, media, &filter, "yuv420p", FRAME_LEN, &mut |planes| {
+        #[allow(clippy::cast_precision_loss)] // frame counts are small
+        let timestamp_secs = frames.len() as f64 / fps;
+        frames.push(SampledFrame {
+            timestamp_secs,
+            planes,
+        });
+    })?;
+    Ok(frames)
+}
+
+/// Decode `media` once through `filter`, emitting raw `pix_fmt` frames
+/// of `frame_len` bytes, and hand each one to `on_frame` as it arrives.
+pub(super) fn stream_raw(
+    tools: &Toolchain,
+    media: &Path,
+    filter: &str,
+    pix_fmt: &str,
+    frame_len: usize,
+    on_frame: &mut dyn FnMut(Vec<u8>),
+) -> Result<()> {
     let mut child = Command::new(&tools.ffmpeg)
         .args(["-v", "error", "-skip_frame", "noref", "-i"])
         .arg(media)
-        .args(["-vf", &filter, "-f", "rawvideo", "-pix_fmt", "yuv420p", "-"])
+        .args(["-vf", filter, "-f", "rawvideo", "-pix_fmt", pix_fmt, "-"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -103,24 +125,18 @@ pub fn sample_thumbnails(tools: &Toolchain, media: &Path, fps: f64) -> Result<Ve
         let _ = stderr.read_to_end(&mut text);
         String::from_utf8_lossy(&text).into_owned()
     });
-    let mut frames = Vec::new();
     let mut truncated = false;
     loop {
-        let mut planes = vec![0u8; FRAME_LEN];
+        let mut planes = vec![0u8; frame_len];
         let got = read_frame(&mut stdout, &mut planes).context("reading sampled frames")?;
         if got == 0 {
             break;
         }
-        if got < FRAME_LEN {
+        if got < frame_len {
             truncated = true;
             break;
         }
-        #[allow(clippy::cast_precision_loss)] // frame counts are small
-        let timestamp_secs = frames.len() as f64 / fps;
-        frames.push(SampledFrame {
-            timestamp_secs,
-            planes,
-        });
+        on_frame(planes);
     }
     let status = child.wait().context("waiting for ffmpeg frame sampler")?;
     let diagnostics = diagnostics.join().unwrap_or_default();
@@ -130,7 +146,7 @@ pub fn sample_thumbnails(tools: &Toolchain, media: &Path, fps: f64) -> Result<Ve
     if truncated {
         bail!("frame sampler produced a truncated stream");
     }
-    Ok(frames)
+    Ok(())
 }
 
 /// Fill `buf` from `reader`, returning how many bytes arrived before

@@ -7,21 +7,35 @@ use std::path::Path;
 use crate::bundle::MediaInfo;
 
 use super::analyze::{self, State};
+use super::cursor::{self, CursorTrack};
 use super::export::FrameRequest;
 use super::sample::SampledFrame;
 use super::{hash, subdivide, ChangedRegion, FrameConfig, Keyframe, Shot, FRAMES_DIR};
 
+/// Everything the plan is made from.
+pub struct Inputs<'a> {
+    pub states: &'a [State],
+    pub sampled: &'a [SampledFrame],
+    pub cursor: &'a CursorTrack,
+    pub media: &'a MediaInfo,
+    pub bundle_dir: &'a Path,
+    pub config: &'a FrameConfig,
+}
+
 /// One shot per state. The keyframe (and its native still) sit at the
 /// state's evidence frame — the settled result of the change that
-/// started it — with a native crop of the region that changed, and
-/// long states gain periodic interior keyframes.
-pub fn plan_shots(
-    states: &[State],
-    sampled: &[SampledFrame],
-    media: &MediaInfo,
-    bundle_dir: &Path,
-    config: &FrameConfig,
-) -> (Vec<Shot>, Vec<FrameRequest>) {
+/// started it — with a native crop of the region that changed and, in
+/// screen recordings, crops around the pointer before and after the
+/// change; long states gain periodic interior keyframes.
+pub fn plan_shots(inputs: &Inputs) -> (Vec<Shot>, Vec<FrameRequest>) {
+    let Inputs {
+        states,
+        sampled,
+        cursor,
+        media,
+        bundle_dir,
+        config,
+    } = *inputs;
     let mut shots = Vec::with_capacity(states.len());
     let mut requests = Vec::new();
     for (index, state) in states.iter().enumerate() {
@@ -90,6 +104,16 @@ pub fn plan_shots(
             },
             interior_keyframes,
             changed_region,
+            cursor_presence: Some(cursor.presence(state.start..end)),
+            cursor: cursor::evidence::plan_evidence(
+                cursor,
+                states,
+                index,
+                sampled,
+                media,
+                bundle_dir,
+                &mut requests,
+            ),
         });
     }
     (shots, requests)

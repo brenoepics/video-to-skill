@@ -15,7 +15,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::bundle::{load_manifest, load_transcript, save_manifest};
-use crate::frames::{load_frame_track, ChangedRegion};
+use crate::frames::{load_frame_track, ChangedRegion, CursorEvidence};
 
 pub const TIMELINE_FILE: &str = "timeline.json";
 
@@ -45,6 +45,15 @@ pub struct TimelineSegment {
     /// native still when the keyframe's text is too small.
     #[serde(default)]
     pub changed_region: Option<ChangedRegion>,
+    /// Share (0–1) of the segment's samples with a mouse cursor on
+    /// screen: a screen recording when high, slides or a camera when
+    /// low. None when the frame track did not measure it.
+    #[serde(default)]
+    pub cursor_presence: Option<f64>,
+    /// Native crops around the cursor just before and after the change
+    /// that started the segment, for GUI walkthroughs.
+    #[serde(default)]
+    pub cursor: Option<CursorEvidence>,
     pub speech: Vec<SpeechSpan>,
 }
 
@@ -109,6 +118,8 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
                     })
                     .collect(),
                 changed_region: s.changed_region.clone(),
+                cursor_presence: s.cursor_presence,
+                cursor: s.cursor.clone(),
                 speech: Vec::new(),
             })
             .collect(),
@@ -120,6 +131,8 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
             keyframe: None,
             interior_keyframes: Vec::new(),
             changed_region: None,
+            cursor_presence: None,
+            cursor: None,
             speech: Vec::new(),
         }],
     };
