@@ -92,7 +92,7 @@ video:
   tier: hermetic
   ref: git-bisect-first-bad
   sha256: null
-placebo_source: git-reflog-rescue-orphan
+placebo_source: git-rescue-dangling-commit
 notes: >-
   The video bisects a different repository whose verdict script and commit
   subjects are unrelated, so the hash on screen is of no use here.

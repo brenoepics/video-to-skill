@@ -36,7 +36,7 @@ knowledge_gap:
   probe_answer_pattern: '(?i)(?=[\s\S]*corner)(?=[\s\S]*(monoton|descend|snake|ordered|sorted))(?=[\s\S]*(never|avoid|refus|forbid|only when forced|last resort)[\s\S]{0,80}\b(up|down|left|right)\b)'
   taught_at: [27.0, 55.0, 72.0]
 environment:
-  image: python:3.11-slim
+  image: python:3.13-slim
   workdir: /work
   network: none
   seedable: true
@@ -81,7 +81,6 @@ check:
       - every-board-tile-512
   leakage_forbidden:
     - check.py
-    - play.py
     - journal-present
     - boards-as-provisioned
     - moves-are-legal
@@ -90,8 +89,6 @@ check:
     - every-board-reaches-target
     - "20481"
     - "20482"
-    - 9E3779B9
-    - splitmix
 oracle:
   entrypoint: solve.sh
   modality: shell

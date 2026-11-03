@@ -68,7 +68,6 @@ check:
     - parent-is-the-base-anchor
     - anchor-is-genuine
     - entry-is-the-patch-fact
-    - "awk '/^anchor:/{print $2}'"
 oracle:
   entrypoint: solve.sh
   modality: shell

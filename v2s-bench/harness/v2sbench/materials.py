@@ -183,6 +183,42 @@ def _gate(task, text: str) -> LeakageVerdict:
     return LeakageVerdict("fail" if hits else "pass", hits)
 
 
+def self_refusal_risk(task) -> tuple[str, ...]:
+    """Forbidden literals that also appear in the task's own oracle.
+
+    These are the dangerous entries, and the danger runs the opposite way
+    from the one the gate was built for. A literal that appears in the
+    oracle is part of *doing the task*, not part of grading it -- so an
+    honest skill may well contain it, the gate refuses that skill, and the
+    trial is recorded ``refused`` and dropped. The treatment arm then loses
+    cells silently, which looks like weak evidence rather than like a bug.
+
+    Seven tier-2 tasks and three tier-1 tasks were caught this way while the
+    suite was being written, listing things like ``--copy_extensions`` and
+    the oracle's own ``sed`` one-liner. Both are reachable by a skill whose
+    author never saw the grader.
+
+    The rule the gate wants is narrower: forbid the grader's *vocabulary* --
+    assertion ids, checker filenames, fixture constants -- and nothing that
+    a correct procedure would naturally contain.
+    """
+    oracle_dir = task.directory / "oracle"
+    if not oracle_dir.is_dir():
+        return ()
+    body: list[str] = []
+    for path in sorted(oracle_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        try:
+            body.append(path.read_text())
+        except (UnicodeDecodeError, OSError):
+            continue  # a binary fixture cannot contain a procedure string
+    joined = "\n".join(body)
+    return tuple(
+        lit for lit in (task.check.leakage_forbidden or ()) if lit and lit in joined
+    )
+
+
 def audit(root: Path, task, arms: tuple[Arm, ...]) -> list[tuple[str, LeakageVerdict]]:
     """Run the gate over every skill arm of a task, for `validate --blind`."""
     out: list[tuple[str, LeakageVerdict]] = []

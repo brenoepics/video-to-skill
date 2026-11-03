@@ -88,7 +88,6 @@ check:
       - wake_up
   leakage_forbidden:
     - check.py
-    - play.py
     - PACKAGE.sha256
     - journal-present
     - episode-as-provisioned

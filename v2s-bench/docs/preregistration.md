@@ -257,13 +257,18 @@ Prediction, as an ordinal trend rather than a single contrast: the effect
 should be largest on `silent`, smaller on `uninformative`, smallest on
 `informative`.
 
-**Realised distribution in tier 1: 9 `silent`, 3 `uninformative`, 0
-`informative`.** Tier 1 therefore cannot test this moderator — it has no
-`informative` tasks to contrast against — and it is biased toward the
-regime where an effect is most likely. Supplying `informative` tasks is an
-explicit requirement on tier 2, where real tools vary in documentation
-quality and error quality independently. Until tier 2 lands, any
-feedback-bandwidth claim is reported as `insufficient-data`.
+**Realised distribution, whole suite (26 tasks): 17 `silent`, 4
+`uninformative`, 5 `informative`.**
+
+Tier 1 alone was 9 / 3 / 0 — no `informative` tasks at all, so it could not
+test this moderator and was biased toward the regime where an effect is
+most likely. Tier 2 was built to supply the missing cell and did: real
+tools vary in documentation quality and error quality independently, and
+`informative` there spans four tools (jq, sqlite3, git twice, openssl).
+
+The suite can now test the moderator. The weakest cell is
+`good` × `uninformative` at one task, so claims about that cell
+specifically remain under-evidenced.
 
 ### 5.2a Two accounts of why a skill would help
 
@@ -298,28 +303,35 @@ caveat.
 Recorded because it limits what the stratification can conclude, and it
 would otherwise be found by a reader rather than by us.
 
-Tier 1's twelve tasks occupy only three of the four
-`discoverability × feedback_bandwidth` cells, because each invented tool
-has a fixed character and all of its tasks inherit it:
+Tier 1's twelve tasks occupied only three of six cells, because each
+invented tool has a fixed character and all of its tasks inherit it: no
+`informative` tasks at all, and each occupied cell carried by one or two
+tools. Within tier 1 the two axes therefore **cannot be separated** — an
+apparent discoverability effect there could equally be a
+feedback-bandwidth effect.
 
-| | `feedback_bandwidth: high` | `feedback_bandwidth: low` |
-|---|---|---|
-| `discoverability: poor` | 3 (one tool) | 3 (one tool) |
-| `discoverability: good` | **0** | 6 (two tools) |
+Tier 2 repaired it. Across the 26-task suite:
 
-Two consequences:
+| | `silent` | `uninformative` | `informative` |
+|---|---|---|---|
+| `discoverability: good` | 9 | 1 | 3 |
+| `discoverability: poor` | 8 | 3 | 2 |
 
-1. With the `good × high` cell empty, **the two axes cannot be separated
-   within tier 1**. An apparent discoverability effect there could equally
-   be a feedback-bandwidth effect.
-2. Each occupied cell is carried by one or two tools, so a cell-level
-   effect is confounded with that tool's personality.
+All six cells are populated and no multi-task cell is carried by a single
+tool. Two caveats stand: `good` × `uninformative` holds one task, so that
+cell alone is under-evidenced; and a stratified estimate computed on
+**tier 1 in isolation** still carries the original collinearity, so the
+pooled estimate is the one to read for any moderator claim.
 
-Tier 2 is where this is repaired: real tools vary in documentation quality
-and error-message quality independently, so the suite targets balanced
-coverage of all four cells with each cell spread across several tools. Any
-stratified estimate reported for tier 1 alone carries this caveat; the
-pooled estimate is the one to read for moderator claims.
+The empty cell in tier 2 was `poor` × `uninformative`, and the reason is
+worth recording because it is a property of real software rather than an
+oversight: a contentless refusal is a mark of immature error reporting, and
+the mature tools whose *documentation* is poor are not immature at
+erroring. `jq` names the line and the defect; `rsync` names the path it
+could not find. The one genuinely contentless refusal in the tier is
+OpenSSL's provider error stack — and OpenSSL documents its flags well, so
+it lands in `good`. Filling that cell honestly would need a tool chosen for
+being bad at both.
 
 ### 5.4 Exclusion is declared on the probe, never on the outcome
 

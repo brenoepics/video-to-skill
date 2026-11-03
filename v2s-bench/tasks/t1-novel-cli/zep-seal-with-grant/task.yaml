@@ -62,7 +62,6 @@ check:
     - anchor-is-genuine
     - entries-intact
     - ledger-agrees
-    - "sed -n 's/^grant: //p'"
 oracle:
   entrypoint: solve.sh
   modality: shell

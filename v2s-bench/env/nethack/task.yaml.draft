@@ -1,0 +1,103 @@
+# DRAFT -- NOT A TASK. Deliberately not named `task.yaml`: the suite loader
+# (harness/v2sbench/tasks.py, load_suite) only picks up directories that
+# contain `task.yaml`, so this file is inert and `v2sbench tasks --tier
+# t4-game` does not list it.
+#
+# It is committed so the rung's shape is on record. Three things must exist
+# before it becomes a task, and none of them is a formality:
+#
+#   1. oracle/  -- a scripted policy that reaches the milestone from the
+#      provisioned seed, in a fresh container. This is the blocker.
+#   2. A milestone threshold chosen against a MEASURED reference policy,
+#      the way env/2048/calibrate.py bands and env/crafter/calibrate.py
+#      random set theirs. The numbers below are a guess and are marked so.
+#   3. A frozen, hashed interface (env/nethack/PROTOCOL.draft.md is a
+#      draft) and a checker that replays the journal rather than trusting
+#      a reported outcome.
+schema_version: 1
+id: nethack-dlvl4-xp3
+tier: t4-game
+title: "DRAFT: survive to dungeon level 4 at experience level 3 (NetHack)"
+goal: >-
+  A NetHack game is already running in this directory, played through the
+  `v2s-game` command. Play it. When you stop, the character must be alive,
+  standing on dungeon level 4 or deeper, and at experience level 3 or
+  higher, within the 5000-turn budget. `v2s-game help` states the
+  interface and the key vocabulary.
+discoverability: poor
+feedback_bandwidth: silent
+knowledge_gap:
+  summary: >-
+    PLACEHOLDER. The intended gap is the one BALROG documented as the
+    knowing-doing gap: a model can state NetHack facts correctly in a quiz
+    and then eat rotten food, pray at the wrong time, or melee a floating
+    eye. The procedural version -- eat before Weak becomes Fainting, do
+    not melee a blue `e`, keep Elbereth for emergencies, descend rather
+    than grind -- is what a tutorial video teaches and what a skill should
+    carry. It must be written against one specific, probe-able fact rather
+    than this list.
+  probe_question: >-
+    PLACEHOLDER.
+  probe_answer_pattern: 'PLACEHOLDER'
+  taught_at: [0.0]
+environment:
+  image: v2sbench/t4-game-nethack:0.1
+  workdir: /work
+  network: none
+  seedable: true
+  setup:
+    - install -m 0755 v2s-game /usr/local/bin/v2s-game && rm -f v2s-game
+    # NetHackScore-v0, not NetHackChallenge-v0: the Challenge task refuses
+    # to be seeded (see env/nethack/README.md).
+    - V2S_GAME_PROVISION=1 v2s-game init --seed 20481 --turns 5000 >/dev/null
+budget:
+  max_turns: 80
+  wall_secs: 2400
+  max_usd: 4.0
+check:
+  entrypoint: check.py          # does not exist yet
+  required_assertions:
+    - journal-present
+    - game-as-provisioned
+    - keys-replay
+    - journal-is-consistent
+    - alive-at-dlvl4-xp3
+  score:
+    metric: >-
+      BALROG's NetHack progress metric (dungeon level x experience level
+      mapped to empirical human win probability from a human-gameplay
+      dataset), recomputed by the checker from its own replay. MIT,
+      vendored from github.com/balrog-ai/BALROG at a pinned commit --
+      NOT from PyPI, where the name belongs to an unrelated library.
+    milestones:
+      - dlvl-2
+      - dlvl-3
+      - dlvl-4
+      - xp-2
+      - xp-3
+      - alive-at-dlvl4-xp3
+      - reached-minetown
+oracle:
+  entrypoint: solve.sh          # DOES NOT EXIST -- this is why it is a draft
+  modality: shell
+video:
+  tier: hermetic
+  ref: nethack-dlvl4-xp3        # no recipe written; a NetHack recipe needs
+  sha256: null                  # width 1920 / height 1080 for 80 columns
+license: >-
+  NetHack is distributed under the NetHack General Public Licence and the
+  NetHack Learning Environment under its own licence; both are free and
+  neither needs a purchase or a ROM. Nothing is committed here. An image
+  that is published carries the NGPL source-availability obligation.
+attribution: >-
+  NetHack Learning Environment, Kuettler et al. 2020 (arXiv:2006.13760).
+  Progress metric and the knowing-doing gap: BALROG, arXiv:2411.13543
+  (MIT).
+notes: >-
+  EXPECTED BAND IS A GUESS, NOT A MEASUREMENT. Full-game LLM progress on
+  NetHack is 1.5-13%, a floor effect, which is why the task is bounded at
+  all; dungeon level 4 with experience level 3 inside 5000 turns is
+  proposed because it is reachable by ordinary early-game play and not by
+  flailing, but until a reference policy has been measured on the
+  provisioned seed that is an assertion rather than a band. Do not run
+  this task against any arm before that measurement exists.

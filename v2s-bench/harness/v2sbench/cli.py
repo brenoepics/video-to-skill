@@ -111,6 +111,19 @@ def cmd_validate(args) -> int:
     print(f"loaded {len(suite)} tasks (schema + consistency: ok)")
 
     if args.blind:
+        print("\nleakage rules (a rule must not forbid the task's own procedure):")
+        risky = 0
+        for task in suite:
+            overlap = materials.self_refusal_risk(task)
+            if overlap:
+                risky += 1
+                failures.append(f"{task.id}: leakage rule matches its own oracle")
+                print(
+                    f"  FAIL {task.id}: {list(overlap)} appear(s) in this task's own "
+                    "oracle, so an honest skill would be refused and the trial dropped"
+                )
+        print(f"  {len(suite) - risky}/{len(suite)} task(s) have safe leakage rules")
+
         print("\nleakage gate (materials must not contain checker literals):")
         checked = 0
         for task in suite:

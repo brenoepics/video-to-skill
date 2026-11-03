@@ -389,6 +389,12 @@ command is always on screen as a real command with its real output.
 `placebo_source` pairs tasks within a tool family (the two jq tasks, the two
 rsync tasks, the three git tasks, the three openssl tasks), so A5 gets a
 genuine extraction of a genuine procedure that does not solve the task.
+`ffmpeg-stack-dual-camera` and `sqlite-attach-merge-ledgers` are the only
+task for their tool in this tier, so they have **no `placebo_source`**: a
+same-family placebo does not exist for them yet, and pointing them at
+another tool's video would make A5 a topical-irrelevance control rather
+than the length-and-pipeline-matched one §3.3 specifies. Either add a second
+task for those two tools or report them as unplaceboed.
 
 ## 6. Compromises, honestly
 

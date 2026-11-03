@@ -71,6 +71,7 @@ video:
   tier: hermetic
   ref: git-graft-legacy-history
   sha256: null
+placebo_source: git-bisect-first-bad
 notes: >-
   The video joins a different pair of histories, with different branch names
   and different commit subjects, so only the mechanism transfers.

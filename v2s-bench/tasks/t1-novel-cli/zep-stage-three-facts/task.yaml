@@ -64,7 +64,6 @@ check:
     - entries-are-the-three-facts
     - stage-matches-record
     - ledger-agrees
-    - "while read -r key value"
 oracle:
   entrypoint: solve.sh
   modality: shell
