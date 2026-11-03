@@ -150,6 +150,9 @@ mod tests {
                 motion_density: 0.0,
                 keyframe: keyframe(15.0, "shot000", true),
                 interior_keyframes: vec![keyframe(20.0, "shot000-i01", false)],
+                changed_region: None,
+                cursor_presence: None,
+                cursor: None,
             }],
         }
     }
