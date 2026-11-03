@@ -1,11 +1,14 @@
 //! Narration for gold videos: each cue is spoken by macOS `say` into
 //! its own file, then every clip is delayed to its cue time and mixed
 //! into one track. Elsewhere (or without `say`) the video gets silence,
-//! and the caller reports transcript metrics as not scored.
+//! and the caller reports transcript metrics as not scored. Each `say`
+//! runs under a deadline: it can hang after writing its clip.
 
 use std::fmt::Write as _;
+use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, ExitStatus, Stdio};
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
 
@@ -15,6 +18,10 @@ use crate::tools::Toolchain;
 /// Pinned so every machine narrates with the same voice and pace.
 const VOICE: &str = "Samantha";
 const WORDS_PER_MINUTE: &str = "175";
+/// `say -o` has been seen to hang after writing its file in full; a cue
+/// is a sentence or two, so a run alive this long is killed.
+const SAY_DEADLINE: Duration = Duration::from_secs(60);
+const SAY_POLL: Duration = Duration::from_millis(50);
 
 /// Spoken cues ready to mix: one clip per cue with its delay.
 #[derive(Debug, Clone, Default)]
@@ -97,29 +104,57 @@ fn say_available() -> bool {
 }
 
 fn speak(text: &str, clip: &Path) -> Result<()> {
-    let pinned = Command::new("say")
+    let mut pinned = Command::new("say");
+    pinned
         .args(["-v", VOICE, "-r", WORDS_PER_MINUTE, "-o"])
         .arg(clip)
-        .arg(text)
-        .output()
-        .context("running macOS `say`")?;
-    if pinned.status.success() {
+        .arg(text);
+    if spoke(&mut pinned, clip, SAY_DEADLINE)? {
         return Ok(());
     }
     // The pinned voice is missing on this machine: use the default one.
-    let fallback = Command::new("say")
+    let mut fallback = Command::new("say");
+    fallback
         .args(["-r", WORDS_PER_MINUTE, "-o"])
         .arg(clip)
-        .arg(text)
-        .output()
-        .context("running macOS `say`")?;
-    if !fallback.status.success() {
-        bail!(
-            "`say` failed: {}",
-            String::from_utf8_lossy(&fallback.stderr)
-        );
+        .arg(text);
+    if spoke(&mut fallback, clip, SAY_DEADLINE)? {
+        return Ok(());
     }
-    Ok(())
+    bail!("`say` could not speak {text:?} into {}", clip.display())
+}
+
+/// Run one `say` and report whether `clip` came out of it. A run still
+/// alive at `deadline` is killed; its clip counts when it was written
+/// before the hang (the duration probe rejects a truncated one).
+fn spoke(say: &mut Command, clip: &Path, deadline: Duration) -> Result<bool> {
+    let _ = fs::remove_file(clip);
+    Ok(match run_within(say, deadline)? {
+        Some(status) => status.success(),
+        None => fs::metadata(clip).is_ok_and(|m| m.len() > 0),
+    })
+}
+
+/// Run `command` to completion, or kill it at `deadline` (`None`).
+fn run_within(command: &mut Command, deadline: Duration) -> Result<Option<ExitStatus>> {
+    let mut child = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .with_context(|| format!("running {}", command.get_program().to_string_lossy()))?;
+    let until = Instant::now() + deadline;
+    loop {
+        if let Some(status) = child.try_wait().context("waiting for a subprocess")? {
+            return Ok(Some(status));
+        }
+        if Instant::now() >= until {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(None);
+        }
+        std::thread::sleep(SAY_POLL);
+    }
 }
 
 fn probe_duration_secs(tools: &Toolchain, media: &Path) -> Result<f64> {
@@ -163,5 +198,46 @@ mod tests {
     #[test]
     fn a_single_cue_skips_the_mixer() {
         assert_eq!(mix_filter(&[500], 1), "[1:a]adelay=500|500[d0];[d0]apad[a]");
+    }
+}
+
+#[cfg(all(test, unix))]
+mod deadline_tests {
+    use std::process::Command;
+    use std::time::{Duration, Instant};
+
+    use super::{run_within, spoke};
+
+    #[test]
+    fn a_command_that_finishes_reports_its_status() {
+        let status = run_within(&mut Command::new("true"), Duration::from_secs(5)).unwrap();
+        assert!(status.is_some_and(|s| s.success()));
+    }
+
+    #[test]
+    fn a_command_past_its_deadline_is_killed() {
+        let started = Instant::now();
+        let status =
+            run_within(Command::new("sleep").arg("30"), Duration::from_millis(200)).unwrap();
+        assert!(status.is_none());
+        assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn a_hung_say_still_counts_when_its_clip_was_written() {
+        let dir = std::env::temp_dir().join(format!("vts-say-deadline-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let clip = dir.join("cue.aiff");
+
+        let mut hung = Command::new("sh");
+        hung.arg("-c")
+            .arg("printf audio > \"$0\"; sleep 30")
+            .arg(&clip);
+        let mut silent = Command::new("sh");
+        silent.arg("-c").arg("sleep 30");
+
+        assert!(spoke(&mut hung, &clip, Duration::from_millis(300)).unwrap());
+        assert!(!spoke(&mut silent, &clip, Duration::from_millis(300)).unwrap());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
