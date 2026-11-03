@@ -85,6 +85,8 @@ def ask(
     timeout: int = 120,
 ) -> str:
     """Put one question to the model with no tools and no skills."""
+    if binary == "codex":
+        return _ask_codex(question, model=model, timeout=timeout)
     argv = [
         binary, "-p", PROBE_PREAMBLE + question,
         "--model", model,
@@ -97,6 +99,46 @@ def ask(
     if proc.returncode != 0:
         raise RuntimeError(f"probe failed: {(proc.stderr or proc.stdout)[-400:]}")
     return _extract_text(proc.stdout)
+
+
+def _ask_codex(question: str, *, model: str, timeout: int) -> str:
+    """The same probe through `codex exec`.
+
+    Codex has no equivalent of disabling every tool, so the probe runs in
+    an empty directory under the read-only sandbox: there is nothing to
+    read and nothing to run. That is close to tool-free but not identical
+    to it, and the asymmetry is recorded rather than glossed -- a probe
+    score is only comparable to another probe score taken the same way.
+    """
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as empty:
+        proc = subprocess.run(
+            [
+                "codex", "exec",
+                "--model", model,
+                "--sandbox", "read-only",
+                "--ignore-user-config",
+                "--json",
+                PROBE_PREAMBLE + question,
+            ],
+            capture_output=True, text=True, timeout=timeout, cwd=empty,
+        )
+    if proc.returncode != 0:
+        raise RuntimeError(f"probe failed: {(proc.stderr or proc.stdout)[-400:]}")
+    texts: list[str] = []
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        item = event.get("item") or {}
+        if isinstance(item, dict) and item.get("text"):
+            texts.append(str(item["text"]))
+    return "\n".join(texts).strip() or proc.stdout.strip()
 
 
 def _extract_text(stdout: str) -> str:

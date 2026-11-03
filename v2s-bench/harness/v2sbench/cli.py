@@ -215,6 +215,12 @@ def cmd_run(args) -> int:
     if not suite:
         raise SystemExit("no tasks to run")
     adapter = create_agent(args.agent, model=args.model)
+    if args.agent == "codex":
+        print(
+            "  note: under codex, A1 advertises the skill in AGENTS.md by name and\n"
+            "  description only, because AGENTS.md is always concatenated into the\n"
+            "  prompt; inlining it there is the forced arm (A7), not the ambient one."
+        )
     config = RunConfig(
         root=root,
         model=args.model or "none",
@@ -348,7 +354,10 @@ def cmd_probe(args) -> int:
         raise SystemExit("--model is required: a probe score belongs to one model")
     results = []
     for task in suite:
-        result = probe_task(task, model=args.model, repeats=args.repeats)
+        result = probe_task(
+            task, model=args.model, repeats=args.repeats,
+            binary="codex" if args.agent == "codex" else "claude",
+        )
         results.append(result)
         flag = " SATURATED" if saturated(result, task) else ""
         print(
@@ -486,7 +495,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("run", help="execute trials")
     common(p)
     sandboxed(p)
-    p.add_argument("--agent", default="stub", choices=["stub", "claude-code"])
+    p.add_argument("--agent", default="stub", choices=["stub", "claude-code", "codex"])
     p.add_argument("--model", help="full model id; aliases are refused")
     p.add_argument("--arms", default="core", help="armset name or comma list, e.g. A0,A1")
     p.add_argument("--seeds", type=int, default=3)
@@ -524,7 +533,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     common(p)
     sandboxed(p)
-    p.add_argument("--agent", default="claude-code", choices=["stub", "claude-code"])
+    p.add_argument("--agent", default="claude-code", choices=["stub", "claude-code", "codex"])
     p.add_argument("--model")
     p.add_argument("--arms", default="core")
     p.add_argument("--seeds", type=int, default=3)
@@ -533,6 +542,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("probe", help="measure per-task headroom (what the model knows cold)")
     common(p)
     p.add_argument("--model", help="full model id; a probe score belongs to one model")
+    p.add_argument("--agent", default="claude-code", choices=["claude-code", "codex"],
+                   help="probe the model under test, through its own runner")
     p.add_argument("--repeats", type=int, default=10)
     p.set_defaults(func=cmd_probe)
 

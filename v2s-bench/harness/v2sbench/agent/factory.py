@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from .base import AgentError
 
-ADAPTERS = ("stub", "claude-code")
+ADAPTERS = ("stub", "claude-code", "codex")
 
 
 def create(name: str, **kwargs):
@@ -24,6 +24,15 @@ def create(name: str, **kwargs):
                 "which would make the recorded figure uninterpretable later."
             )
         return ClaudeCodeAgent(**kwargs)
+    if name in {"codex", "openai"}:
+        from .codex import CodexAgent
+
+        if not kwargs.get("model"):
+            raise AgentError(
+                "the codex adapter needs an explicit --model with a full model id"
+            )
+        allowed = {"model", "binary", "sandbox", "extra_args"}
+        return CodexAgent(**{k: v for k, v in kwargs.items() if k in allowed})
     raise AgentError(f"unknown adapter {name!r}; known: {ADAPTERS}")
 
 

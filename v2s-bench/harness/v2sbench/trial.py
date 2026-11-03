@@ -88,7 +88,7 @@ def run_trial(
             provenance.sandbox_backend = box.backend
             provenance.image_digest = box.image_digest()
             _provision(box, task, root, seed=spec.seed)
-            material_dir = _inject(box, task, material)
+            material_dir = _inject(box, task, material, adapter, spec.arm)
             run = _run_agent(adapter, spec, box, task, material, material_dir)
             assertions, graded = _check(box, task, root, run.commands)
     except (sandbox_mod.SandboxError, AgentError) as exc:
@@ -187,11 +187,24 @@ def _provision(box, task, root: Path, *, seed: int = 0) -> None:
             )
 
 
-def _inject(box, task, material) -> str | None:
-    """Place the arm's material. The only intended difference between arms."""
+def _inject(box, task, material, adapter, arm) -> str | None:
+    """Place the arm's material. The only intended difference between arms.
+
+    How a skill is *offered* differs by agent, and getting that wrong
+    silently changes which arm you are running. Claude Code discovers a
+    skill from its description in `.claude/skills/`; Codex concatenates
+    every `AGENTS.md` into the prompt, so inlining there produces the
+    forced condition, not the ambient one. An adapter that knows the
+    difference supplies its own injector.
+    """
     if not material.skill_dir:
         return None
     source = Path(material.skill_dir)
+
+    injector = getattr(adapter, "inject_skill", None)
+    if callable(injector):
+        return injector(box, box.workdir, source, forced=(arm.id == "A7"))
+
     target_parent = f"{box.workdir}/{SKILL_PARENT}"
     box.exec(["mkdir", "-p", target_parent])
     target = f"{target_parent}/{source.name}"

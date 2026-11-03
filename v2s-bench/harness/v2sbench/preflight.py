@@ -170,6 +170,10 @@ def _check_images_nonroot(report: Report, images: list[str]) -> None:
     report.add("images run as non-root", OK, "no image runs the agent as root")
 
 
+#: Which executable each adapter drives.
+ADAPTER_BINARY = {"claude-code": "claude", "codex": "codex"}
+
+
 def _check_agent(report: Report, adapter: str, model: str | None) -> None:
     if adapter == "stub":
         report.add(
@@ -180,11 +184,12 @@ def _check_agent(report: Report, adapter: str, model: str | None) -> None:
             "figure; use --agent claude-code for a real run",
         )
         return
-    if shutil.which("claude") is None:
-        report.add("agent", FAIL, "`claude` is not on PATH")
+    binary = ADAPTER_BINARY.get(adapter, adapter)
+    if shutil.which(binary) is None:
+        report.add("agent", FAIL, f"`{binary}` is not on PATH")
         return
     version = subprocess.run(
-        ["claude", "--version"], capture_output=True, text=True
+        [binary, "--version"], capture_output=True, text=True
     ).stdout.strip()
     if not model:
         report.add("agent", FAIL, "no --model given", "pass a full model id")
@@ -198,7 +203,23 @@ def _check_agent(report: Report, adapter: str, model: str | None) -> None:
             "recorded figure uninterpretable later. Pass a full model id",
         )
         return
-    report.add("agent", OK, f"{version or 'claude'} · model {model}")
+    report.add("agent", OK, f"{version or binary} · model {model}")
+    if adapter == "codex":
+        report.add(
+            "codex arm semantics",
+            WARN,
+            "A1 advertises the skill in AGENTS.md; A7 inlines it",
+            "AGENTS.md is always concatenated into the prompt, so inlining a "
+            "skill there is the forced arm. The adapter handles this, but the "
+            "A1/A7 distinction is not identical to Claude Code's and the "
+            "cross-model comparison should say so",
+        )
+        report.add(
+            "codex adapter",
+            WARN,
+            "written from the documented interface, never run against the binary",
+            "run one single-task trial before the real run",
+        )
 
 
 def _check_extractor(report: Report) -> None:
