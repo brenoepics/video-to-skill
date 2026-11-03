@@ -41,7 +41,7 @@ environment:
   network: none
   seedable: true
   setup:
-    - install -m 0755 v2s-game /usr/local/bin/v2s-game && rm -f v2s-game
+    - install -m 0755 v2s-game "$V2SBENCH_BIN"/v2s-game && rm -f v2s-game
     - V2S_GAME_PROVISION=1 v2s-game init --seeds 20481,20482 --goal 1024 --budget 500 >/dev/null
 budget:
   max_turns: 50

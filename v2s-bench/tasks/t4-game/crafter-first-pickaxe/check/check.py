@@ -214,6 +214,19 @@ def main() -> int:
         % ("shows" if re.search(r"(?mi)v2s-game\s+do\b", log) else "does not show"),
         required=False)
 
+    # Crafter's own data.yaml encodes every recipe, and in a single-uid
+    # container it cannot be hidden. Reading it is legitimate discovery
+    # (preregistration 3.1), so it is recorded, never punished -- but how
+    # often an arm does it bounds how much of this rung's effect was
+    # knowledge the environment was carrying all along.
+    looked = re.search(
+        r"(?mi)(site-packages/crafter|crafter/data\.yaml|from\s+crafter\s+import|"
+        r"constants\.(make|place|collect)|import\s+crafter\b)", log)
+    add("rules-not-read-from-the-library", looked is None,
+        "command log shows %r" % (looked.group(0)[:50],) if looked
+        else "the recipes were not read out of the installed library",
+        required=False)
+
     milestones = [name for name in CHAIN + LADDER if name in unlocked]
     if not missing:
         milestones.append("tool-chain-complete")

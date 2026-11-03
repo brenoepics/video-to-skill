@@ -163,14 +163,32 @@ Four tiers, easiest to hardest. Each task is a directory with `task.yaml`,
 a `check/` directory of execution-based assertions, an `oracle/` solution,
 and a declared **knowledge gap**.
 
-| Tier | Name | Environment | Why it is here | n (target) |
-|---|---|---|---|---|
-| **T1** | novel-cli | Purpose-built CLI tools shipped here, Docker | **Zero contamination** — the tools did not exist before this benchmark. Measures whether information can flow video → skill → action at all. | 16 |
-| **T2** | real-cli | Real pinned open-source CLIs/TUIs, Docker | External validity on tools people use, where the model has partial knowledge. | 14 |
-| **T3** | gui | Real GUI apps under Xvfb in Docker | The regime v2s targets — screencasts of graphical apps. | 8 |
-| **T4** | game | Open-source games, headless, seeded | Long-horizon and knowledge-dense, where tutorial video is abundant. | 4 |
+| Tier | Name | Environment | Why it is here | target | built |
+|---|---|---|---|---|---|
+| **T1** | novel-cli | Purpose-built CLI tools shipped here, Docker | **Zero contamination** — the tools did not exist before this benchmark. Measures whether information can flow video → skill → action at all. | 16 | **12** |
+| **T2** | real-cli | Real pinned open-source CLIs/TUIs, Docker | External validity on tools people use, where the model has partial knowledge. | 14 | **12** |
+| **T3** | gui | Real GUI apps under Xvfb in Docker | The regime v2s targets — screencasts of graphical apps. | 8 | **0** |
+| **T4** | game | Open-source games, headless, seeded | Long-horizon and knowledge-dense, where tutorial video is abundant. | 4 | **2** |
 
-Counts are targets, frozen at the freeze commit. §8.1 sets the sample size
+**Realised: 26 of a targeted 42.** The gap is recorded here rather than by
+quietly lowering the target.
+
+- **T3 is specified and not built** (`docs/gui-tier.md`). It reports
+  `insufficient-data` and contributes to no figure. Its six preconditions
+  are listed there.
+- **T4 ships two of four.** 2048 is the tripwire rung and Crafter is the
+  **harness calibration rung** (§4.3), labelled a diagnostic in its own
+  title so the warning travels into any table that prints titles. NetHack
+  is a deliberate stub: its runtime, headless operation and seeding were
+  verified, but the blocker is an oracle — a dungeon-crawling bot that
+  pathfinds, fights, eats and descends — and a bad oracle is worse than
+  none, since it would either mark a sound task broken or pass review while
+  merely replaying a win. `env/nethack/` carries the verified seeding probe
+  and a draft deliberately not named `task.yaml`, so the loader ignores it.
+- The suite is therefore below the N=100 the sample-size analysis (§8.1)
+  asks for, by a wide margin. That is the first thing the pilot has to
+  confront, and it is why the pilot measures correlations rather than
+  attempting a verdict. §8.1 sets the sample size
 the primary endpoint actually requires, which is larger than this; v0.1
 publishes a pilot and states its power honestly rather than pretending a
 42-task suite settles a 5pp question.

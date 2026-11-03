@@ -1,5 +1,10 @@
 # Tier 4 — how to run it, and what it does and does not measure
 
+> **Grader-visible documentation.** Like the tier READMEs
+> (`docs/preregistration.md` §3.2), this page names the knowledge gap each
+> task turns on and the assertions its checker decides on. Anyone authoring
+> arm material must not read it.
+
 Design notes, licensing, the harness-freeze argument and the measured
 bands live in `tasks/t4-game/README.md`. This page is the operational one:
 what to type, what was verified when it was built, and what is still
@@ -10,11 +15,19 @@ unverified and why.
 ```
 $ cd v2s-bench/harness && python3 -m v2sbench.cli tasks --tier t4-game
 id                     tier         disc  fb    video     title
-crafter-first-pickaxe  t4-game      poor  silent hermetic  HARNESS DIAGNOSTIC (calibration rung): Crafter, first pickaxe and first stone
+crafter-first-pickaxe  t4-game      good  silent hermetic  HARNESS DIAGNOSTIC (calibration rung): Crafter, first pickaxe and first stone
 g2048-two-boards       t4-game      poor  silent hermetic  Clear two provisioned 2048 boards, each to a 256 tile
 
-2 tasks · suite version 43e6f22fc4eb599e
+2 tasks · suite version 4cbcb784671a1b90
 ```
+
+The suite digest covers every tier, so it moves whenever any task changes;
+the one above was current when this tier was written.
+
+`crafter-first-pickaxe` declares `discoverability: good` on purpose --
+Crafter's installed library carries its own recipe data, so the gap is
+readable off the box and is declared rather than hidden
+(`tasks/t4-game/README.md`).
 
 NetHack is a **documented stub** under `env/nethack/`, with no `task.yaml`,
 so the suite loader ignores it. Its runtime, seeding and headless operation

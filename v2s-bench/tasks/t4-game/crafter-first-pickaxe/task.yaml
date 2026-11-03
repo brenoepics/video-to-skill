@@ -11,7 +11,7 @@ goal: >-
   so a step spent on an action that does nothing is a step gone.
   `v2s-game help` states the interface, the observation format and the
   seventeen actions; it does not state what any action requires.
-discoverability: poor
+discoverability: good
 feedback_bandwidth: silent
 knowledge_gap:
   summary: >-
@@ -43,7 +43,7 @@ environment:
   network: none
   seedable: true
   setup:
-    - install -m 0755 v2s-game /usr/local/bin/v2s-game && rm -f v2s-game
+    - install -m 0755 v2s-game "$V2SBENCH_BIN"/v2s-game && rm -f v2s-game
     - V2S_GAME_PROVISION=1 v2s-game init --seed 7 --steps 1000 >/dev/null
 budget:
   max_turns: 60
@@ -137,7 +137,18 @@ notes: >-
   meant to be the taught procedure rather than a strong agent. The seed
   is pinned in `setup` for every trial because the harness does not
   interpolate the trial seed into setup commands; see docs/game-tier.md.
-  Residual bypass: a .pyc whose header matches its source would be loaded
+  DISCOVERABILITY IS DECLARED `good`, AND THAT IS NOT A TYPO: Crafter is
+  installed as a Python library and its own `data.yaml` encodes every
+  recipe, so an agent that thinks to look in site-packages can read the
+  requirements off the box. In a single-uid container that cannot be
+  prevented, and stripping the file would break the pinned hash manifest
+  and diverge from the published Crafter setting, so it is declared
+  instead. The checker records whether the command log shows the library
+  being read (`rules-not-read-from-the-library`, not required), which
+  turns the threat into a measurement: how often a baseline goes looking
+  is worth knowing, and it bounds how much of this rung's effect is
+  knowledge the environment was carrying all along. Residual bypass: a
+  .pyc whose header matches its source would be loaded
   in preference to the source and would sidestep the checker's hash check
   on Crafter's rules; the image sets PYTHONDONTWRITEBYTECODE and clears
   the caches, which raises the cost without eliminating it.

@@ -87,10 +87,10 @@ def run_trial(
         with box:
             provenance.sandbox_backend = box.backend
             provenance.image_digest = box.image_digest()
-            _provision(box, task, root)
+            _provision(box, task, root, seed=spec.seed)
             material_dir = _inject(box, task, material)
             run = _run_agent(adapter, spec, box, task, material, material_dir)
-            assertions = _check(box, task, root, run.commands)
+            assertions, graded = _check(box, task, root, run.commands)
     except (sandbox_mod.SandboxError, AgentError) as exc:
         return _error(spec, provenance, material=material, detail=str(exc))
 
@@ -114,6 +114,8 @@ def run_trial(
             status=status,
             success=success if status == "ok" else None,
             assertions=assertions,
+            score=graded.get("score"),
+            milestones=graded.get("milestones") or [],
             metrics={
                 "turns": run.turns,
                 "wall_secs": run.wall_secs,
@@ -140,7 +142,7 @@ def run_trial(
 # -- phases ----------------------------------------------------------------
 
 
-def _provision(box, task, root: Path) -> None:
+def _provision(box, task, root: Path, *, seed: int = 0) -> None:
     """Install the task's files and run its setup, before any arm material."""
     files = task.directory / "files"
     if files.is_dir():
@@ -171,6 +173,11 @@ def _provision(box, task, root: Path) -> None:
         "V2SBENCH_BIN": box.bin_dir,
         "V2SBENCH_WORKDIR": box.workdir,
         "PATH_PREPEND": box.bin_dir,
+        # Without this a seedable environment is pinned per task, so every
+        # trial of a task shares one world: fine for pairing, but it means
+        # repeated trials re-measure the same instance rather than sampling
+        # the environment, which is not what `environment.seedable` implies.
+        "V2SBENCH_SEED": str(seed),
     }
     for command in task.environment.setup:
         result = box.exec(["sh", "-lc", command], timeout=300, env=setup_env)
@@ -231,7 +238,9 @@ _DEFAULT_PREAMBLE = (
 )
 
 
-def _check(box, task, root: Path, commands: list[str]) -> list[dict[str, Any]]:
+def _check(
+    box, task, root: Path, commands: list[str]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Copy the checker in and run it, after the agent has stopped."""
     mount = f"{box.support_dir}/check"
     box.exec(["mkdir", "-p", mount])
@@ -249,7 +258,9 @@ def _check(box, task, root: Path, commands: list[str]) -> list[dict[str, Any]]:
     )
     if result.timed_out:
         raise sandbox_mod.SandboxError(f"checker timed out for {task.id}")
-    return _parse_assertions(result.stdout, task.id, result.stderr)
+    payload = _parse_checker_output(result.stdout, task.id, result.stderr)
+    graded = {k: payload[k] for k in ("score", "milestones") if k in payload}
+    return payload["assertions"], graded
 
 
 def _write_log(root: Path, task_id: str, commands: list[str]) -> Path:
@@ -259,9 +270,18 @@ def _write_log(root: Path, task_id: str, commands: list[str]) -> Path:
     return path
 
 
-def _parse_assertions(stdout: str, task_id: str, stderr: str) -> list[dict[str, Any]]:
-    """Read the checker's JSON. A checker that printed nothing usable is an
-    environment error, not a task failure."""
+def _parse_checker_output(stdout: str, task_id: str, stderr: str) -> dict[str, Any]:
+    """Read the checker's JSON.
+
+    Returns the whole payload, not just the assertions. An earlier version
+    returned the assertion list alone, which quietly discarded `score` and
+    `milestones` -- the graded endpoint the game tier exists to produce.
+    Both checkers were emitting them correctly and nothing was reading
+    them, so the loss was invisible from either end.
+
+    A checker that printed nothing usable is an environment error, not a
+    task failure.
+    """
     for line in reversed(stdout.strip().splitlines()):
         line = line.strip()
         if not line.startswith("{"):
@@ -270,9 +290,8 @@ def _parse_assertions(stdout: str, task_id: str, stderr: str) -> list[dict[str, 
             payload = json.loads(line)
         except json.JSONDecodeError:
             continue
-        found = payload.get("assertions")
-        if isinstance(found, list):
-            return found
+        if isinstance(payload.get("assertions"), list):
+            return payload
     raise sandbox_mod.SandboxError(
         f"checker for {task_id} printed no assertion JSON "
         f"(stdout tail: {stdout.strip()[-200:]!r}, stderr tail: {stderr.strip()[-200:]!r})"

@@ -1,13 +1,25 @@
 # Tier 4 — game environments
 
+> **Grader-visible documentation.** This file states the exact strategy
+> each task's video teaches, the assertion ids its checker decides on, and
+> the reference-policy bands the thresholds were set against. Anyone
+> authoring arm material (A1–A5, including the hand-written A4 skill) must
+> not read it — the same structural blinding `docs/preregistration.md`
+> §3.2 applies to `check/` and `oracle/`. A procedure shaped by this file
+> is an answer key, and the string-level leakage gate cannot detect prose.
+> It is here for reviewers and maintainers. The same applies to
+> `docs/game-tier.md` and to the `env/<game>/PROTOCOL.md` files, which name
+> the knowledge gap in the course of explaining why the interface is shaped
+> as it is.
+
 Two tasks, built and gated. One documented stub. Nothing here is a
 placeholder pretending to be a measurement.
 
-| task | game | licence | binary endpoint | status |
-|---|---|---|---|---|
-| `g2048-two-boards` | 2048, our own implementation | MIT (ours) | a 256 tile on **both** provisioned boards | built, oracle + trivial gates pass |
-| `crafter-first-pickaxe` | Crafter 1.8.3 | MIT, assets included | `collect_wood` + `place_table` + `make_wood_pickaxe` + `collect_stone` | built, oracle + trivial gates pass. **HARNESS DIAGNOSTIC** (§4.3) |
-| NetHack | NLE 1.3.0 / NetHack 3.6 | NGPL | proposed: alive at dlvl 4, xp 3 | **stub** — `env/nethack/README.md` |
+| task | game | licence | binary endpoint | discoverability | status |
+|---|---|---|---|---|---|
+| `g2048-two-boards` | 2048, our own implementation | MIT (ours) | a 256 tile on **both** provisioned boards | poor | built, oracle + trivial gates pass |
+| `crafter-first-pickaxe` | Crafter 1.8.3 | MIT, assets included | `collect_wood` + `place_table` + `make_wood_pickaxe` + `collect_stone` | **good** | built, oracle + trivial gates pass. **HARNESS DIAGNOSTIC** (§4.3) |
+| NetHack | NLE 1.3.0 / NetHack 3.6 | NGPL | proposed: alive at dlvl 4, xp 3 | — | **stub** — `env/nethack/README.md` |
 
 ## Why games, and why this tier is the one most easily faked
 
@@ -158,6 +170,38 @@ the dominant strategy and would measure luck.
   `reset(seed=…)` does **not** seed it; `NetHackChallenge-v0` refuses
   seeding outright; and `fix_moon_phase=True` removes the wall-clock
   dependency.
+
+## Crafter's gap is discoverable on the box, and is declared so
+
+`crafter-first-pickaxe` declares `discoverability: good`, which looks wrong
+for a task whose whole point is a hidden requirement, and is not.
+
+Crafter is installed as a Python library, and its own `data.yaml` encodes
+every recipe: an agent that thinks to look in `site-packages` can read "a
+table costs two wood, a wood pickaxe needs a table nearby, stone needs the
+pickaxe" straight off the box. In a single-uid container that cannot be
+prevented, and stripping the file would both break the pinned hash manifest
+and diverge from the published Crafter setting that this rung is calibrating
+against. So it is declared rather than hidden, and the tier's
+`discoverability` stratum (§4.1) carries it.
+
+Two consequences, both deliberate:
+
+- The checker records `rules-not-read-from-the-library` (not required) from
+  the command log. Reading the library is legitimate discovery under §3.1 —
+  the baseline is allowed to find the procedure — so it is measured, never
+  punished. How often an arm goes looking bounds how much of this rung's
+  effect was knowledge the environment was carrying all along.
+- Nothing that states the gap is installed in the container by us.
+  `env/crafter/PROTOCOL.md` is **not** copied into the image for exactly
+  that reason: it explains the interface by naming the gap, which inside
+  the container would be an answer key handed to every arm. The agent gets
+  `v2s-game help`, which says requirements exist and refuses to say what
+  they are.
+
+The 2048 rung is `poor` by contrast: the engine in the container documents
+the *rules* (and `help` prints them), and nothing on the box states the
+*strategy*.
 
 ## Known bypasses, stated rather than hidden
 

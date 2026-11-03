@@ -366,3 +366,65 @@ def test_every_declared_arm_can_be_recorded(bench_root: Path) -> None:
         )
         errors = list(validator.iter_errors(rec))
         assert errors == [], f"arm {arm.id} cannot be recorded: {errors[:1]}"
+
+
+def test_graded_score_and_milestones_reach_the_record(bench_root: Path) -> None:
+    """A checker's graded output must survive into the trial record.
+
+    It did not. `_check` returned only the assertion list, so `score` and
+    `milestones` -- the graded endpoint the game tier exists to produce,
+    and a declared secondary endpoint in the analysis plan -- were parsed
+    and then dropped. Both checkers emitted them correctly and nothing
+    read them, so the loss was invisible from either end.
+    """
+    from v2sbench.trial import _parse_checker_output
+
+    payload = _parse_checker_output(
+        '{"assertions": [{"id": "a", "passed": true}], '
+        '"score": 15032, "milestones": ["tile-256", "tile-512"]}',
+        "g2048",
+        "",
+    )
+    assert payload["score"] == 15032
+    assert payload["milestones"] == ["tile-256", "tile-512"]
+
+    checker = bench_root / "tasks" / "t1-novel-cli" / "widget-seal" / "check" / "check.py"
+    checker.write_text(
+        CHECK.replace(
+            'print(json.dumps({"assertions": assertions}))',
+            'print(json.dumps({"assertions": assertions, "score": 42,'
+            ' "milestones": ["sealed"]}))',
+        )
+    )
+    suite = tasks_mod.load_suite(bench_root)
+    run(_config(bench_root, armset=("A0",)), suite, StubAgent(), suite_version="test")
+
+    rec = record_mod.read_all(bench_root / "results" / "runs")[0]
+    assert rec["outcome"]["score"] == 42
+    assert rec["outcome"]["milestones"] == ["sealed"]
+
+
+def test_the_trial_seed_reaches_setup(bench_root: Path) -> None:
+    """A seedable environment must see the trial's seed.
+
+    Setup commands are static strings, so without this every trial of a
+    task provisions the same world: fine for pairing, but it means repeated
+    trials re-measure one instance instead of sampling the environment,
+    which is not what `environment.seedable` promises.
+    """
+    task_yaml = bench_root / "tasks" / "t1-novel-cli" / "widget-seal" / "task.yaml"
+    task_yaml.write_text(
+        TASK.replace(
+            "  network: none\n",
+            '  network: none\n  seedable: true\n  setup:\n'
+            '    - printf \'%s\' "$V2SBENCH_SEED" > seed.txt\n',
+        )
+    )
+    suite = tasks_mod.load_suite(bench_root)
+    run(
+        _config(bench_root, armset=("A0",), seeds=(7,)),
+        suite, StubAgent(), suite_version="test",
+    )
+    rec = record_mod.read_all(bench_root / "results" / "runs")[0]
+    assert rec["seed"] == 7
+    assert rec["outcome"]["status"] == "ok", rec["outcome"]["error_detail"]

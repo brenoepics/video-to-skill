@@ -40,7 +40,14 @@ RUN find /usr/local/lib -name '__pycache__' -type d -prune -exec rm -rf {} + || 
 # install path, mirrored byte for byte from env/crafter/ and pinned by
 # env/freeze.json, so the image and the task can never disagree about
 # which protocol version is being played.
-COPY PROTOCOL.md /opt/v2s-game/PROTOCOL.md
+#
+# PROTOCOL.md is deliberately NOT copied in either. It explains why the
+# interface is shaped as it is, and in doing so it states the task's
+# knowledge gap in plain words -- a table costs two wood, crafting needs
+# you standing beside it, stone needs the pickaxe first. Inside the
+# container that is an answer key handed to every arm, including the
+# baseline. The agent gets `v2s-game help`, which says that requirements
+# exist and refuses to say what they are.
 
 # Headless by construction: Crafter renders with numpy and Pillow, with no
 # OpenGL, no X11 and no GPU. There is no DISPLAY here and nothing wants one.
