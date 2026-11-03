@@ -116,6 +116,18 @@ class Recipe:
         """
         return [s.t for s in self.stills[1:] if not s.continuous]
 
+    def steps(self) -> list[tuple[str, float, float]]:
+        """``(step, start, end)`` per contiguous run of stills sharing a label."""
+        spans: list[tuple[str, float, float]] = []
+        for still, secs in zip(self.stills, self.still_durations(), strict=True):
+            if still.step is None:
+                continue
+            if spans and spans[-1][0] == still.step and spans[-1][2] == still.t:
+                spans[-1] = (still.step, spans[-1][1], still.t + secs)
+            else:
+                spans.append((still.step, still.t, still.t + secs))
+        return spans
+
 
 def load_recipe(path: str | Path) -> Recipe:
     """Read, schema-check and normalise the recipe at ``path``."""

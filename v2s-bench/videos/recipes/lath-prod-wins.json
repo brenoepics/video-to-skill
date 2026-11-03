@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "id": "lath-prod-wins",
+  "title": "Which lath layer wins a conflict",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 62.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-stage-the-edge-value",
+      "terminal": {
+        "type": "lath set edge 3 retries"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-stage-the-edge-value",
+      "terminal": {
+        "output": [
+          "edge: retries = 3"
+        ]
+      }
+    },
+    {
+      "t": 9.0,
+      "step": "02-stage-the-stage-value",
+      "terminal": {
+        "type": "lath set stage 9 retries"
+      }
+    },
+    {
+      "t": 12.0,
+      "step": "02-stage-the-stage-value",
+      "terminal": {
+        "output": [
+          "stage: retries = 9"
+        ]
+      }
+    },
+    {
+      "t": 14.0,
+      "step": "03-stack-edge-first",
+      "terminal": {
+        "type": "lath stack edge"
+      }
+    },
+    {
+      "t": 17.0,
+      "step": "03-stack-edge-first",
+      "terminal": {
+        "output": [
+          "stacked edge at position 1"
+        ]
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "04-stack-stage-second",
+      "terminal": {
+        "type": "lath stack stage"
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-stack-stage-second",
+      "terminal": {
+        "output": [
+          "stacked stage at position 2"
+        ]
+      }
+    },
+    {
+      "t": 24.0,
+      "step": "05-merge-them",
+      "terminal": {
+        "type": "lath flatten --out tmp/a.json"
+      }
+    },
+    {
+      "t": 27.0,
+      "step": "05-merge-them",
+      "terminal": {
+        "output": [
+          "flattened 2 layers, 1 keys",
+          "fingerprint: 09bd1049282ba032",
+          "wrote tmp/a.json"
+        ]
+      }
+    },
+    {
+      "t": 29.0,
+      "step": "06-see-who-won",
+      "terminal": {
+        "type": "cat tmp/a.json"
+      }
+    },
+    {
+      "t": 32.0,
+      "step": "06-see-who-won",
+      "terminal": {
+        "output": [
+          "{",
+          "  \"retries\": \"3\"",
+          "}"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "07-take-it-out",
+      "terminal": {
+        "type": "lath unstack edge"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "07-take-it-out",
+      "terminal": {
+        "output": [
+          "unstacked edge"
+        ]
+      }
+    },
+    {
+      "t": 39.0,
+      "step": "08-put-it-back-last",
+      "terminal": {
+        "type": "lath stack edge"
+      }
+    },
+    {
+      "t": 42.0,
+      "step": "08-put-it-back-last",
+      "terminal": {
+        "output": [
+          "stacked edge at position 2"
+        ]
+      }
+    },
+    {
+      "t": 44.0,
+      "step": "09-check-the-order",
+      "terminal": {
+        "type": "lath layers"
+      }
+    },
+    {
+      "t": 47.0,
+      "step": "09-check-the-order",
+      "terminal": {
+        "output": [
+          "order (first wins):",
+          "  1 stage",
+          "  2 edge"
+        ]
+      }
+    },
+    {
+      "t": 49.0,
+      "step": "10-merge-again",
+      "terminal": {
+        "type": "lath flatten --out tmp/b.json"
+      }
+    },
+    {
+      "t": 52.0,
+      "step": "10-merge-again",
+      "terminal": {
+        "output": [
+          "flattened 2 layers, 1 keys",
+          "fingerprint: 2d0e96f0dbf34143",
+          "wrote tmp/b.json"
+        ]
+      }
+    },
+    {
+      "t": 54.0,
+      "step": "11-see-the-difference",
+      "terminal": {
+        "type": "cat tmp/b.json"
+      }
+    },
+    {
+      "t": 57.0,
+      "step": "11-see-the-difference",
+      "terminal": {
+        "output": [
+          "{",
+          "  \"retries\": \"9\"",
+          "}"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Two layers, both setting the same thing. Which one wins is the opposite of what most people guess."
+    },
+    {
+      "t": 4.8,
+      "text": "One layer says three."
+    },
+    {
+      "t": 9.8,
+      "text": "The other says nine. Both under the same name."
+    },
+    {
+      "t": 14.8,
+      "text": "We put this one into the order first. Note the position it reports."
+    },
+    {
+      "t": 19.8,
+      "text": "And the other one after it."
+    },
+    {
+      "t": 24.8,
+      "text": "Now merge the stack into a file."
+    },
+    {
+      "t": 29.8,
+      "text": "Three won. That is the layer we stacked first, not the last one."
+    },
+    {
+      "t": 34.8,
+      "text": "So if we want the other one to win, we take this one out of the order..."
+    },
+    {
+      "t": 39.8,
+      "text": "...and add it back, which puts it at the end."
+    },
+    {
+      "t": 44.8,
+      "text": "The order now reads top to bottom, and the top one is the winner."
+    },
+    {
+      "t": 49.8,
+      "text": "Merge it again into a second file."
+    },
+    {
+      "t": 54.8,
+      "text": "Nine this time. Same two layers, different order, different answer."
+    },
+    {
+      "t": 58.5,
+      "text": "The one you stack first is the one that wins. Reorder the stack, not the layers."
+    }
+  ],
+  "notes": "Teaches first-stacked-wins precedence by merging the same two layers in both orders and showing both results."
+}

@@ -1,0 +1,68 @@
+schema_version: 1
+id: prow-interlock-sheet
+tier: t1-novel-cli
+title: "Render a prow rollout sheet that sequences its waves"
+goal: >-
+  A prow plan already exists in this directory. Leave a rendered rollout
+  sheet at rollout/sheet.txt that sequences that plan: wave 2 must be gated
+  on wave 1 having finished rather than running alongside it. prow's own
+  record of the sheet must describe the file that is actually on disk, and
+  the plan itself must be left unchanged.
+discoverability: good
+knowledge_gap:
+  summary: >-
+    Rendering only sequences the waves when the interlock switch is passed.
+    Without it the render succeeds, exits 0, prints a confident summary and
+    writes a complete-looking sheet in which every wave is gated
+    "parallel" -- so the wrong procedure produces a valid artefact rather
+    than an error.
+  probe_question: >-
+    In prow, what makes a rendered rollout sheet sequence its waves so that
+    wave 2 waits for wave 1, and what does the sheet say about each wave if
+    you leave that out?
+  probe_answer_pattern: '(?i)(?=[\s\S]*--interlock)(?=[\s\S]*parallel)'
+  taught_at: [20.0, 32.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - prow plan --wave 1 --unit api-gw
+    - prow plan --wave 1 --unit cache
+    - prow plan --wave 2 --unit web
+budget:
+  max_turns: 20
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - sheet-exists
+    - sheet-sequences-the-waves
+    - sheet-matches-the-plan
+    - sheet-record-matches-file
+    - plan-unchanged
+  key_actions:
+    - '(?mi)^\s*prow\s+sheet\b[^\n]*--interlock\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.prow'
+    - '(?mi)(>|tee)\s*[^\n]*\.prow/'
+    - '(?mi)(>|>>|tee|sed\s+-i)\s*[^\n]*rollout/sheet\.txt'
+  leakage_forbidden:
+    - prow-sheet-v1
+    - prow-sheet-rec-v1
+    - prow-plan-v1
+    - sheet_sha
+    - sheet-record-matches-file
+    - sheet-matches-the-plan
+    - plan-unchanged
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: prow-interlock-sheet
+  sha256: null
+notes: >-
+  The video renders a different plan (queue, mailer, reports) to a
+  different path, so only the switch transfers.

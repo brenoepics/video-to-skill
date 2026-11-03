@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "id": "zep-seal-with-grant",
+  "title": "Sealing a zep drop properly",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 48.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-open-a-drop",
+      "terminal": {
+        "type": "zep open ship-42"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-open-a-drop",
+      "terminal": {
+        "output": [
+          "drop ship-42 opened",
+          "grant: 661471fe6aa6",
+          "grant file: .zep/drops/ship-42/grant"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-stage-a-fact",
+      "terminal": {
+        "type": "zep put ship-42 port 8080"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-stage-a-fact",
+      "terminal": {
+        "output": [
+          "staged port in ship-42 (1 total)"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-close-it-plainly",
+      "terminal": {
+        "type": "zep seal ship-42"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-close-it-plainly",
+      "terminal": {
+        "output": [
+          "closed ship-42 (1 entries)",
+          "state: provisional"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-look-at-the-state",
+      "terminal": {
+        "type": "zep show ship-42"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-look-at-the-state",
+      "terminal": {
+        "output": [
+          "drop: ship-42",
+          "state: provisional",
+          "entries: 1",
+          "anchor: -",
+          "parent: -",
+          "  port = 8080"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-read-the-nonce-back",
+      "terminal": {
+        "type": "zep grant ship-42"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-read-the-nonce-back",
+      "terminal": {
+        "output": [
+          "grant: 661471fe6aa6",
+          "grant file: .zep/drops/ship-42/grant"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-close-with-the-nonce",
+      "terminal": {
+        "type": "zep seal ship-42 --grant 661471fe6aa6"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-close-with-the-nonce",
+      "terminal": {
+        "output": [
+          "sealed ship-42 (1 entries)",
+          "anchor: 0476e9dcdd2ef47c"
+        ]
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-confirm-it-is-sealed",
+      "terminal": {
+        "type": "zep show ship-42"
+      }
+    },
+    {
+      "t": 43.0,
+      "step": "07-confirm-it-is-sealed",
+      "terminal": {
+        "output": [
+          "drop: ship-42",
+          "state: sealed",
+          "entries: 1",
+          "anchor: 0476e9dcdd2ef47c",
+          "parent: -",
+          "  port = 8080"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "A drop in the zep ledger is not finished just because you closed it. Let me show you."
+    },
+    {
+      "t": 4.8,
+      "text": "We open a drop to work in, and zep hands us a nonce for it. Keep that in mind -- it matters at the end."
+    },
+    {
+      "t": 10.8,
+      "text": "Stage a fact into the drop. Nothing surprising here."
+    },
+    {
+      "t": 16.8,
+      "text": "Now watch what happens if we just close it."
+    },
+    {
+      "t": 22.8,
+      "text": "It says it closed, but look at the state line, and look at the anchor. That is not a finished drop."
+    },
+    {
+      "t": 28.8,
+      "text": "The nonce is still sitting on disk next to the drop, and zep will print it again for us."
+    },
+    {
+      "t": 34.8,
+      "text": "So we close it again, this time passing that nonce along with it."
+    },
+    {
+      "t": 40.8,
+      "text": "Now it is sealed and it has an anchor of its own."
+    },
+    {
+      "t": 44.5,
+      "text": "Sealed, with a real anchor. That is the difference, and it is easy to miss."
+    }
+  ],
+  "notes": "Teaches that closing a drop without its nonce leaves a provisional record, and where the nonce can be read back from."
+}

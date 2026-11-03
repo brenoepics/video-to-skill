@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "id": "kiln-chain-batches",
+  "title": "Chaining two kiln firings together",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 54.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-prepare-the-lane",
+      "terminal": {
+        "type": "kiln prime"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-prepare-the-lane",
+      "terminal": {
+        "output": [
+          "primed lane cobalt",
+          "shards: 4 matched",
+          "hold: 2",
+          "prior: -"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-fire-the-first-batch",
+      "terminal": {
+        "type": "kiln fire"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-fire-the-first-batch",
+      "terminal": {
+        "output": [
+          "fired cobalt",
+          "batch: fb3a64e4",
+          "prior: -",
+          "wrote out/cobalt-fb3a64e4.rollup"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-record-the-prior",
+      "terminal": {
+        "type": "echo 'prior-batch: fb3a64e4' >> kiln.profile"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-record-the-prior",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-firing-is-refused",
+      "terminal": {
+        "type": "kiln fire"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-firing-is-refused",
+      "terminal": {
+        "output": [
+          "kiln: state stale"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-prepare-it-again",
+      "terminal": {
+        "type": "kiln prime"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-prepare-it-again",
+      "terminal": {
+        "output": [
+          "primed lane cobalt",
+          "shards: 4 matched",
+          "hold: 2",
+          "prior: fb3a64e4"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-fire-the-second-batch",
+      "terminal": {
+        "type": "kiln fire"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-fire-the-second-batch",
+      "terminal": {
+        "output": [
+          "fired cobalt",
+          "batch: e319cb5a",
+          "prior: fb3a64e4",
+          "wrote out/cobalt-e319cb5a.rollup"
+        ]
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-read-the-header",
+      "terminal": {
+        "type": "head -4 out/cobalt-e319cb5a.rollup"
+      }
+    },
+    {
+      "t": 43.0,
+      "step": "07-read-the-header",
+      "terminal": {
+        "output": [
+          "# kiln rollup",
+          "lane: cobalt",
+          "batch: e319cb5a",
+          "prior: fb3a64e4"
+        ]
+      }
+    },
+    {
+      "t": 46.0,
+      "step": "08-check-the-state",
+      "terminal": {
+        "type": "kiln peek"
+      }
+    },
+    {
+      "t": 49.0,
+      "step": "08-check-the-state",
+      "terminal": {
+        "output": [
+          "lane: cobalt",
+          "primed: yes",
+          "glob: pieces/*.txt",
+          "hold: 2",
+          "prior: fb3a64e4",
+          "last batch: e319cb5a",
+          "profile: fresh"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Two firings of the same lane, where the second one records that it follows the first."
+    },
+    {
+      "t": 4.8,
+      "text": "Prepare the lane as usual."
+    },
+    {
+      "t": 10.8,
+      "text": "Fire it once. Note the batch it reports -- that is the value we are about to reuse."
+    },
+    {
+      "t": 16.8,
+      "text": "It goes into the lane description, as one more field, carrying that batch over."
+    },
+    {
+      "t": 22.8,
+      "text": "Firing straight away gets us nowhere, because we changed the description."
+    },
+    {
+      "t": 28.8,
+      "text": "Prepare it again, and now it reports what it is following."
+    },
+    {
+      "t": 34.8,
+      "text": "Fire it again. New batch, and it names the one it came after."
+    },
+    {
+      "t": 40.8,
+      "text": "The artifact itself says so too, right at the top."
+    },
+    {
+      "t": 46.8,
+      "text": "And kiln is holding the chain: what it follows, and what it last made."
+    },
+    {
+      "t": 50.5,
+      "text": "The batch you fired goes into the description as its prior, the lane is prepared again, and then it fires."
+    }
+  ],
+  "notes": "Teaches that descent is declared in the profile with prior-batch from the earlier firing's batch, and that the lane must be prepared again afterwards."
+}

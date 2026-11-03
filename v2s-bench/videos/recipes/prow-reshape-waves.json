@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "id": "prow-reshape-waves",
+  "title": "Reshaping a prow plan and re-rendering",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 45.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-render-the-old-shape",
+      "terminal": {
+        "type": "prow sheet --out plan.txt --interlock"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-render-the-old-shape",
+      "terminal": {
+        "output": [
+          "rendered 3 units in 2 waves",
+          "interlock: on",
+          "sheet: 8a9010b865",
+          "wrote plan.txt"
+        ]
+      }
+    },
+    {
+      "t": 9.5,
+      "step": "02-move-a-unit",
+      "terminal": {
+        "type": "prow plan --wave 2 --unit mailer"
+      }
+    },
+    {
+      "t": 12.5,
+      "step": "02-move-a-unit",
+      "terminal": {
+        "output": [
+          "planned mailer in wave 2"
+        ]
+      }
+    },
+    {
+      "t": 15.0,
+      "step": "03-retire-a-unit",
+      "terminal": {
+        "type": "prow drop --unit reports"
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "03-retire-a-unit",
+      "terminal": {
+        "output": [
+          "dropped reports"
+        ]
+      }
+    },
+    {
+      "t": 20.5,
+      "step": "04-the-sheet-is-stale",
+      "terminal": {
+        "type": "cat plan.txt"
+      }
+    },
+    {
+      "t": 23.5,
+      "step": "04-the-sheet-is-stale",
+      "terminal": {
+        "output": [
+          "# prow rollout sheet",
+          "interlock: on",
+          "waves: 2",
+          "units: 3",
+          "--",
+          "wave 1",
+          "  unit: mailer",
+          "  unit: queue",
+          "  gate: start",
+          "wave 2",
+          "  unit: reports",
+          "  gate: after wave 1"
+        ]
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "05-check-the-plan",
+      "terminal": {
+        "type": "prow status"
+      }
+    },
+    {
+      "t": 29.0,
+      "step": "05-check-the-plan",
+      "terminal": {
+        "output": [
+          "units: 2",
+          "waves: 1,2",
+          "sheets: 1",
+          "latched: -"
+        ]
+      }
+    },
+    {
+      "t": 31.5,
+      "step": "06-render-the-new-shape",
+      "terminal": {
+        "type": "prow sheet --out plan.txt --interlock"
+      }
+    },
+    {
+      "t": 34.5,
+      "step": "06-render-the-new-shape",
+      "terminal": {
+        "output": [
+          "rendered 2 units in 2 waves",
+          "interlock: on",
+          "sheet: c6c4ff6ad5",
+          "wrote plan.txt"
+        ]
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "07-read-the-new-sheet",
+      "terminal": {
+        "type": "cat plan.txt"
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-read-the-new-sheet",
+      "terminal": {
+        "output": [
+          "# prow rollout sheet",
+          "interlock: on",
+          "waves: 2",
+          "units: 2",
+          "--",
+          "wave 1",
+          "  unit: queue",
+          "  gate: start",
+          "wave 2",
+          "  unit: mailer",
+          "  gate: after wave 1"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Plans change. The sheet on disk does not notice, which catches people out."
+    },
+    {
+      "t": 4.8,
+      "text": "Here is the sheet as the plan stands today."
+    },
+    {
+      "t": 10.3,
+      "text": "Now this one has to go into the later wave. Planning it again just moves it; it is not added twice."
+    },
+    {
+      "t": 15.8,
+      "text": "And this one is retired, which is its own step -- parking it in some far-off wave is not the same thing."
+    },
+    {
+      "t": 21.3,
+      "text": "But look at the sheet on disk. It still describes the old shape, and nothing warned us."
+    },
+    {
+      "t": 26.8,
+      "text": "The plan itself is right: two units now, across two waves."
+    },
+    {
+      "t": 32.3,
+      "text": "So we render it again, locked together as before."
+    },
+    {
+      "t": 37.8,
+      "text": "And now the file matches the plan, with the retired unit gone from it."
+    },
+    {
+      "t": 41.5,
+      "text": "Move what moves, take out what is retired, and render again -- the sheet is a snapshot, not a view."
+    }
+  ],
+  "notes": "Teaches that re-planning a unit moves it, that removal is its own step, and that the rendered sheet does not follow later plan changes."
+}

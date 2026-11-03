@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "id": "zep-stage-three-facts",
+  "title": "Building a zep drop from a handover file",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 50.5,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-read-the-handover",
+      "terminal": {
+        "type": "cat notes.txt"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-read-the-handover",
+      "terminal": {
+        "output": [
+          "tier gold",
+          "owner search"
+        ]
+      }
+    },
+    {
+      "t": 9.5,
+      "step": "02-stage-too-early",
+      "terminal": {
+        "type": "zep put ship-43 tier gold"
+      }
+    },
+    {
+      "t": 12.5,
+      "step": "02-stage-too-early",
+      "terminal": {
+        "output": [
+          "zep: no such drop: ship-43"
+        ]
+      }
+    },
+    {
+      "t": 15.0,
+      "step": "03-create-the-drop",
+      "terminal": {
+        "type": "zep open ship-43"
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "03-create-the-drop",
+      "terminal": {
+        "output": [
+          "drop ship-43 opened",
+          "grant: 0b02342b529d",
+          "grant file: .zep/drops/ship-43/grant"
+        ]
+      }
+    },
+    {
+      "t": 20.5,
+      "step": "04-stage-the-first-fact",
+      "terminal": {
+        "type": "zep put ship-43 tier gold"
+      }
+    },
+    {
+      "t": 23.5,
+      "step": "04-stage-the-first-fact",
+      "terminal": {
+        "output": [
+          "staged tier in ship-43 (1 total)"
+        ]
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "05-stage-the-second-fact",
+      "terminal": {
+        "type": "zep put ship-43 owner search"
+      }
+    },
+    {
+      "t": 29.0,
+      "step": "05-stage-the-second-fact",
+      "terminal": {
+        "output": [
+          "staged owner in ship-43 (2 total)"
+        ]
+      }
+    },
+    {
+      "t": 31.5,
+      "step": "06-close-with-the-nonce",
+      "terminal": {
+        "type": "zep seal ship-43 --grant 0b02342b529d"
+      }
+    },
+    {
+      "t": 34.5,
+      "step": "06-close-with-the-nonce",
+      "terminal": {
+        "output": [
+          "sealed ship-43 (2 entries)",
+          "anchor: 646ea71113a867cd"
+        ]
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "07-too-late-to-stage",
+      "terminal": {
+        "type": "zep put ship-43 extra x"
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-too-late-to-stage",
+      "terminal": {
+        "output": [
+          "zep: drop ship-43 is sealed"
+        ]
+      }
+    },
+    {
+      "t": 42.5,
+      "step": "08-confirm-the-drop",
+      "terminal": {
+        "type": "zep show ship-43"
+      }
+    },
+    {
+      "t": 45.5,
+      "step": "08-confirm-the-drop",
+      "terminal": {
+        "output": [
+          "drop: ship-43",
+          "state: sealed",
+          "entries: 2",
+          "anchor: 646ea71113a867cd",
+          "parent: -",
+          "  tier = gold",
+          "  owner = search"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Here is the whole life of a drop: create it, fill it, close it. The order is not optional."
+    },
+    {
+      "t": 4.8,
+      "text": "The facts we have to record are sitting in a file, one per line, a name and then its value."
+    },
+    {
+      "t": 10.3,
+      "text": "If we go straight at it, zep stops us. There is nothing to stage into yet."
+    },
+    {
+      "t": 15.8,
+      "text": "So we create the drop first, and again zep gives us the nonce for it."
+    },
+    {
+      "t": 21.3,
+      "text": "Now the facts go in, one at a time, name first and then the value."
+    },
+    {
+      "t": 26.8,
+      "text": "Same again for the second one."
+    },
+    {
+      "t": 32.3,
+      "text": "And we close it, passing the nonce along, which is what actually seals it."
+    },
+    {
+      "t": 37.8,
+      "text": "Try to add anything now and zep refuses. That is why everything has to go in before you close it."
+    },
+    {
+      "t": 43.3,
+      "text": "Sealed, anchored, both facts in it."
+    },
+    {
+      "t": 47.0,
+      "text": "Create, fill, then close with the nonce. Once it is sealed, it is sealed."
+    }
+  ],
+  "notes": "Teaches that staging requires an existing drop, that the close needs the nonce, and that staging is refused after sealing."
+}

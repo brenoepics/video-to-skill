@@ -1,0 +1,72 @@
+---
+/**
+ * The forest plot's text alternative, and the place every remaining field of
+ * `comparisons[]` is rendered: the claim, the pre-registered failure
+ * condition, the discordant-pair counts behind the McNemar check, both
+ * p-values and the methods that produced them.
+ *
+ * A reader using a screen reader, or printing the page, gets the same
+ * information the marks carry. Nothing is reachable only through the graphic.
+ */
+import type { Comparison } from '../lib/types';
+import { pp, ppRange, int, pvalue, DASH } from '../lib/format';
+
+interface Props {
+  comparisons: Comparison[];
+}
+
+const { comparisons } = Astro.props;
+const n = (v: number | null | undefined) => (typeof v === 'number' ? int(v) : DASH);
+---
+
+<dl class="defs detail">
+  {
+    comparisons.map((c) => (
+      <div>
+        <dt>
+          {c.hypothesis} &middot; {c.treatment} {'−'} {c.reference} &middot; {c.verdict}
+        </dt>
+        <dd>
+          {c.claim && <>{c.claim} </>}
+          {c.fails_if && (
+            <>
+              <em>Fails if {c.fails_if}.</em>
+            </>
+          )}
+        </dd>
+        <dd class="detail__nums">
+          Effect {pp(c.diff)}, 95% CI {ppRange(c.ci_lo, c.ci_hi)} &middot;{' '}
+          {n(c.n_pairs)} paired trials over {n(c.n_tasks)} tasks &middot; discordant pairs{' '}
+          {n(c.discordant_b)} treatment-only / {n(c.discordant_c)} reference-only &middot; p ={' '}
+          {pvalue(c.p_value)}, adjusted {pvalue(c.p_adjusted)}
+        </dd>
+        {(c.ci_method || c.p_method) && (
+          <dd class="detail__method">
+            {[c.ci_method, c.p_method].filter(Boolean).join(' · ')}
+          </dd>
+        )}
+      </div>
+    ))
+  }
+</dl>
+
+<style>
+  .detail {
+    margin-top: 0.6rem;
+    font-size: 0.89rem;
+  }
+
+  .detail dt {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+
+  .detail__nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .detail__method {
+    color: var(--text-muted);
+    font-size: 0.95em;
+  }
+</style>

@@ -1,0 +1,168 @@
+---
+/**
+ * Per-arm summary: success rate with its Wilson interval, error rate, and
+ * the cost of getting there.
+ *
+ * Every rate is shown as an interval and a point, never a point alone. The
+ * interval is taken from the bundle when the bundle carries one and
+ * recomputed from successes and n when it does not; a disagreement between
+ * the two is marked rather than resolved silently.
+ *
+ * Arms are nominal, so they all share one hue. The vertical rule is the
+ * baseline arm's observed rate, which is the only comparison this table is
+ * for.
+ */
+import type { ArmSummary } from '../lib/types';
+import { intervalFor } from '../lib/stats';
+import { rateScale, referenceLine } from '../lib/scale';
+import { pct, pctRange, num, usd, int } from '../lib/format';
+import { ARM_BY_ID } from '../lib/prereg';
+import PlotAxis from './PlotAxis.astro';
+import RateCell from './RateCell.astro';
+import PlotRow from './PlotRow.astro';
+
+interface Props {
+  arms: ArmSummary[];
+  /** Arm whose rate is drawn as the reference rule. */
+  referenceArm?: string;
+}
+
+const { arms, referenceArm = 'A0' } = Astro.props;
+
+const scale = rateScale();
+const rows = arms.map((arm) => ({ arm, interval: intervalFor(arm) }));
+const reference = rows.find((r) => r.arm.id === referenceArm);
+const refRate = reference?.interval.rate ?? null;
+
+const grid =
+  refRate === null
+    ? scale.gridImage()
+    : [referenceLine(scale, refRate), scale.gridImage()].join(', ');
+
+const anyRecomputed = rows.some((r) => r.interval.recomputed);
+const anyMismatch = rows.some((r) => r.interval.mismatch);
+---
+
+<table class="dt dt--stack dt--rows arm-table" style={`--plot-grid: ${grid}`}>
+  <caption class="visually-hidden">
+    Success rate per arm with a 95% Wilson interval, error rate, mean turns, mean cost and
+    policy-violation rate.
+  </caption>
+  <thead>
+    <tr>
+      <th scope="col">Arm</th>
+      <th scope="col" class="num">Trials</th>
+      <th scope="col" class="num">Success rate</th>
+      <th scope="col" class="plot-col">
+        <PlotAxis scale={scale} />
+        <span class="visually-hidden">Success rate with its 95% Wilson interval</span>
+      </th>
+      <th scope="col" class="num">Errors</th>
+      <th scope="col" class="num">Turns</th>
+      <th scope="col" class="num">Cost</th>
+      <th scope="col" class="num">Policy viol.</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map(({ arm, interval }) => {
+        const spec = ARM_BY_ID.get(arm.id);
+        const name = arm.name ?? spec?.name ?? arm.id;
+        const isolates = arm.isolates ?? spec?.isolates;
+        return (
+          <tr>
+            <th scope="row">
+              {arm.id}
+              <span class="sub">
+                {name}
+                {isolates && <> &middot; {isolates}</>}
+                {arm.id === referenceArm && <> &middot; reference</>}
+              </span>
+            </th>
+            <td class="num" data-label="Trials">
+              {int(arm.n)}
+              {interval.n > 0 && <span class="sub">{int(interval.successes)} passed</span>}
+            </td>
+            <td class="num" data-label="Success rate">
+              {interval.rate === null ? 'no trials' : pct(interval.rate)}
+              <span class="sub ci">
+                {pctRange(interval.lo, interval.hi)}
+                {interval.recomputed && <sup aria-hidden="true">&dagger;</sup>}
+                {interval.mismatch && <sup aria-hidden="true">&para;</sup>}
+              </span>
+            </td>
+            <td class="plot-col" data-label="Interval">
+              {interval.n > 0 ? (
+                <PlotRow
+                  scale={scale}
+                  value={interval.rate}
+                  lo={interval.lo}
+                  hi={interval.hi}
+                  label={`${arm.id} ${name}: success rate ${pct(interval.rate)}, 95% Wilson interval ${pctRange(interval.lo, interval.hi)}, ${int(interval.n)} trials`}
+                />
+              ) : (
+                <p class="plot-none">no trials</p>
+              )}
+            </td>
+            <td class="num" data-label="Errors">
+              <RateCell rate={arm.error_rate} n={arm.n} digits={0} />
+            </td>
+            <td class="num" data-label="Mean turns">{num(arm.mean_turns, 1)}</td>
+            <td class="num" data-label="Mean cost">{usd(arm.mean_usd)}</td>
+            <td class="num" data-label="Policy violations">
+              <RateCell rate={arm.policy_violation_rate} n={arm.n} digits={0} />
+            </td>
+          </tr>
+        );
+      })
+    }
+  </tbody>
+</table>
+
+<ul class="footnotes">
+  {
+    refRate !== null && (
+      <li>
+        The vertical rule is {referenceArm}&rsquo;s observed rate, {pct(refRate)}. Gridlines
+        are at 0, 25, 50, 75 and 100%.
+      </li>
+    )
+  }
+  <li>
+    Intervals are 95% Wilson score intervals, the convention the parent project already
+    uses. An arm with no trials gets no interval rather than a zero.
+  </li>
+  {
+    anyRecomputed && (
+      <li>
+        <sup>&dagger;</sup> The bundle carried no interval for this row, so it was
+        recomputed here from successes and n.
+      </li>
+    )
+  }
+  <li>
+    <sup>&Dagger;</sup> Error and policy-violation rates are published as bare
+    fractions, so their intervals are derived from the rate and the arm&rsquo;s n.
+    <sup>&sect;</sup> marks a rate whose denominator is not n, where no interval can be
+    recovered without guessing.
+  </li>
+  {
+    anyMismatch && (
+      <li>
+        <sup>&para;</sup> The interval published in the bundle disagrees with the one
+        recomputed here from successes and n. The recomputed interval is shown. This is a
+        bug in whatever produced the bundle, and it is surfaced rather than hidden.
+      </li>
+    )
+  }
+</ul>
+
+<style>
+  .arm-table .plot-col {
+    width: 24%;
+  }
+
+  .arm-table td.num .sub {
+    font-size: 0.82em;
+  }
+</style>

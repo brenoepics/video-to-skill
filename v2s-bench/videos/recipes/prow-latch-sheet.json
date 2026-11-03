@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "id": "prow-latch-sheet",
+  "title": "Releasing a rendered prow sheet",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 54.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-render-the-sheet",
+      "terminal": {
+        "type": "prow sheet --out plan.txt --interlock"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-render-the-sheet",
+      "terminal": {
+        "output": [
+          "rendered 2 units in 2 waves",
+          "interlock: on",
+          "sheet: c6c4ff6ad5",
+          "wrote plan.txt"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-the-obvious-name",
+      "terminal": {
+        "type": "prow release c6c4ff6ad5"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-the-obvious-name",
+      "terminal": {
+        "output": [
+          "prow: unknown command: release"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-release-it",
+      "terminal": {
+        "type": "prow latch c6c4ff6ad5"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-release-it",
+      "terminal": {
+        "output": [
+          "latched c6c4ff6ad5",
+          "interlock: on"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-check-the-status",
+      "terminal": {
+        "type": "prow status"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-check-the-status",
+      "terminal": {
+        "output": [
+          "units: 2",
+          "waves: 1,2",
+          "sheets: 1",
+          "latched: c6c4ff6ad5"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-touch-the-file",
+      "terminal": {
+        "type": "echo '# note' >> plan.txt"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-touch-the-file",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-release-is-refused",
+      "terminal": {
+        "type": "prow latch c6c4ff6ad5"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-release-is-refused",
+      "terminal": {
+        "output": [
+          "prow: sheet drifted: plan.txt"
+        ]
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-render-it-again",
+      "terminal": {
+        "type": "prow sheet --out plan.txt --interlock"
+      }
+    },
+    {
+      "t": 43.0,
+      "step": "07-render-it-again",
+      "terminal": {
+        "output": [
+          "rendered 2 units in 2 waves",
+          "interlock: on",
+          "sheet: c6c4ff6ad5",
+          "wrote plan.txt"
+        ]
+      }
+    },
+    {
+      "t": 46.0,
+      "step": "08-release-the-new-one",
+      "terminal": {
+        "type": "prow latch c6c4ff6ad5"
+      }
+    },
+    {
+      "t": 49.0,
+      "step": "08-release-the-new-one",
+      "terminal": {
+        "output": [
+          "latched c6c4ff6ad5",
+          "interlock: on"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Rendering a sheet is not releasing it. The release step has a name you would not guess."
+    },
+    {
+      "t": 4.8,
+      "text": "Render the sheet with the waves locked together, and hold on to the id it prints."
+    },
+    {
+      "t": 10.8,
+      "text": "The obvious word for the next step is not the word. There is no such command."
+    },
+    {
+      "t": 16.8,
+      "text": "This is the one, and it takes that id we were given."
+    },
+    {
+      "t": 22.8,
+      "text": "And the status now names what has been released."
+    },
+    {
+      "t": 28.8,
+      "text": "Now suppose somebody tidies the file up afterwards."
+    },
+    {
+      "t": 34.8,
+      "text": "Releasing it again is refused. What was released no longer matches what is on disk."
+    },
+    {
+      "t": 40.8,
+      "text": "So we render it again, and it tells us the id of what is now on disk."
+    },
+    {
+      "t": 46.8,
+      "text": "Release that, and it goes through. Always release what is actually there."
+    },
+    {
+      "t": 50.5,
+      "text": "Release the id the render printed, and if the file is touched afterwards, render it again before releasing."
+    }
+  ],
+  "notes": "Teaches that the release step is latch rather than release, that it takes the id the render printed, and that it refuses once the file has changed."
+}

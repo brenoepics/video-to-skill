@@ -756,18 +756,13 @@ main {
 .plot-row {
   display: block;
   width: 100%;
-  height: 2.3rem;
   overflow: visible;
-}
-
-.plot-row--tall {
-  height: 2.6rem;
 }
 
 .plot-none {
   display: flex;
   align-items: center;
-  height: 2.3rem;
+  height: 36px;
   font-size: 0.78rem;
   color: var(--text-muted);
   padding-left: 0.5rem;
@@ -822,31 +817,36 @@ main {
 
 /* ------------------------------------------------------------ filters */
 
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
+.tier-filter {
+  border: 0;
   margin: 0 0 1rem;
   padding: 0;
-  border: 0;
+  min-width: 0;
 }
 
-.filters legend {
+.tier-filter > legend {
   padding: 0;
   font-size: 0.8rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 600;
-  margin-right: 0.3rem;
+  margin-bottom: 0.4rem;
 }
 
-.filters input[type='radio'] {
+.tier-filter > input[type='radio'] {
   position: absolute;
   opacity: 0;
   width: 1px;
   height: 1px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
 }
 
 .filters label {
@@ -858,6 +858,7 @@ main {
   color: var(--text-secondary);
   cursor: pointer;
   background: var(--surface-1);
+  user-select: none;
 }
 
 .filters label:hover {
@@ -865,20 +866,25 @@ main {
   color: var(--text-primary);
 }
 
-.filters input[type='radio']:checked + label {
+#f-all:checked ~ .filters label[for='f-all'],
+#f-t1:checked ~ .filters label[for='f-t1'],
+#f-t2:checked ~ .filters label[for='f-t2'],
+#f-t3:checked ~ .filters label[for='f-t3'],
+#f-t4:checked ~ .filters label[for='f-t4'] {
   background: var(--text-primary);
   border-color: var(--text-primary);
   color: var(--surface-1);
 }
 
-.filters input[type='radio']:focus-visible + label {
+#f-all:focus-visible ~ .filters label[for='f-all'],
+#f-t1:focus-visible ~ .filters label[for='f-t1'],
+#f-t2:focus-visible ~ .filters label[for='f-t2'],
+#f-t3:focus-visible ~ .filters label[for='f-t3'],
+#f-t4:focus-visible ~ .filters label[for='f-t4'] {
   outline: 2px solid var(--link);
   outline-offset: 2px;
 }
 
-#f-all:checked ~ .tier-scope [data-tier] {
-  display: revert;
-}
 #f-t1:checked ~ .tier-scope [data-tier]:not([data-tier='t1-novel-cli']),
 #f-t2:checked ~ .tier-scope [data-tier]:not([data-tier='t2-real-cli']),
 #f-t3:checked ~ .tier-scope [data-tier]:not([data-tier='t3-gui']),

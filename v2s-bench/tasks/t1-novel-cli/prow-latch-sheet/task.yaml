@@ -1,0 +1,74 @@
+schema_version: 1
+id: prow-latch-sheet
+tier: t1-novel-cli
+title: "Render and release a sequenced prow rollout sheet"
+goal: >-
+  Leave rollout/sheet.txt holding the sequenced rollout sheet for the plan
+  in this directory -- every wave after the first gated on the one before
+  it -- and leave prow's state showing that exact sheet released: prow's
+  status must report a released sheet, and the released sheet must be the
+  one whose text is on disk when you stop, not an earlier rendering of it.
+discoverability: good
+knowledge_gap:
+  summary: >-
+    Releasing a sheet is a step of its own that takes the sheet id the
+    render printed, and prow has no release or promote command -- the step
+    is called latch. The id is a digest of the rendered text, so a sheet
+    has to be rendered before it can be released, re-rendering it with
+    different options produces a different id, and releasing one rendering
+    and then re-rendering leaves prow pointing at text that is no longer
+    there. Editing the file after rendering makes the release refuse
+    outright.
+  probe_question: >-
+    In prow, once a rollout sheet has been rendered, which command marks it
+    released, what argument does that command take, and why does it refuse
+    if you tidied the sheet file up afterwards?
+  probe_answer_pattern: '(?i)(?=[\s\S]*\blatch\b)(?=[\s\S]*(sheet[- ]id|the id|id (that |which )?(prow )?(sheet )?print))(?=[\s\S]*(drift|chang|digest|hash|differ|edit|no longer match))'
+  taught_at: [24.0, 40.0, 52.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - prow plan --wave 1 --unit api-gw
+    - prow plan --wave 1 --unit cache
+    - prow plan --wave 2 --unit web
+    - prow plan --wave 3 --unit search
+budget:
+  max_turns: 40
+  wall_secs: 900
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - sheet-sequences-the-waves
+    - sheet-matches-the-plan
+    - release-is-recorded
+    - released-sheet-is-the-one-on-disk
+    - sheet-record-matches-file
+  key_actions:
+    - '(?mi)^\s*prow\s+sheet\b[^\n]*--interlock\b'
+    - '(?mi)^\s*prow\s+latch\s+[0-9a-f]{10}\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.prow'
+    - '(?mi)(>|tee)\s*[^\n]*\.prow/'
+    - '(?mi)(>|>>|tee|sed\s+-i)\s*[^\n]*rollout/sheet\.txt'
+  leakage_forbidden:
+    - prow-sheet-v1
+    - prow-sheet-rec-v1
+    - prow-latch-v1
+    - latched.json
+    - sheet_sha
+    - released-sheet-is-the-one-on-disk
+    - sheet-record-matches-file
+    - release-is-recorded
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: prow-latch-sheet
+  sha256: null
+notes: >-
+  The video renders and releases a two-wave plan of queue and mailer, so
+  the sheet id on screen is not the one this task needs.

@@ -1,0 +1,259 @@
+---
+import Base from '../../layouts/Base.astro';
+import StatusBanner from '../../components/StatusBanner.astro';
+import { loadReport } from '../../lib/report';
+import { href } from '../../lib/url';
+import { pct, int, DASH } from '../../lib/format';
+import { TIERS, tierLabel } from '../../lib/prereg';
+
+const { bundle, gate, source } = loadReport();
+const tasks = [...bundle.tasks].sort((a, b) =>
+  a.tier === b.tier ? a.id.localeCompare(b.id) : a.tier.localeCompare(b.tier),
+);
+
+const countFor = (tier: string) => tasks.filter((t) => t.tier === tier).length;
+const bandRank: Record<string, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+  saturated: 3,
+  unknown: 4,
+};
+---
+
+<Base
+  title="Tasks"
+  description="Every task in the v2s-bench suite: tier, declared discoverability, measured headroom, saturation flag and video tier."
+>
+  <div class="stack">
+    <div>
+      <p class="eyebrow">The suite</p>
+      <h1>Tasks</h1>
+      <p class="lede">
+        Every task in the suite is listed, including tasks with no trials. Each one
+        declares a knowledge gap &mdash; the specific fact or ordering the video teaches
+        that the task requires &mdash; and that gap is probed directly before any arm
+        runs, so a reader can see how much room the task had to show an effect at all.
+      </p>
+    </div>
+
+    <StatusBanner
+      gate={gate}
+      status={bundle.status}
+      generatedAt={bundle.generated_at}
+      source={source.split('/').slice(-3).join('/')}
+    />
+
+    {
+      tasks.length === 0 ? (
+        <section class="panel" aria-labelledby="no-tasks">
+          <h2 id="no-tasks">No tasks are published yet</h2>
+          <p>
+            The bundle carries an empty task list, so there is nothing to list. These are
+            the per-tier targets the suite is being built to, frozen at the freeze commit
+            &mdash; targets, not measurements.
+          </p>
+          <table class="dt dt--stack dt--rows">
+            <caption class="visually-hidden">Per-tier task targets.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Tier</th>
+                <th scope="col">Environment</th>
+                <th scope="col" class="num">Target n</th>
+                <th scope="col" class="num">Published</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TIERS.map((tier) => (
+                <tr>
+                  <th scope="row">
+                    {tier.label}
+                    <span class="sub">{tier.name}</span>
+                  </th>
+                  <td data-label="Environment">{tier.environment}</td>
+                  <td class="num" data-label="Target n">{tier.targetN}</td>
+                  <td class="num" data-label="Published">none</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p class="note">
+            The task definitions, their checkers and their oracles are what the
+            <a href={href('/methodology#suite')}>methodology</a> describes. A task appears
+            here when it is in the suite, whether or not it has been run.
+          </p>
+        </section>
+      ) : (
+        <section aria-labelledby="task-list">
+          <div class="section__head">
+            <h2 id="task-list">
+              {int(tasks.length)} task{tasks.length === 1 ? '' : 's'}
+            </h2>
+            <p class="eyebrow">Headroom is a measurement, not a label</p>
+          </div>
+
+          <fieldset class="tier-filter">
+              <legend>Filter by tier</legend>
+              <input type="radio" name="tier" id="f-all" checked />
+              {TIERS.map((_tier, i) => (
+                <input type="radio" name="tier" id={`f-t${i + 1}`} />
+              ))}
+              <div class="filters">
+                <label for="f-all">All ({int(tasks.length)})</label>
+                {TIERS.map((tier, i) => (
+                  <label for={`f-t${i + 1}`}>
+                    {tier.label} ({int(countFor(tier.id))})
+                  </label>
+                ))}
+              </div>
+              <div class="tier-scope">
+                <table class="dt dt--stack dt--rows task-table" id="task-table" data-sortable>
+                  <caption class="visually-hidden">
+                    Tasks with tier, discoverability, measured headroom, saturation flag and
+                    video tier.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" data-sort="text" data-key="task">Task</th>
+                      <th scope="col" data-sort="text" data-key="tier">Tier</th>
+                      <th scope="col" data-sort="text" data-key="disc">Docs</th>
+                      <th scope="col" class="num" data-sort="number" data-key="probe">
+                        Headroom
+                      </th>
+                      <th scope="col" data-sort="number" data-key="band">Band</th>
+                      <th scope="col" data-sort="text" data-key="video">Video</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tasks.map((task) => (
+                      <tr data-tier={task.tier}>
+                        <th scope="row" data-value={task.id}>
+                          <a href={href(`/tasks/${task.id}`)}>{task.title}</a>
+                          <span class="sub">
+                            <code>{task.id}</code>
+                          </span>
+                        </th>
+                        <td data-label="Tier" data-value={task.tier}>
+                          {tierLabel(task.tier)}
+                          <span class="sub">{task.tier}</span>
+                        </td>
+                        <td data-label="Documentation" data-value={task.discoverability ?? ''}>
+                          {task.discoverability ?? DASH}
+                        </td>
+                        <td
+                          class="num"
+                          data-label="Headroom (probe_known)"
+                          data-value={task.probe_known ?? -1}
+                        >
+                          {task.probe_known === null || task.probe_known === undefined ? (
+                            <>
+                              not probed<sup aria-hidden="true">&dagger;</sup>
+                            </>
+                          ) : (
+                            <>
+                              {pct(task.probe_known)}
+                              <sup aria-hidden="true">&dagger;</sup>
+                              <span class="sub">probes answered cold</span>
+                            </>
+                          )}
+                        </td>
+                        <td
+                          data-label="Band"
+                          data-value={bandRank[task.headroom_band ?? 'unknown'] ?? 9}
+                        >
+                          {task.headroom_band ?? DASH}
+                          {task.saturated && <span class="sub">saturated &mdash; excluded</span>}
+                        </td>
+                        <td data-label="Video tier" data-value={task.video_tier ?? ''}>
+                          {task.video_tier ?? DASH}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+          </fieldset>
+
+          <ul class="footnotes">
+            <li>
+              <sup>&dagger;</sup> Headroom is <code>probe_known</code>: the fraction of
+              cold probes the model answered correctly, with no tools and no skill. The
+              bundle carries the fraction but not the number of probes behind it, so no
+              interval can be computed for it here. It is a point estimate and is marked
+              as one.
+            </li>
+            <li>
+              A <code>saturated</code> task is excluded from the primary endpoint by the
+              pre-registered rule and reported separately. It is listed here either way.
+            </li>
+          </ul>
+        </section>
+      )
+    }
+  </div>
+</Base>
+
+<script is:inline>
+  // Progressive enhancement only: the table ships sorted by tier then id, and
+  // the headers are plain text until this runs. Nothing here is required to
+  // read the page, so a header never becomes a control that does nothing.
+  (function () {
+    var table = document.getElementById('task-table');
+    if (!table) return;
+    var tbody = table.tBodies[0];
+    var headers = table.querySelectorAll('th[data-sort]');
+
+    function cellValue(row, index) {
+      var cell = row.children[index];
+      if (!cell) return '';
+      var raw = cell.getAttribute('data-value');
+      return raw === null ? cell.textContent.trim() : raw;
+    }
+
+    headers.forEach(function (th, index) {
+      var text = th.textContent.trim();
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sort-btn';
+      button.innerHTML = '<span></span><span class="sort-btn__arrow"></span>';
+      button.firstChild.textContent = text;
+      th.textContent = '';
+      th.appendChild(button);
+
+      button.addEventListener('click', function () {
+        var numeric = th.getAttribute('data-sort') === 'number';
+        var current = button.getAttribute('aria-sort');
+        var dir = current === 'ascending' ? -1 : 1;
+        headers.forEach(function (other) {
+          var btn = other.querySelector('.sort-btn');
+          if (btn && btn !== button) btn.removeAttribute('aria-sort');
+          other.removeAttribute('aria-sort');
+        });
+        button.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
+        th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
+
+        var rows = Array.prototype.slice.call(tbody.rows);
+        rows.sort(function (a, b) {
+          var av = cellValue(a, index);
+          var bv = cellValue(b, index);
+          if (numeric) return (parseFloat(av) - parseFloat(bv)) * dir;
+          return av.localeCompare(bv) * dir;
+        });
+        rows.forEach(function (row) {
+          tbody.appendChild(row);
+        });
+      });
+    });
+  })();
+</script>
+
+<style>
+  .task-table th[scope='row'] {
+    width: 34%;
+  }
+
+  .task-table td.num .sub,
+  .task-table td .sub {
+    font-size: 0.82em;
+  }
+</style>

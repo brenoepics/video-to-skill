@@ -2,12 +2,11 @@
 
 Every knob that could leak the wall clock or the machine into the file is
 pinned here: frames go in as raw RGB24 at a constant rate (no timestamp
-guessing), ``+bitexact`` on the container and both encoders drops version
-strings and ``creation_time``, ``-map_metadata -1`` drops everything
-inherited from the inputs, ``-threads 1`` pins x264's slice layout (which
-otherwise follows the core count), and ``-sws_flags +bitexact`` pins the
-RGB-to-YUV conversion. ``docs/hermetic-video.md`` has the reasoning and
-the caveats.
+guessing), ``+bitexact`` on the muxer and both encoders drops version
+strings and ``creation_time``, a bitstream filter drops x264's version
+SEI, ``-map_metadata -1`` drops what the inputs carried, ``-threads 1``
+pins x264's slice layout (which otherwise follows the core count), and
+``-sws_flags +bitexact`` pins the RGB-to-YUV conversion.
 
 What is *not* pinned is the ffmpeg build: a different libx264 produces a
 different file, so the result records the version string that made it.
@@ -138,12 +137,16 @@ def render(
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     backend = narration.detect_backend(tts)
-    for warning in schedule.warnings:
-        _say(f"v2sbench.render: {recipe.id}: {warning}")
+    notes = list(schedule.warnings)
     with tempfile.TemporaryDirectory(prefix="v2sbench-render-") as tmp:
         work = Path(tmp)
         track = narration.synthesise(recipe.narration, recipe.duration_secs, work,
                                      backend=backend, ffmpeg=ffmpeg)
+        if track.overlaps or track.truncated:
+            notes.append(f"{track.overlaps} narration cue(s) run into the next and "
+                         f"{track.truncated} past the end of the video")
+        for note in notes:
+            _say(f"v2sbench.render: {recipe.id}: {note}")
         if not track.available:
             _say(f"v2sbench.render: {recipe.id}: NO NARRATION -- rendering a SILENT video. "
                  "Transcript-derived arms are not scoreable on this file.")
@@ -162,7 +165,7 @@ def render(
         narrated=track.available, narration_cues=track.cues,
         narration_backend=track.backend if track.available else None,
         ffmpeg_version=ffmpeg_version(ffmpeg), recipe_id=recipe.id,
-        warnings=schedule.warnings,
+        warnings=tuple(notes),
     )
 
 
@@ -193,6 +196,13 @@ def _encode(
              "-g", str(recipe.fps * 2), "-threads", "1", "-flags:v", "+bitexact",
              "-sws_flags", "+bitexact+accurate_rnd", "-fps_mode", "cfr", "-r", str(recipe.fps),
              "-video_track_timescale", str(recipe.fps * 1000),
+             # NAL type 6 is the SEI into which x264 writes its version and
+             # option list, which +bitexact does not suppress; dropping it
+             # leaves the decoded pixels untouched (checked with framemd5).
+             "-bsf:v", "filter_units=remove_types=6",
+             # Only as an *output* option does this reach the muxer, which is
+             # what strips the "Lavf<version>" container tag.
+             "-fflags", "+bitexact",
              "-map_metadata", "-1", "-map_chapters", "-1", str(out)]
     log = work / "ffmpeg.log"
     with log.open("wb") as errors:

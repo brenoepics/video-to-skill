@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "id": "prow-interlock-sheet",
+  "title": "Making a prow sheet sequence its waves",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 42.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-look-at-the-plan",
+      "terminal": {
+        "type": "prow status"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-look-at-the-plan",
+      "terminal": {
+        "output": [
+          "units: 3",
+          "waves: 1,2",
+          "sheets: 0",
+          "latched: -"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-render-it-plainly",
+      "terminal": {
+        "type": "prow sheet --out plan.txt"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-render-it-plainly",
+      "terminal": {
+        "output": [
+          "rendered 3 units in 2 waves",
+          "interlock: off",
+          "sheet: 8b0ebee931",
+          "wrote plan.txt"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-read-the-gates",
+      "terminal": {
+        "type": "cat plan.txt"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-read-the-gates",
+      "terminal": {
+        "output": [
+          "# prow rollout sheet",
+          "interlock: off",
+          "waves: 2",
+          "units: 3",
+          "--",
+          "wave 1",
+          "  unit: mailer",
+          "  unit: queue",
+          "  gate: parallel",
+          "wave 2",
+          "  unit: reports",
+          "  gate: parallel"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-render-it-locked",
+      "terminal": {
+        "type": "prow sheet --out plan.txt --interlock"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-render-it-locked",
+      "terminal": {
+        "output": [
+          "rendered 3 units in 2 waves",
+          "interlock: on",
+          "sheet: 8a9010b865",
+          "wrote plan.txt"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-read-the-gates-again",
+      "terminal": {
+        "type": "cat plan.txt"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-read-the-gates-again",
+      "terminal": {
+        "output": [
+          "# prow rollout sheet",
+          "interlock: on",
+          "waves: 2",
+          "units: 3",
+          "--",
+          "wave 1",
+          "  unit: mailer",
+          "  unit: queue",
+          "  gate: start",
+          "wave 2",
+          "  unit: reports",
+          "  gate: after wave 1"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-check-the-status",
+      "terminal": {
+        "type": "prow status"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-check-the-status",
+      "terminal": {
+        "output": [
+          "units: 3",
+          "waves: 1,2",
+          "sheets: 2",
+          "latched: -"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "A rollout sheet can promise two completely different things, and both of them render cleanly."
+    },
+    {
+      "t": 4.8,
+      "text": "Three units here, spread over two waves."
+    },
+    {
+      "t": 10.8,
+      "text": "Render the sheet the obvious way. It is happy, and it gives us an id for what it made."
+    },
+    {
+      "t": 16.8,
+      "text": "But read the gate lines. Nothing is waiting for anything -- this sheet sequences nothing at all."
+    },
+    {
+      "t": 22.8,
+      "text": "Render it again, this time asking for the waves to be locked together. Different id already."
+    },
+    {
+      "t": 28.8,
+      "text": "Now the first wave starts and the second one waits for it. That is the sheet we wanted."
+    },
+    {
+      "t": 34.8,
+      "text": "Two renderings on record, and nothing released yet."
+    },
+    {
+      "t": 38.5,
+      "text": "Without that switch the waves only look ordered. With it, each one waits for the one before."
+    }
+  ],
+  "notes": "Teaches that rendering only sequences the waves when the interlock switch is passed, and shows the parallel gates it writes otherwise."
+}

@@ -1,0 +1,81 @@
+schema_version: 1
+id: kiln-fire-newest-three
+tier: t1-novel-cli
+title: "Roll only the three newest shards into a kiln batch"
+goal: >-
+  This work directory holds a prepared kiln lane called amber and five
+  shards, but the lane is set up to roll all five into one batch. A batch
+  must hold only the three newest shards by name. When you stop, out/ must
+  hold exactly one kiln rollup for lane amber containing only 03-merge,
+  04-audit and 05-pack, kiln must hold its own record of that batch, and
+  kiln's state must be consistent with the lane description it was built
+  from.
+discoverability: poor
+knowledge_gap:
+  summary: >-
+    How many shards a batch holds is the hold-count field of the lane
+    profile, and kiln keeps the LAST hold-count shards in name order, not
+    the first. Editing the profile invalidates the state the lane was
+    primed with, so the lane has to be primed again before it will fire --
+    kiln reports that with a single terse line and no advice. Firing first
+    and editing afterwards bakes the wrong batch and leaves a second
+    artifact behind.
+  probe_question: >-
+    In kiln, how do you change how many shards a batch holds, which of the
+    matching shards does a batch keep when that number is smaller than the
+    number matched, and what has to happen between changing the setting and
+    firing the lane?
+  probe_answer_pattern: '(?i)(?=[\s\S]*hold-count)(?=[\s\S]*(last|newest|latest|highest|end of))(?=[\s\S]*\bprime)'
+  taught_at: [18.0, 30.0, 42.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - chmod 0111 /usr/local/bin/kiln
+    - mkdir -p shards
+    - printf 'intake ok\n' > shards/01-intake.txt
+    - printf 'sweep ok\n' > shards/02-sweep.txt
+    - printf 'merge ok\n' > shards/03-merge.txt
+    - printf 'audit ok\n' > shards/04-audit.txt
+    - printf 'pack ok\n' > shards/05-pack.txt
+    - "printf 'fire-lane: amber\\nshard-glob: shards/*.txt\\nhold-count: 5\\n' > kiln.profile"
+    - kiln prime
+budget:
+  max_turns: 30
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - profile-holds-three
+    - exactly-one-rollup
+    - rollup-holds-the-newest-three
+    - batch-id-recomputes
+    - batch-record-agrees
+    - state-fresh-and-current
+  key_actions:
+    - '(?mi)(>|tee|sed|printf|echo|cat)[^\n]*kiln\.profile'
+    - '(?mi)^\s*kiln\s+prime\b[\s\S]*^\s*kiln\s+fire\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*(\.kiln|shards)'
+    - '(?mi)(>|tee)\s*[^\n]*\.kiln/'
+    - '(?mi)(>|tee|sed\s+-i)\s*[^\n]*\.rollup'
+  leakage_forbidden:
+    - kiln-batch-v1
+    - kiln-batch-rec-v1
+    - kiln-state-v1
+    - kiln-profile-v1
+    - rollup-holds-the-newest-three
+    - batch-id-recomputes
+    - state-fresh-and-current
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: kiln-fire-newest-three
+  sha256: null
+notes: >-
+  The video changes a cobalt lane's hold count from 4 to 2 and re-primes
+  before firing, so the numbers differ from the task's.

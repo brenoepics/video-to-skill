@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "id": "zep-chain-anchor",
+  "title": "Chaining one zep drop onto another",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 48.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-look-at-the-ledger",
+      "terminal": {
+        "type": "zep ledger"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-look-at-the-ledger",
+      "terminal": {
+        "output": [
+          "ship-42      sealed      0476e9dcdd2ef47c"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-read-the-parent",
+      "terminal": {
+        "type": "zep show ship-42"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-read-the-parent",
+      "terminal": {
+        "output": [
+          "drop: ship-42",
+          "state: sealed",
+          "entries: 1",
+          "anchor: 0476e9dcdd2ef47c",
+          "parent: -",
+          "  port = 8080"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-create-the-child",
+      "terminal": {
+        "type": "zep open ship-44 --after 0476e9dcdd2ef47c"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-create-the-child",
+      "terminal": {
+        "output": [
+          "drop ship-44 opened",
+          "grant: 89392f2a126b",
+          "grant file: .zep/drops/ship-44/grant",
+          "after: 0476e9dcdd2ef47c"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-stage-a-fact",
+      "terminal": {
+        "type": "zep put ship-44 note hotfix"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-stage-a-fact",
+      "terminal": {
+        "output": [
+          "staged note in ship-44 (1 total)"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-close-with-the-nonce",
+      "terminal": {
+        "type": "zep seal ship-44 --grant 89392f2a126b"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-close-with-the-nonce",
+      "terminal": {
+        "output": [
+          "sealed ship-44 (1 entries)",
+          "anchor: abea2ed95c68b026"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-confirm-the-parent",
+      "terminal": {
+        "type": "zep show ship-44"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-confirm-the-parent",
+      "terminal": {
+        "output": [
+          "drop: ship-44",
+          "state: sealed",
+          "entries: 1",
+          "anchor: abea2ed95c68b026",
+          "parent: 0476e9dcdd2ef47c",
+          "  note = hotfix"
+        ]
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-made-up-parent",
+      "terminal": {
+        "type": "zep open ship-45 --after deadbeefdeadbeef"
+      }
+    },
+    {
+      "t": 43.0,
+      "step": "07-made-up-parent",
+      "terminal": {
+        "output": [
+          "zep: unknown anchor: deadbeefdeadbeef"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Drops can be chained, so one records that it follows another. That link is set up earlier than you might expect."
+    },
+    {
+      "t": 4.8,
+      "text": "We already have one sealed drop here, and the ledger shows what it ended up with."
+    },
+    {
+      "t": 10.8,
+      "text": "This is where we read the value the next drop has to point at."
+    },
+    {
+      "t": 16.8,
+      "text": "When we create the next drop, we say up front which one it follows, carrying that value over."
+    },
+    {
+      "t": 22.8,
+      "text": "Then it is an ordinary drop. Stage what belongs in it."
+    },
+    {
+      "t": 28.8,
+      "text": "Close it with its own nonce -- each drop has its own, not the parent's."
+    },
+    {
+      "t": 34.8,
+      "text": "And there is the parent line, pointing back at the drop we came from."
+    },
+    {
+      "t": 40.8,
+      "text": "And you cannot invent the value: zep only accepts one it has actually sealed."
+    },
+    {
+      "t": 44.5,
+      "text": "The link is declared when the drop is created, and only a real anchor will do."
+    }
+  ],
+  "notes": "Teaches that the parent is declared at creation from the parent's anchor, and that zep validates the anchor."
+}

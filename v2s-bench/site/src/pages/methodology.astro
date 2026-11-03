@@ -1,0 +1,675 @@
+---
+import Base from '../layouts/Base.astro';
+import Verdict from '../components/Verdict.astro';
+import { href } from '../lib/url';
+import { REPO_URL, REPO_BENCH_PATH } from '../../site.config.mjs';
+import { ARMS, ARMSETS, FAMILY_LABEL, HYPOTHESES, TIERS } from '../lib/prereg';
+import {
+  ADMISSION_CRITERIA,
+  ANALYSIS_PLAN,
+  BASELINE_RULES,
+  BLINDING_RULES,
+  COST_IS_A_RESULT,
+  EXCLUSION_RULE,
+  HEADROOM_BANDS,
+  INTEGRITY_GATES,
+  JUDGE_POLICY,
+  MDE_TABLE,
+  MOCK_RULE,
+  NARRATION_RULE,
+  NOT_USEFUL_COMMITMENTS,
+  PINNING,
+  PRIOR_WORK,
+  RECORD_FIELDS,
+  SECONDARY_ENDPOINTS,
+  THREATS,
+  VERDICT_RULES,
+  VIDEO_TIERS,
+  WHAT_IS_NEW,
+} from '../lib/methods';
+import type { Verdict as VerdictKind } from '../lib/types';
+
+const prereg = `${REPO_URL}/blob/main/${REPO_BENCH_PATH}/docs/preregistration.md`;
+const armsPy = `${REPO_URL}/blob/main/${REPO_BENCH_PATH}/harness/v2sbench/arms.py`;
+
+const toc = [
+  ['design', 'The design'],
+  ['prior-work', 'What is already known'],
+  ['arms', 'The arms'],
+  ['suite', 'The task suite'],
+  ['headroom', 'Headroom'],
+  ['gates', 'Integrity gates'],
+  ['materials', 'Materials'],
+  ['analysis', 'Statistical analysis plan'],
+  ['verdicts', 'How a verdict is decided'],
+  ['records', 'Records and pinning'],
+  ['mock', 'Mock data'],
+  ['threats', 'Threats to validity'],
+  ['not-useful', 'What would make us say v2s is not useful'],
+];
+---
+
+<Base
+  title="Methodology"
+  description="The frozen design behind v2s-bench: the arms and what each isolates, the task tiers, the headroom calibration, the statistical analysis plan, and the threats to validity."
+>
+  <div class="stack">
+    <div>
+      <p class="eyebrow">Pre-registered design</p>
+      <h1>Methodology</h1>
+      <p class="lede">
+        Written and committed before any trial was run, and not edited after the freeze
+        commit except by appended, dated amendments. Its purpose is to make the result
+        falsifiable: the hypotheses, the task set, the exclusion rule, the primary
+        endpoint and the statistical test are all fixed while the outcome is still
+        unknown. The authority is the
+        <a href={prereg}>pre-registration</a> itself; this page is its reading copy.
+      </p>
+      <p class="note">
+        If you are reading a results page that does not link to a <em>frozen</em> copy of
+        that file, treat the numbers as exploratory.
+      </p>
+      <nav class="toc" aria-label="On this page">
+        <ul>
+          {toc.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+        </ul>
+      </nav>
+    </div>
+
+    <section aria-labelledby="design">
+      <h2 id="design">The design</h2>
+      <p>
+        The repository already measures whether the <em>extraction</em> is faithful:
+        <code>vts-extract eval</code> scores boundary and step F1 and command recall
+        against a synthetic gold set. That is an intrinsic measure &mdash; it asks whether
+        the pipeline read the video correctly. v2s-bench asks the extrinsic question,
+        which nothing else in the project answers.
+      </p>
+      <blockquote>
+        Does an agent holding a v2s-generated skill complete real tasks more often than
+        the same agent with a good prompt and no skill &mdash; and which component of v2s
+        is responsible?
+      </blockquote>
+      <p>
+        Being faithful is not the same as being useful. A pipeline can score well on
+        extraction and change no outcome, because the model already knew the procedure,
+        or because the environment corrects the agent anyway, or because the skill is
+        written in a way an agent does not act on.
+      </p>
+
+      <h3>The hypotheses</h3>
+      <p class="note">
+        The pre-registration does not carry a standalone hypothesis table. H1 and the
+        ablations are defined by the <code>COMPARISONS</code> tuple in
+        <a href={armsPy}>arms.py</a>, which is what the analysis code tests; H2 and H7
+        are defined by the sections that test them, because neither is a paired two-arm
+        difference. Which is which is stated below rather than presenting all eight as
+        the same kind of claim.
+      </p>
+      <table class="dt dt--stack dt--rows">
+        <caption class="visually-hidden">The pre-registered hypotheses.</caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Claim</th>
+            <th scope="col">Evidence</th>
+            <th scope="col">Fails if</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            HYPOTHESES.map((h) => (
+              <tr>
+                <th scope="row">
+                  {h.id}
+                  <span class="sub">{FAMILY_LABEL[h.family]}</span>
+                </th>
+                <td data-label="Claim">
+                  {h.statement}
+                  {h.note && <span class="sub">{h.note}</span>}
+                </td>
+                <td data-label="Evidence">
+                  {h.evidence}
+                  <span class="sub">{h.source}</span>
+                </td>
+                <td data-label="Fails if">{h.failsIf}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p class="note">
+        H1 alone is a weak claim and is not reported alone. &ldquo;Give the model the
+        answer, it does better&rdquo; is nearly tautological; H3 to H6 are what separate
+        v2s from a transcript summariser, and H2 is what tells a reader when the tool is
+        worth running at all.
+      </p>
+    </section>
+
+    <section aria-labelledby="prior-work">
+      <h2 id="prior-work">What is already known, and what is actually new here</h2>
+      <p>
+        This is not an unexplored question, and the benchmark is designed around what the
+        adjacent literature already settles. Each row below changed a design decision.
+      </p>
+      <table class="dt dt--stack dt--rows">
+        <caption class="visually-hidden">
+          Prior findings, their sources, and the consequence for this design.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Finding</th>
+            <th scope="col">Source</th>
+            <th scope="col">Consequence for this design</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            PRIOR_WORK.map((row) => (
+              <tr>
+                <th scope="row">{row.finding}</th>
+                <td data-label="Source">{row.source}</td>
+                <td data-label="Consequence">{row.consequence}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <h3>What is new</h3>
+      <ol class="spaced">
+        {WHAT_IS_NEW.map((item) => <li>{item}</li>)}
+      </ol>
+    </section>
+
+    <section aria-labelledby="arms">
+      <h2 id="arms">The arms, and what each isolates</h2>
+      <p>
+        All arms share the same model, tool access, sandbox, turn and time budget, retry
+        policy and task prompt. <strong>The only difference is the context material
+        supplied.</strong> Arms run paired: every (task, seed) is attempted by every arm
+        in the run&rsquo;s arm set, and arm order is interleaved within a seed.
+      </p>
+      <table class="dt dt--stack dt--rows">
+        <caption class="visually-hidden">
+          The experimental arms, the context each supplies, and the confound or component
+          each isolates.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Arm</th>
+            <th scope="col">Context supplied</th>
+            <th scope="col">Isolates</th>
+            <th scope="col">Arm sets</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            ARMS.map((arm) => (
+              <tr>
+                <th scope="row">
+                  {arm.id}
+                  <span class="sub">{arm.name}</span>
+                </th>
+                <td data-label="Context supplied">
+                  {arm.supplies}
+                  <span class="sub">{arm.description}</span>
+                </td>
+                <td data-label="Isolates">{arm.isolates}</td>
+                <td data-label="Arm sets">
+                  <span class="chip chip--square">{arm.armsets.join(' ')}</span>
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+
+      <h3>Arm sets</h3>
+      <dl class="defs">
+        {
+          ARMSETS.map((set) => (
+            <div>
+              <dt>
+                <code>{set.id}</code> &middot; {set.arms.join(', ')}
+              </dt>
+              <dd>{set.purpose}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h3>The baseline must be strong</h3>
+      <p>
+        A weak baseline is the standard way to manufacture a benchmark win. Three rules,
+        enforced in the harness rather than by good intentions.
+      </p>
+      <dl class="defs">
+        {
+          BASELINE_RULES.map((rule) => (
+            <div>
+              <dt>{rule.title}</dt>
+              <dd>{rule.body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h3>Arm-material authoring is grader-blind</h3>
+      <p>
+        The most likely way to accidentally fake a result is to let the procedure text be
+        shaped by knowledge of how success is scored. So that is prevented structurally.
+      </p>
+      <ul class="spaced">
+        {BLINDING_RULES.map((rule) => <li>{rule}</li>)}
+      </ul>
+    </section>
+
+    <section aria-labelledby="suite">
+      <h2 id="suite">The task suite</h2>
+      <p>
+        Four tiers, easiest to hardest. Each task is a directory with a
+        <code>task.yaml</code>, a <code>check/</code> directory of execution-based
+        assertions, an <code>oracle/</code> solution, and a declared knowledge gap: the
+        specific fact or ordering required for success that the video teaches.
+      </p>
+      <table class="dt dt--stack dt--rows">
+        <caption class="visually-hidden">The four task tiers.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Tier</th>
+            <th scope="col">Environment</th>
+            <th scope="col">Why it is here</th>
+            <th scope="col" class="num">Target n</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            TIERS.map((tier) => (
+              <tr>
+                <th scope="row">
+                  {tier.label}
+                  <span class="sub">{tier.name}</span>
+                </th>
+                <td data-label="Environment">{tier.environment}</td>
+                <td data-label="Why it is here">{tier.why}</td>
+                <td class="num" data-label="Target n">{tier.targetN}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p class="note">
+        Counts are targets, frozen at the freeze commit. The sample size the primary
+        endpoint actually requires is larger; v0.1 publishes a pilot and states its power
+        honestly rather than pretending a 42-task suite settles a 5 pp question.
+      </p>
+
+      <h3>Tier 1 is the internal-validity anchor</h3>
+      <p>
+        Benchmarking v2s on <code>git init</code> or <code>:q!</code> measures nothing:
+        every current model knows those cold, the baseline scores about 100%, and no
+        skill can move it. So T1 invents its own tools &mdash; small, real, working CLIs
+        installed in the task container with deliberately non-guessable interfaces: a
+        token read from a file, an argument order that matters, a two-phase commit, a
+        subcommand whose obvious name does not exist. The agent drives the real tool;
+        only the tool&rsquo;s provenance is synthetic.
+      </p>
+      <p>
+        Half the T1 tools ship good <code>--help</code> and half ship poor or terse
+        documentation, declared per task as <code>discoverability</code>. We expect v2s to
+        matter little in the first group and more in the second, and that split is more
+        useful than any aggregate.
+      </p>
+
+      <h3>Environments are Docker-only, by necessity</h3>
+      <p>
+        The two best-known desktop suites boot a QEMU VM inside the container and
+        silently fall back to software emulation when <code>/dev/kvm</code> is absent:
+        they &ldquo;work&rdquo; and are uselessly slow. Standard CI runners offer no
+        reliable nested virtualisation and about 14 GB of disk. So T3 is container-native:
+        real applications under Xvfb, plus browser tasks driven through a browser
+        automation library. A hypervisor-backed desktop tier is explicitly out of scope
+        for v0.1 rather than attempted badly.
+      </p>
+
+      <h3>Admission criteria</h3>
+      <dl class="defs">
+        {
+          ADMISSION_CRITERIA.map((c) => (
+            <div>
+              <dt>{c.title}</dt>
+              <dd>{c.body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h3>A calibration rung</h3>
+      <p>
+        Published work fed a model the paper describing an environment and beat every
+        reinforcement-learning baseline with no interaction at all &mdash; a large,
+        independently reported effect of documentation on agent behaviour. One T4 task
+        reproduces that setup as a harness calibration check: if the harness cannot
+        recover a known-large effect, its null results are not evidence of anything. It is
+        reported as a harness diagnostic, never as a v2s result.
+      </p>
+    </section>
+
+    <section aria-labelledby="headroom">
+      <h2 id="headroom">Headroom, and the knowing&ndash;doing gap</h2>
+      <p>
+        Each task&rsquo;s knowledge gap is probed directly before the main run: the key
+        fact is asked of the model as a plain question, ten times, with no tools and no
+        skill. The pass rate is the task&rsquo;s <code>probe_known</code> &mdash; its
+        measured headroom, published per task.
+      </p>
+      <p>
+        Publishing the probes is also the honest disclosure that <em>any</em> skill
+        system&rsquo;s effect size depends on what the model already knew, and that a
+        benchmark can be made to show almost any effect by choosing tasks on that axis.
+        The probe is also a direct measurement of the knowing&ndash;doing gap: a task with
+        high <code>probe_known</code> and low baseline success is one the model can state
+        and cannot do.
+      </p>
+      <table class="dt dt--stack dt--rows">
+        <caption class="visually-hidden">Headroom bands and their thresholds.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Band</th>
+            <th scope="col">Rule</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            HEADROOM_BANDS.map((band) => (
+              <tr>
+                <th scope="row"><code>{band.band}</code></th>
+                <td data-label="Rule">{band.rule}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+
+      <h3>Feedback bandwidth</h3>
+      <p>
+        The published null attributes its result to the environment already correcting the
+        agent: when a tool emits a clear error, trial-and-error substitutes for
+        instruction. Each task therefore declares <code>feedback_bandwidth</code> &mdash;
+        whether a wrong attempt produces a diagnostic error (high) or silently produces a
+        plausible-looking wrong result (low). We expect the effect to concentrate in
+        <code>low</code>, and we test it.
+      </p>
+
+      <h3>Exclusion is declared on the probe, never on the outcome</h3>
+      {EXCLUSION_RULE.map((para) => <p>{para}</p>)}
+    </section>
+
+    <section aria-labelledby="gates">
+      <h2 id="gates">Integrity gates</h2>
+      <p>Run by CI before any trial, and published with the results.</p>
+      <dl class="defs">
+        {
+          INTEGRITY_GATES.map((gate) => (
+            <div>
+              <dt>{gate.title}</dt>
+              <dd>{gate.body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section aria-labelledby="materials">
+      <h2 id="materials">Materials</h2>
+      <p>
+        Tutorial video is the input to the system under test, which creates a tension
+        between reproducibility and realism. Both horns are taken, and which is which is
+        labelled rather than picking one and overclaiming.
+        <strong>Numbers from the two tiers are never averaged.</strong>
+      </p>
+      <div class="grid-2">
+        {
+          VIDEO_TIERS.map((tier) => (
+            <div class="panel">
+              <h3>
+                {tier.name} <span class="chip chip--square">{tier.id}</span>
+              </h3>
+              <p>{tier.what}</p>
+              <p class="note"><strong>Strength.</strong> {tier.strength}</p>
+              <p class="note"><strong>Weakness.</strong> {tier.weakness}</p>
+            </div>
+          ))
+        }
+      </div>
+      <h3>Narration must be vague where the pixels are exact</h3>
+      <p>{NARRATION_RULE}</p>
+      <h3>Licensing</h3>
+      <p>
+        No video bytes, no game ROMs, no copyrighted assets in the repository. Real videos
+        are CC-BY, CC0 or public-domain only, with the licence recorded per entry and the
+        attribution rendered on the <a href={href('/tasks')}>task pages</a>. Games are
+        free and open-source only, with assets fetched upstream at build time; commercial
+        ROMs are categorically excluded. Adapted third-party task definitions carry their
+        upstream licence.
+      </p>
+    </section>
+
+    <section aria-labelledby="analysis">
+      <h2 id="analysis">Statistical analysis plan</h2>
+      <p>
+        Fixed in advance. <strong>Primary endpoint:</strong> task success, binary, decided
+        by execution-based assertions. A trial succeeds only if every required assertion
+        passes.
+      </p>
+
+      <h3>Sample size</h3>
+      <p>
+        Variance decomposes so that only the number of <em>tasks</em> reduces the
+        between-task term. At a fixed budget of runs per arm, splitting it into more tasks
+        and fewer trials each buys power; we nonetheless run three trials per cell,
+        because one cannot detect a flaky task, cannot estimate intra-task correlation,
+        and cannot report pass<sup>k</sup>.
+      </p>
+      <table class="dt dt--rows mde">
+        <caption>
+          Minimum detectable effect in percentage points &mdash; <strong>assumed, not
+          measured</strong> ({MDE_TABLE.assumptions}).
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" class="num-left">N tasks</th>
+            {MDE_TABLE.columns.map((c) => <th scope="col" class="num">{c}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {
+            MDE_TABLE.rows.map((row) => (
+              <tr>
+                <th scope="row" class="num-left">
+                  {row.n}
+                  {row.target && <span class="sub">target</span>}
+                </th>
+                {row.values.map((v) => <td class="num">{v.toFixed(1)}</td>)}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p><strong>{MDE_TABLE.target}</strong></p>
+      <p>{MDE_TABLE.pilot}</p>
+      <p>{MDE_TABLE.difficulty}</p>
+
+      <h3>Tests and intervals</h3>
+      <dl class="defs">
+        {
+          ANALYSIS_PLAN.map((item) => (
+            <div>
+              <dt>{item.title}</dt>
+              <dd>{item.body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h3>Secondary endpoints</h3>
+      <p class="note">Reported for every trial, never substituted for the primary.</p>
+      <table class="dt dt--stack dt--rows">
+        <caption class="visually-hidden">Secondary endpoints recorded per trial.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Endpoint</th>
+            <th scope="col">What it is</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            SECONDARY_ENDPOINTS.map((e) => (
+              <tr>
+                <th scope="row"><code>{e.name}</code></th>
+                <td data-label="What it is">{e.what}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p>{COST_IS_A_RESULT}</p>
+
+      <h3>On LLM judges</h3>
+      <ul class="spaced">
+        {JUDGE_POLICY.map((item) => <li>{item}</li>)}
+      </ul>
+    </section>
+
+    <section aria-labelledby="verdicts">
+      <h2 id="verdicts">How a verdict is decided</h2>
+      <p>
+        Verdicts are computed from the interval and the pre-registered failure condition,
+        never written by hand. All four render at the same visual weight. A null result is
+        a result: <strong>not supported</strong> is not styled as a warning, and the
+        benchmark commits to publishing it.
+      </p>
+      <dl class="defs verdict-rules">
+        {
+          VERDICT_RULES.map((rule) => (
+            <div>
+              <dt><Verdict verdict={rule.verdict as VerdictKind} /></dt>
+              <dd>{rule.rule}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section aria-labelledby="records">
+      <h2 id="records">Records and pinning</h2>
+      <p>{RECORD_FIELDS}</p>
+      <p>{PINNING}</p>
+      <p>
+        <code>v2sbench verify-results</code> recomputes every published figure from the
+        raw records, so a reader can audit the arithmetic rather than trusting it. How to
+        run it is on <a href={href('/reproduce')}>reproduce</a>.
+      </p>
+    </section>
+
+    <section aria-labelledby="mock">
+      <h2 id="mock">Mock data can never become a published figure</h2>
+      {MOCK_RULE.map((para) => <p>{para}</p>)}
+    </section>
+
+    <section aria-labelledby="threats">
+      <h2 id="threats">Threats to validity</h2>
+      <p>
+        Stated here because a benchmark whose authors also build the tool under test has
+        to be read with suspicion, and the only answer to that is to name the ways it
+        could be wrong.
+      </p>
+      <table class="dt dt--stack dt--rows">
+        <caption class="visually-hidden">
+          Threats to validity, their mitigations, and the residual risk that remains.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Threat</th>
+            <th scope="col">Mitigation</th>
+            <th scope="col">Residual risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            THREATS.map((t) => (
+              <tr>
+                <th scope="row">{t.threat}</th>
+                <td data-label="Mitigation">{t.mitigation}</td>
+                <td data-label="Residual risk">{t.residual}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="not-useful">
+      <h2 id="not-useful">What would make us say v2s is not useful</h2>
+      <p>Committed in advance, before any data existed.</p>
+      <ul class="spaced">
+        {NOT_USEFUL_COMMITMENTS.map((c) => <li>{c}</li>)}
+      </ul>
+      <p class="note">
+        Amendments to any of the above are dated, appended and never rewritten, and each
+        records what changed, why, and whether any data had been seen at the time.
+      </p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .toc {
+    margin-top: 1.1rem;
+    border-top: 1px solid var(--grid);
+    padding-top: 0.8rem;
+  }
+
+  .toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 1rem;
+    max-width: none;
+  }
+
+  .toc li {
+    max-width: none;
+    font-size: 0.92rem;
+  }
+
+  blockquote {
+    margin: 0 0 0.9rem;
+    padding: 0.1rem 0 0.1rem 0.95rem;
+    border-left: 3px solid var(--series-1);
+    font-size: 1.05rem;
+    max-width: var(--measure);
+  }
+
+  .spaced li + li {
+    margin-top: 0.45rem;
+  }
+
+  .mde caption {
+    max-width: var(--measure);
+  }
+
+  .mde th[scope='row'] {
+    width: 12ch;
+  }
+
+  .verdict-rules dt {
+    margin-bottom: 0.3rem;
+  }
+
+  section h3 {
+    margin-top: 1.5rem;
+  }
+</style>

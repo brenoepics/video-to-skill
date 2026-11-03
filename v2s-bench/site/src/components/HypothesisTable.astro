@@ -1,0 +1,116 @@
+---
+/**
+ * The pre-registered hypotheses with their computed verdicts.
+ *
+ * The rows come from the site's transcription of the frozen design; the
+ * verdicts come only from the bundle. Two hypotheses are not paired two-arm
+ * differences and therefore have no verdict to compute -- H2 is answered by
+ * the strata, H7 by the per-arm policy-violation column -- and those cells
+ * say so instead of borrowing a verdict from somewhere else.
+ *
+ * A comparison present in the bundle but absent from the transcription is
+ * appended rather than dropped, so the site cannot quietly fail to publish
+ * something the harness tested.
+ */
+import type { Comparison } from '../lib/types';
+import { FAMILY_LABEL, HYPOTHESES } from '../lib/prereg';
+import { DASH } from '../lib/format';
+import Verdict from './Verdict.astro';
+
+interface Props {
+  comparisons: Comparison[];
+  /** Anchors the "answered elsewhere" cells point at. */
+  strataHref?: string;
+  armsHref?: string;
+}
+
+const { comparisons, strataHref = '#strata', armsHref = '#arms' } = Astro.props;
+
+const byId = new Map(comparisons.map((c) => [c.hypothesis, c]));
+const known = new Set(HYPOTHESES.map((h) => h.id));
+const extra = comparisons.filter((c) => !known.has(c.hypothesis));
+
+const ELSEWHERE: Record<string, { label: string; href: string }> = {
+  H2: { label: 'see the strata', href: strataHref },
+  H7: { label: 'see per-arm rates', href: armsHref },
+};
+---
+
+<table class="dt dt--stack dt--rows hyp">
+  <caption class="visually-hidden">
+    Each pre-registered hypothesis, what would make it fail, and the verdict computed from
+    the report bundle.
+  </caption>
+  <thead>
+    <tr>
+      <th scope="col">Hypothesis</th>
+      <th scope="col">Evidence</th>
+      <th scope="col">Fails if</th>
+      <th scope="col">Verdict</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      HYPOTHESES.map((h) => {
+        const c = byId.get(h.id);
+        const elsewhere = ELSEWHERE[h.id];
+        return (
+          <tr>
+            <th scope="row">
+              {h.id}
+              <span class="sub">{h.statement}</span>
+            </th>
+            <td data-label="Evidence">
+              {h.evidence}
+              <span class="sub">
+                {FAMILY_LABEL[h.family]} &middot; declared in {h.source}
+              </span>
+            </td>
+            <td data-label="Fails if">
+              {c?.fails_if ?? h.failsIf}
+              {h.note && <span class="sub">{h.note}</span>}
+            </td>
+            <td data-label="Verdict">
+              {c ? (
+                <Verdict verdict={c.verdict} />
+              ) : elsewhere ? (
+                <a href={elsewhere.href}>{elsewhere.label}</a>
+              ) : (
+                <span class="note">{DASH} not in this bundle</span>
+              )}
+            </td>
+          </tr>
+        );
+      })
+    }
+    {
+      extra.map((c) => (
+        <tr>
+          <th scope="row">
+            {c.hypothesis}
+            <span class="sub">{c.claim ?? DASH}</span>
+          </th>
+          <td data-label="Evidence">
+            success({c.treatment}) {'−'} success({c.reference})
+            <span class="sub">Declared in the bundle, not in this site&rsquo;s copy of the frozen design.</span>
+          </td>
+          <td data-label="Fails if">{c.fails_if ?? DASH}</td>
+          <td data-label="Verdict">
+            <Verdict verdict={c.verdict} />
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>
+
+<style>
+  .hyp th[scope='row'] {
+    width: 24%;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hyp td {
+    font-size: 0.92em;
+  }
+</style>

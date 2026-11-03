@@ -1,0 +1,111 @@
+---
+/**
+ * The first thing on the page, driven entirely by status.kind.
+ *
+ * It is not decoration. For `no-results` and `mock` it is the statement that
+ * the rest of the page is not evidence, and it says which of the two it is in
+ * its own words rather than leaving a reader to infer it from empty tables.
+ */
+import type { Gate } from '../lib/report';
+import type { ReportStatus } from '../lib/types';
+import { isoDate } from '../lib/format';
+
+interface Props {
+  gate: Gate;
+  status: ReportStatus;
+  generatedAt: string;
+  /** Bundle path, relative to the site directory. */
+  source?: string;
+}
+
+const { gate, status, generatedAt, source } = Astro.props;
+
+const KIND_LABEL = {
+  'no-results': 'No results yet',
+  mock: 'Mock data — not a measurement',
+  pilot: 'Pilot — real, and underpowered',
+  measured: 'Measured',
+} as const;
+
+const RULE = {
+  'no-results':
+    'No figure, chart or rate is rendered anywhere on this site in this state. Empty states, not zeros.',
+  mock:
+    'Every figure below is watermarked and every number is invented. The report builder refuses to aggregate mock and real records, so this bundle can never become a published figure.',
+  pilot:
+    'These are real measurements at a sample size far below the pre-registered target. Read the intervals, not the point estimates.',
+  measured: '',
+} as const;
+---
+
+<section class={`banner banner--${gate.kind}`} aria-labelledby="status-headline">
+  <svg
+    class="banner__icon"
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    aria-hidden="true"
+    fill="none"
+  >
+    {
+      gate.kind === 'mock' ? (
+        <>
+          <path
+            d="M10 2.6 18.4 17H1.6L10 2.6Z"
+            stroke="var(--status-warning-ink)"
+            stroke-width="1.6"
+          />
+          <path
+            d="M10 7.6v4.1"
+            stroke="var(--status-warning-ink)"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <circle cx="10" cy="14.4" r="1" fill="var(--status-warning-ink)" />
+        </>
+      ) : gate.kind === 'no-results' ? (
+        <>
+          <circle cx="10" cy="10" r="8" stroke="var(--text-secondary)" stroke-width="1.6" />
+          <path d="M5.6 14.4 14.4 5.6" stroke="var(--text-secondary)" stroke-width="1.6" />
+        </>
+      ) : gate.kind === 'pilot' ? (
+        <>
+          <circle cx="10" cy="10" r="8" stroke="var(--series-1)" stroke-width="1.6" />
+          <path d="M10 2A8 8 0 0 1 10 18Z" fill="var(--series-1)" />
+        </>
+      ) : (
+        <>
+          <circle cx="10" cy="10" r="8" stroke="var(--status-good-ink)" stroke-width="1.6" />
+          <path
+            d="M6.2 10.4 9 13.2 14 7.4"
+            stroke="var(--status-good-ink)"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+        </>
+      )
+    }
+  </svg>
+
+  <p class="banner__kind">{KIND_LABEL[gate.kind]}</p>
+  <p class="banner__headline" id="status-headline">{status.headline}</p>
+  {status.detail && <p class="banner__detail">{status.detail}</p>}
+  {RULE[gate.kind] && <p class="banner__detail">{RULE[gate.kind]}</p>}
+
+  <p class="banner__meta">
+    Bundle generated {isoDate(generatedAt)}
+    {source && <> &middot; <code>{source}</code></>}
+    &middot; pre-registration {status.prereg_frozen ? 'frozen' : 'not yet frozen'}
+    {!status.prereg_frozen && <> — treat any number as exploratory</>}
+  </p>
+
+  {
+    gate.notes.length > 0 && (
+      <ul class="loader-notes">
+        {gate.notes.map((note) => (
+          <li>{note}</li>
+        ))}
+      </ul>
+    )
+  }
+</section>

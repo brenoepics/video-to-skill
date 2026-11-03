@@ -1,0 +1,40 @@
+---
+/**
+ * A secondary rate, with its interval.
+ *
+ * The bundle publishes these as bare fractions. A bare point estimate is not
+ * something this site shows, so the interval is derived from the rate and the
+ * row's own n and marked with a double dagger. Where that recovery is not
+ * exact -- the denominator is not n -- the cell says there is no interval
+ * instead of inventing one.
+ */
+import { derivedInterval } from '../lib/stats';
+import { pct, pctRange, DASH } from '../lib/format';
+
+interface Props {
+  rate: number | null | undefined;
+  n: number;
+  digits?: number;
+}
+
+const { rate, n, digits = 0 } = Astro.props;
+const interval = derivedInterval(rate, n);
+---
+
+{
+  rate === null || rate === undefined ? (
+    DASH
+  ) : (
+    <>
+      {pct(rate, digits)}
+      {interval ? (
+        <span class="sub ci">
+          {pctRange(interval.lo, interval.hi, digits)}
+          <sup aria-hidden="true">&Dagger;</sup>
+        </span>
+      ) : (
+        <span class="sub ci">no interval<sup aria-hidden="true">&sect;</sup></span>
+      )}
+    </>
+  )
+}

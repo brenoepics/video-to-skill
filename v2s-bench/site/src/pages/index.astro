@@ -1,0 +1,336 @@
+---
+import Base from '../layouts/Base.astro';
+import ArmDetails from '../components/ArmDetails.astro';
+import ArmTable from '../components/ArmTable.astro';
+import ComparisonDetails from '../components/ComparisonDetails.astro';
+import Figure from '../components/Figure.astro';
+import ForestPlot from '../components/ForestPlot.astro';
+import HypothesisTable from '../components/HypothesisTable.astro';
+import Provenance from '../components/Provenance.astro';
+import StatusBanner from '../components/StatusBanner.astro';
+import StrataPlot from '../components/StrataPlot.astro';
+import { loadReport } from '../lib/report';
+import { href } from '../lib/url';
+import { int, ppRange, DASH } from '../lib/format';
+import { NOT_USEFUL_COMMITMENTS } from '../lib/methods';
+import { ARMS } from '../lib/prereg';
+
+const { bundle, gate, source } = loadReport();
+const { status, provenance, arms, comparisons, tasks, cells } = bundle;
+const strata = bundle.strata ?? [];
+const failureModes = bundle.failure_modes ?? [];
+
+/**
+ * Pre-registration section 12, first commitment: if H1's interval includes 0
+ * on T1 -- the uncontaminated tier -- the central claim has failed and this
+ * page has to say so at the top. The bundle carries that interval as a
+ * stratum, and whether an interval includes zero is arithmetic on the
+ * published bounds, not a judgement, so it is read out here.
+ */
+const t1 = strata.find(
+  (s) =>
+    s.dimension === 'tier' &&
+    s.value === 't1-novel-cli' &&
+    s.treatment === 'A1' &&
+    s.reference === 'A0',
+);
+const t1HasInterval = typeof t1?.ci_lo === 'number' && typeof t1?.ci_hi === 'number';
+const t1IncludesZero = t1HasInterval ? (t1!.ci_lo as number) <= 0 && (t1!.ci_hi as number) >= 0 : null;
+
+/** Shown only when there are no measurements: identity, no quantities. */
+const armRoster = ARMS;
+
+const displayedTasks = tasks.length;
+const taskedCells = cells.length;
+---
+
+<Base
+  title="Results"
+  description="Pre-registered results for v2s-bench: does an agent holding a video-derived skill complete more tasks than the same agent with a good prompt and no skill?"
+>
+  <div class="stack">
+    <div>
+      <p class="eyebrow">v2s-bench v0.1</p>
+      <h1>Does a video-derived skill make an agent better at real tasks?</h1>
+      <p class="lede">
+        One question, asked so it can fail: does an agent holding a v2s-generated skill
+        complete real tasks more often than the same agent with a good prompt and no
+        skill &mdash; and which component of v2s is responsible? The design was frozen
+        before any trial ran. Every number on this page is generated from one report
+        bundle; the <a href={href('/methodology')}>methodology</a> explains what each
+        comparison isolates, and <a href={href('/reproduce')}>reproduce</a> explains how
+        to recompute all of it yourself.
+      </p>
+    </div>
+
+    <StatusBanner gate={gate} status={status} generatedAt={bundle.generated_at} source={source.split('/').slice(-3).join('/')} />
+
+    <section aria-labelledby="commitment">
+      <div class="section__head">
+        <h2 id="commitment">The pre-registered failure condition</h2>
+        <p class="eyebrow">Section 12</p>
+      </div>
+      <p class="note">
+        Committed in advance, before any data existed. The first of these decides what
+        goes at the top of this page.
+      </p>
+      <Figure
+        id="t1-commitment"
+        title="H1 on T1, the uncontaminated tier"
+        gate={gate}
+        alt={
+          t1IncludesZero === null
+            ? 'No A1 minus A0 interval for tier T1 is present in this bundle, so the pre-registered failure condition cannot be evaluated yet.'
+            : t1IncludesZero
+              ? `The 95% interval for A1 minus A0 on T1 is ${ppRange(t1!.ci_lo, t1!.ci_hi)}, which includes zero.`
+              : `The 95% interval for A1 minus A0 on T1 is ${ppRange(t1!.ci_lo, t1!.ci_hi)}, which excludes zero.`
+        }
+        emptyTitle="Not yet measurable."
+        emptyBody="No trials have been recorded, so there is no T1 interval to read. The commitment below stands whatever the eventual number is."
+      >
+        <p class="readout">
+          {
+            t1IncludesZero === null ? (
+              <>The bundle carries no A1 {'−'} A0 interval for T1.</>
+            ) : t1IncludesZero ? (
+              <>
+                <strong>The interval includes zero</strong> ({ppRange(t1!.ci_lo, t1!.ci_hi)}).
+                By the commitment below, the central claim has failed on the tier where
+                information flow is easiest to demonstrate.
+              </>
+            ) : (
+              <>
+                <strong>The interval excludes zero</strong> ({ppRange(t1!.ci_lo, t1!.ci_hi)}),
+                so this particular failure condition is not met.
+              </>
+            )
+          }
+        </p>
+        <p class="note">
+          Derived here by checking whether the published T1 interval contains zero. No
+          other arithmetic is applied to it.
+        </p>
+      </Figure>
+      <ul class="commitments">
+        {NOT_USEFUL_COMMITMENTS.map((c) => <li>{c}</li>)}
+      </ul>
+    </section>
+
+    <section aria-labelledby="hypotheses">
+      <div class="section__head">
+        <h2 id="hypotheses">Hypotheses and verdicts</h2>
+        <p class="eyebrow">Computed, never written by hand</p>
+      </div>
+      <p class="note">
+        Verdicts come from the bundle. <strong>not supported</strong> is a finding and is
+        shown with the same weight as <strong>supported</strong>; see
+        <a href={href('/methodology#verdicts')}>how each verdict is decided</a>.
+      </p>
+      <div class="panel">
+        <HypothesisTable comparisons={comparisons} strataHref="#strata" armsHref="#arms" />
+      </div>
+    </section>
+
+    <section aria-labelledby="forest-heading">
+      <h2 id="forest-heading" class="visually-hidden">Effect sizes</h2>
+      <Figure
+        id="forest"
+        title="Effect size per pre-registered comparison"
+        sub="Paired difference in success rate, treatment minus reference, in percentage points, with a 95% confidence interval. The rule at zero is no effect; an interval crossing it is consistent with none."
+        gate={gate}
+        alt="One row per pre-registered comparison. Each row shows the paired difference in success rate as a dot, its 95% confidence interval as a horizontal bar, and a vertical rule at zero. The same numbers are in the Effect and 95% CI columns beside each row, and every remaining field is listed below."
+        emptyTitle="No effect sizes yet."
+        emptyBody="No paired trials have been recorded, so there is nothing to place on an axis. The comparisons themselves are fixed and are listed in the table above."
+      >
+        <ForestPlot comparisons={comparisons} />
+        <ComparisonDetails slot="alt" comparisons={comparisons} />
+      </Figure>
+    </section>
+
+    <section aria-labelledby="arms">
+      <div class="section__head">
+        <h2 id="arms">Per-arm summary</h2>
+        <p class="eyebrow">H7 is the policy-violation column</p>
+      </div>
+      {
+        gate.showFigures ? (
+          <Figure
+            id="arm-rates"
+            title="Success rate per arm"
+            sub="Every arm shares the same model, tools, sandbox and budget. The only difference is the context material supplied."
+            gate={gate}
+            alt="One row per arm, showing the number of trials, the success rate with its 95% Wilson interval drawn as a dot and bar on a 0 to 100% axis, the error rate, mean turns, mean cost and the policy-violation rate. A vertical rule marks the baseline arm's observed rate."
+          >
+            <ArmTable arms={arms} />
+            <ArmDetails slot="alt" arms={arms} />
+          </Figure>
+        ) : (
+          <div class="panel">
+            <p>
+              No trials have been recorded, so there are no rates to report. These are the
+              arms the suite will run. Each is a choice of context material and nothing
+              else.
+            </p>
+            <table class="dt dt--stack dt--rows">
+              <caption class="visually-hidden">
+                The experimental arms and what each isolates. No measurements.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Arm</th>
+                  <th scope="col">Context supplied</th>
+                  <th scope="col">Isolates</th>
+                </tr>
+              </thead>
+              <tbody>
+                {armRoster.map((arm) => (
+                  <tr>
+                    <th scope="row">
+                      {arm.id}
+                      <span class="sub">{arm.name}</span>
+                    </th>
+                    <td data-label="Context supplied">{arm.supplies}</td>
+                    <td data-label="Isolates">{arm.isolates}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p class="note">
+              Success rates, Wilson intervals, error rates and costs appear here once a run
+              is reported. They are not shown as zeros in the meantime.
+            </p>
+          </div>
+        )
+      }
+    </section>
+
+    <section aria-labelledby="strata">
+      <div class="section__head">
+        <h2 id="strata">Where the effect is, if there is one</h2>
+        <p class="eyebrow">H2</p>
+      </div>
+      <Figure
+        id="strata-plot"
+        title="Effect size by stratum"
+        sub="An aggregate effect averages a tool that helps a lot somewhere with one that helps nowhere. Video tiers are reported separately and never averaged."
+        gate={gate}
+        alt="Paired differences in success rate within each stratum: headroom band, documentation discoverability, tier and video tier. Each row shows the difference as a dot with its 95% confidence interval, against a rule at zero. The numbers are in the columns beside each row."
+        emptyTitle="No strata yet."
+        emptyBody="Stratified effects need both probe scores and trials. Neither exists in this bundle."
+      >
+        {
+          strata.length > 0 ? (
+            <StrataPlot strata={strata} />
+          ) : (
+            <p class="plot-none">The bundle carries no strata.</p>
+          )
+        }
+      </Figure>
+    </section>
+
+    {
+      gate.showFigures && failureModes.length > 0 && (
+        <section aria-labelledby="failure-modes">
+          <div class="section__head">
+            <h2 id="failure-modes">Failure modes</h2>
+            <p class="eyebrow">Secondary &middot; qualitative</p>
+          </div>
+          <div class="panel">
+            <p class="note">
+              A taxonomy, not an endpoint. Where a row names a judge, that row is
+              judge-derived and carries the judge&rsquo;s agreement with human labels.
+            </p>
+            <table class="dt dt--stack dt--rows">
+              <caption class="visually-hidden">Observed failure modes per arm.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Mode</th>
+                  <th scope="col">Arm</th>
+                  <th scope="col" class="num">Count</th>
+                  <th scope="col">Example trial</th>
+                  <th scope="col">Labelled by</th>
+                </tr>
+              </thead>
+              <tbody>
+                {failureModes.map((f) => (
+                  <tr>
+                    <th scope="row">{f.label ?? DASH}</th>
+                    <td data-label="Arm">{f.arm ?? DASH}</td>
+                    <td class="num" data-label="Count">
+                      {typeof f.count === 'number' ? int(f.count) : DASH}
+                    </td>
+                    <td data-label="Example trial">
+                      {f.example_trial ? <code>{f.example_trial}</code> : DASH}
+                    </td>
+                    <td data-label="Labelled by">
+                      {f.judge ? (
+                        <>
+                          judge <code>{f.judge}</code>
+                          {typeof f.judge_kappa === 'number' && (
+                            <span class="sub">Cohen&rsquo;s κ {f.judge_kappa.toFixed(2)}</span>
+                          )}
+                        </>
+                      ) : (
+                        'rule, no judge'
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )
+    }
+
+    <section aria-labelledby="provenance">
+      <div class="section__head">
+        <h2 id="provenance">Provenance</h2>
+        <p class="eyebrow">A figure without this block is not published</p>
+      </div>
+      <div class="panel">
+        <Provenance
+          provenance={provenance}
+          status={status}
+          generatedAt={bundle.generated_at}
+          gate={gate}
+          source={source.split('/').slice(-3).join('/')}
+        />
+        <p class="note prov-after">
+          The bundle describes {int(displayedTasks)} task{displayedTasks === 1 ? '' : 's'} and
+          {' '}{int(taskedCells)} task-by-arm cell{taskedCells === 1 ? '' : 's'}.
+          {displayedTasks > 0 && (
+            <>
+              {' '}
+              The full list, with each task&rsquo;s measured headroom, is under
+              {' '}<a href={href('/tasks')}>tasks</a>.
+            </>
+          )}
+        </p>
+      </div>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .readout {
+    font-size: 1.04rem;
+    margin: 0;
+    max-width: 62ch;
+  }
+
+  .commitments {
+    margin: 0.9rem 0 0;
+    padding-left: 1.15rem;
+    color: var(--text-secondary);
+    font-size: 0.93rem;
+  }
+
+  .commitments li + li {
+    margin-top: 0.4rem;
+  }
+
+  .prov-after {
+    margin-top: 0.9rem;
+  }
+</style>

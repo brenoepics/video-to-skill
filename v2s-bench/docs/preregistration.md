@@ -217,6 +217,34 @@ substitutes for instruction. Each task therefore declares
 diagnostic error (high) or silently produces a plausible-looking wrong
 result (low). We expect the effect to concentrate in `low`, and we test it.
 
+### 5.2a Two accounts of why a skill would help
+
+Published work that opens up the mechanism reports **procedural anchoring
+in 65.7% of skill-use cases against explicit knowledge injection in 4.5%**
+— that is, skills mostly help by stabilising noisy execution, not by
+supplying missing facts. That directly contradicts the account v2s's own
+design implies ("read the exact command off the pixels, because the model
+does not know it"), and it predicts **H2a will largely fail**.
+
+Both accounts are therefore pre-registered as competing hypotheses (§2,
+H2a/H2b) and stratified on axes fixed before any arm runs: the cold probe
+score, and baseline trajectory length. The secondary endpoints separate
+them further — anchoring should show as fewer turns, higher `first_try` and
+lower variance even where success is unchanged.
+
+This is the result most likely to be useful to the project regardless of
+sign: if anchoring dominates, the headline feature is the stable procedure
+rather than the pixel-exact command, and the roadmap that follows differs.
+
+### 5.2b One installed skill is the best case for discovery
+
+The same work reports retrieval precision falling from **29.6% to 3.3%** as
+the skill pool grows from 5 to 100 skills. Our trials install exactly one
+skill, so A1 measures ambient discovery under the most favourable possible
+conditions, and H8's measured gap is a **floor** on the gap a user with
+dozens of installed skills would see. Every A1 and H8 figure carries that
+caveat.
+
 ### 5.3 Exclusion is declared on the probe, never on the outcome
 
 The closest prior work excludes "tasks with no measurable separation
@@ -464,6 +492,12 @@ Committed in advance.
   for unfamiliar, silently-failing tools and not in general. A published
   null with that framing already exists; the most believable version of
   this study may look like it.
+- If **H2b beats H2a**, we report that the project's stated rationale for
+  reading commands off pixels is not the reason its skills help — the value
+  is in handing the agent a stable procedure, which a transcript-derived
+  skill might supply just as well. That would be a negative result about
+  the project's central design argument, and it is the outcome the adjacent
+  literature currently predicts.
 
 ## 13. Amendments
 

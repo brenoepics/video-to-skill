@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "id": "kiln-author-profile",
+  "title": "Describing a kiln lane and preparing it",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 48.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-nothing-to-work-from",
+      "terminal": {
+        "type": "kiln prime"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-nothing-to-work-from",
+      "terminal": {
+        "output": [
+          "kiln: profile absent: ./kiln.profile"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-name-the-lane",
+      "terminal": {
+        "type": "echo 'fire-lane: cobalt' >> kiln.profile"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-name-the-lane",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-say-which-pieces",
+      "terminal": {
+        "type": "echo 'shard-glob: pieces/*.txt' >> kiln.profile"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-say-which-pieces",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-say-how-many",
+      "terminal": {
+        "type": "echo 'hold-count: 2' >> kiln.profile"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-say-how-many",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-read-it-back",
+      "terminal": {
+        "type": "cat kiln.profile"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-read-it-back",
+      "terminal": {
+        "output": [
+          "fire-lane: cobalt",
+          "shard-glob: pieces/*.txt",
+          "hold-count: 2"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-prepare-the-lane",
+      "terminal": {
+        "type": "kiln prime"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-prepare-the-lane",
+      "terminal": {
+        "output": [
+          "primed lane cobalt",
+          "shards: 4 matched",
+          "hold: 2",
+          "prior: -"
+        ]
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-check-the-state",
+      "terminal": {
+        "type": "kiln peek"
+      }
+    },
+    {
+      "t": 43.0,
+      "step": "07-check-the-state",
+      "terminal": {
+        "output": [
+          "lane: cobalt",
+          "primed: yes",
+          "glob: pieces/*.txt",
+          "hold: 2",
+          "prior: -",
+          "last batch: -",
+          "profile: fresh"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "kiln will not do anything until you have described the lane. The description lives in a particular file."
+    },
+    {
+      "t": 4.8,
+      "text": "Ask it to prepare a lane with nothing set up and it tells us exactly which file it went looking for."
+    },
+    {
+      "t": 10.8,
+      "text": "So we write that file. First the lane's name."
+    },
+    {
+      "t": 16.8,
+      "text": "Then which files make up a batch."
+    },
+    {
+      "t": 22.8,
+      "text": "And how many of them one batch holds."
+    },
+    {
+      "t": 28.8,
+      "text": "Worth reading back, because those three field names are the whole thing and nothing else will do."
+    },
+    {
+      "t": 34.8,
+      "text": "Now prepare the lane. It tells us what it found and how many pieces matched."
+    },
+    {
+      "t": 40.8,
+      "text": "And we can look at what kiln is holding. Prepared, not fired."
+    },
+    {
+      "t": 44.5,
+      "text": "Three settings in that file, then prepare the lane, and kiln knows what it is working with."
+    }
+  ],
+  "notes": "Teaches the profile's filename and its three field names, which kiln's own help never mentions, and the name of the preparation step."
+}

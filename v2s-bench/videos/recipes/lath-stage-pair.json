@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "id": "lath-stage-pair",
+  "title": "Staging values into a lath layer",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 50.5,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-make-a-tree",
+      "terminal": {
+        "type": "lath init"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-make-a-tree",
+      "terminal": {
+        "output": [
+          "lath tree created in .lath"
+        ]
+      }
+    },
+    {
+      "t": 9.5,
+      "step": "02-stage-a-value",
+      "terminal": {
+        "type": "lath set edge gateway-1 host"
+      }
+    },
+    {
+      "t": 12.5,
+      "step": "02-stage-a-value",
+      "terminal": {
+        "output": [
+          "edge: host = gateway-1"
+        ]
+      }
+    },
+    {
+      "t": 15.0,
+      "step": "03-look-at-the-layer",
+      "terminal": {
+        "type": "lath show edge"
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "03-look-at-the-layer",
+      "terminal": {
+        "output": [
+          "layer: edge",
+          "  host = gateway-1"
+        ]
+      }
+    },
+    {
+      "t": 20.5,
+      "step": "04-the-other-way-round",
+      "terminal": {
+        "type": "lath set edge host gateway-2"
+      }
+    },
+    {
+      "t": 23.5,
+      "step": "04-the-other-way-round",
+      "terminal": {
+        "output": [
+          "edge: gateway-2 = host"
+        ]
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "05-see-the-damage",
+      "terminal": {
+        "type": "lath show edge"
+      }
+    },
+    {
+      "t": 29.0,
+      "step": "05-see-the-damage",
+      "terminal": {
+        "output": [
+          "layer: edge",
+          "  gateway-2 = host",
+          "  host = gateway-1"
+        ]
+      }
+    },
+    {
+      "t": 31.5,
+      "step": "06-drop-the-mistake",
+      "terminal": {
+        "type": "lath unset edge gateway-2"
+      }
+    },
+    {
+      "t": 34.5,
+      "step": "06-drop-the-mistake",
+      "terminal": {
+        "output": [
+          "edge: dropped gateway-2"
+        ]
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "07-stage-the-second-value",
+      "terminal": {
+        "type": "lath set edge standard tier"
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-stage-the-second-value",
+      "terminal": {
+        "output": [
+          "edge: tier = standard"
+        ]
+      }
+    },
+    {
+      "t": 42.5,
+      "step": "08-confirm-the-layer",
+      "terminal": {
+        "type": "lath show edge"
+      }
+    },
+    {
+      "t": 45.5,
+      "step": "08-confirm-the-layer",
+      "terminal": {
+        "output": [
+          "layer: edge",
+          "  host = gateway-1",
+          "  tier = standard"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "lath keeps settings in layers. Staging one takes a little getting used to."
+    },
+    {
+      "t": 4.8,
+      "text": "Start a tree in this directory."
+    },
+    {
+      "t": 10.3,
+      "text": "Now we stage a value into a layer. Read it as: in layer edge, this value, under this name."
+    },
+    {
+      "t": 15.8,
+      "text": "And there it is, the right way round."
+    },
+    {
+      "t": 21.3,
+      "text": "Here is the trap. Give those two the other way round and lath does not complain at all."
+    },
+    {
+      "t": 26.8,
+      "text": "Look closely: we have gained a key named after the value. No error, just nonsense in the layer."
+    },
+    {
+      "t": 32.3,
+      "text": "So we drop that, which does take the name."
+    },
+    {
+      "t": 37.8,
+      "text": "And stage the second setting properly, value first again."
+    },
+    {
+      "t": 43.3,
+      "text": "Two settings, both under the names we wanted."
+    },
+    {
+      "t": 47.0,
+      "text": "Value first, then the name you want it under. Check the layer afterwards and you cannot go wrong."
+    }
+  ],
+  "notes": "Teaches lath's value-before-key argument order and shows the reversed order silently staging a key named after the value."
+}

@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "id": "lath-pin-fingerprint",
+  "title": "Pinning a lath merge into the next one",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 48.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-check-the-order",
+      "terminal": {
+        "type": "lath layers"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-check-the-order",
+      "terminal": {
+        "output": [
+          "order (first wins):",
+          "  1 stage",
+          "  2 edge"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-merge-once",
+      "terminal": {
+        "type": "lath flatten --out tmp/one.json"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-merge-once",
+      "terminal": {
+        "output": [
+          "flattened 2 layers, 2 keys",
+          "fingerprint: 8dd6a4a218e7cc05",
+          "wrote tmp/one.json"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-pin-the-fingerprint",
+      "terminal": {
+        "type": "lath set tagged 8dd6a4a218e7cc05 built_from"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-pin-the-fingerprint",
+      "terminal": {
+        "output": [
+          "tagged: built_from = 8dd6a4a218e7cc05"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-look-at-the-pin",
+      "terminal": {
+        "type": "lath show tagged"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-look-at-the-pin",
+      "terminal": {
+        "output": [
+          "layer: tagged",
+          "  built_from = 8dd6a4a218e7cc05"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-stack-the-pin",
+      "terminal": {
+        "type": "lath stack tagged"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-stack-the-pin",
+      "terminal": {
+        "output": [
+          "stacked tagged at position 3"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-merge-again",
+      "terminal": {
+        "type": "lath flatten --out tmp/two.json"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-merge-again",
+      "terminal": {
+        "output": [
+          "flattened 3 layers, 3 keys",
+          "fingerprint: 9af249155a632bbd",
+          "wrote tmp/two.json"
+        ]
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-see-the-result",
+      "terminal": {
+        "type": "cat tmp/two.json"
+      }
+    },
+    {
+      "t": 43.0,
+      "step": "07-see-the-result",
+      "terminal": {
+        "output": [
+          "{",
+          "  \"built_from\": \"8dd6a4a218e7cc05\",",
+          "  \"host\": \"gateway-1\",",
+          "  \"retries\": \"9\"",
+          "}"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Every merge prints a fingerprint. Here is how you carry one forward into the next merge."
+    },
+    {
+      "t": 4.8,
+      "text": "Two layers, already in the order we want them."
+    },
+    {
+      "t": 10.8,
+      "text": "Merge them, and look at the middle line. That fingerprint is the thing we want to keep."
+    },
+    {
+      "t": 16.8,
+      "text": "So we stage it into a layer of its own. It is a value, so it goes before the name, same as always."
+    },
+    {
+      "t": 22.8,
+      "text": "There it is, stored under a name of our choosing."
+    },
+    {
+      "t": 28.8,
+      "text": "A layer that is not in the order contributes nothing, so we add it at the end."
+    },
+    {
+      "t": 34.8,
+      "text": "And merge again. Notice this merge reports a different fingerprint from the first one."
+    },
+    {
+      "t": 40.8,
+      "text": "The file carries the earlier fingerprint, which is the one we pinned, not this merge's own."
+    },
+    {
+      "t": 44.5,
+      "text": "Carry the fingerprint the merge printed into a layer of its own, stack it, and merge again."
+    }
+  ],
+  "notes": "Teaches that the fingerprint is only available from the merge output, that it is carried as a value, and that the second merge has a different fingerprint."
+}

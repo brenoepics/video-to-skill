@@ -1,0 +1,101 @@
+name: Bench Run
+
+# Paid trials. Manual only, cost-capped, and gated on a protected
+# environment so a run cannot be started by a pull request.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Full model id (aliases are refused by the harness)"
+        required: true
+      arms:
+        description: "Armset: core | ablation | packaging | full, or a comma list"
+        default: "core"
+      seeds:
+        description: "Trials per (task, arm)"
+        default: "3"
+      tier:
+        description: "Restrict to one tier (blank = all)"
+        default: ""
+      max_usd:
+        description: "Hard cost cap; the run stops when reached"
+        default: "25"
+
+permissions:
+  contents: read
+
+jobs:
+  trials:
+    name: trials (${{ inputs.arms }})
+    runs-on: ubuntu-24.04
+    # Requires a reviewer on the environment: a paid run should be a
+    # deliberate act, not a side effect of a branch push.
+    environment: bench-paid-runs
+    timeout-minutes: 720
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # v6.5.0
+
+      - name: Record the run's inputs on the job page
+        env:
+          MODEL: ${{ inputs.model }}
+          ARMS: ${{ inputs.arms }}
+          SEEDS: ${{ inputs.seeds }}
+          CAP: ${{ inputs.max_usd }}
+        run: |
+          {
+            echo "### Bench run"
+            echo "- model: \`$MODEL\`"
+            echo "- arms: \`$ARMS\` · seeds: \`$SEEDS\`"
+            echo "- cost cap: \$$CAP"
+            echo "- exact harness digest, image digest and material hashes are"
+            echo "  recorded in every trial's provenance block"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Gates must pass before anything is paid for
+        working-directory: v2s-bench/harness
+        run: >-
+          uv run --with pyyaml --with jsonschema python -m v2sbench.cli validate
+          --all --sandbox local --allow-unsandboxed
+
+      - name: Run trials
+        working-directory: v2s-bench/harness
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ inputs.model }}
+          ARMS: ${{ inputs.arms }}
+          SEEDS: ${{ inputs.seeds }}
+          CAP: ${{ inputs.max_usd }}
+          TIER: ${{ inputs.tier }}
+        run: |
+          tier_args=""
+          if [ -n "$TIER" ]; then
+            tier_args="--tier $TIER"
+          fi
+          # shellcheck disable=SC2086
+          uv run --with pyyaml --with jsonschema python -m v2sbench.cli run \
+            --agent claude-code \
+            --model "$MODEL" \
+            --arms "$ARMS" \
+            --seeds "$SEEDS" \
+            --max-usd "$CAP" \
+            $tier_args
+
+      - name: Build and audit the report
+        working-directory: v2s-bench/harness
+        run: |
+          uv run --with pyyaml --with jsonschema python -m v2sbench.cli report
+          uv run --with pyyaml --with jsonschema python -m v2sbench.cli verify-results
+
+      - name: Upload records and report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: bench-results-${{ github.run_id }}
+          path: |
+            v2s-bench/results/runs/
+            v2s-bench/results/report.json
+            v2s-bench/results/probes.json
+          if-no-files-found: warn

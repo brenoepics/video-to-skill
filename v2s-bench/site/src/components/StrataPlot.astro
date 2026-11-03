@@ -1,0 +1,136 @@
+---
+/**
+ * H2: the effect by stratum. Same form as the forest plot, one shared axis,
+ * grouped by the dimension the bundle declares.
+ *
+ * This is the part a reader deciding whether to run v2s actually needs: an
+ * aggregate effect is the average of a tool that helps a lot somewhere and
+ * not at all somewhere else, and the pre-registration says so.
+ */
+import type { Stratum } from '../lib/types';
+import { diffScale } from '../lib/scale';
+import { pp, ppRange, int, DASH } from '../lib/format';
+import { tierLabel } from '../lib/prereg';
+import PlotAxis from './PlotAxis.astro';
+import PlotRow from './PlotRow.astro';
+
+interface Props {
+  strata: Stratum[];
+}
+
+const { strata } = Astro.props;
+
+const DIMENSION_LABEL: Record<string, string> = {
+  headroom_band: 'By headroom band',
+  discoverability: 'By documentation discoverability',
+  tier: 'By tier',
+  video_tier: 'By video tier (never averaged)',
+};
+
+const scale = diffScale(strata.flatMap((s) => [s.diff ?? null, s.ci_lo ?? null, s.ci_hi ?? null]));
+
+const order = ['headroom_band', 'discoverability', 'tier', 'video_tier'];
+const groups = order
+  .map((dim) => ({ dim, rows: strata.filter((s) => s.dimension === dim) }))
+  .filter((g) => g.rows.length > 0);
+const ungrouped = strata.filter((s) => !s.dimension || !order.includes(s.dimension));
+if (ungrouped.length) groups.push({ dim: 'other', rows: ungrouped });
+
+const valueLabel = (s: Stratum) =>
+  s.dimension === 'tier' ? `${tierLabel(s.value)} · ${s.value ?? DASH}` : (s.value ?? DASH);
+---
+
+<table class="dt dt--stack dt--rows strata" style={`--plot-grid: ${scale.gridImage()}`}>
+  <caption class="visually-hidden">
+    Paired difference in success rate within each stratum, with its 95% confidence
+    interval.
+  </caption>
+  <thead>
+    <tr>
+      <th scope="col">Stratum</th>
+      <th scope="col" class="num">Effect</th>
+      <th scope="col" class="num">95% CI</th>
+      <th scope="col" class="plot-col">
+        <PlotAxis scale={scale} left={'reference better'} right={'treatment better'} />
+        <span class="visually-hidden">Interval plot, in percentage points</span>
+      </th>
+      <th scope="col" class="num">Pairs</th>
+    </tr>
+  </thead>
+  {
+    groups.map((group) => (
+      <tbody>
+        <tr class="strata__group">
+          <th scope="colgroup" colspan="5">
+            {DIMENSION_LABEL[group.dim] ?? group.dim}
+          </th>
+        </tr>
+        {group.rows.map((s) => {
+          const hasEstimate =
+            typeof s.diff === 'number' && typeof s.ci_lo === 'number' && typeof s.ci_hi === 'number';
+          return (
+            <tr>
+              <th scope="row">
+                {valueLabel(s)}
+                {s.treatment && s.reference && (
+                  <span class="sub">
+                    {s.treatment} {'−'} {s.reference}
+                  </span>
+                )}
+              </th>
+              <td class="num" data-label="Effect">{hasEstimate ? pp(s.diff) : DASH}</td>
+              <td class="num ci" data-label="95% CI">
+                {hasEstimate ? ppRange(s.ci_lo, s.ci_hi) : DASH}
+              </td>
+              <td class="plot-col" data-label="Interval">
+                {hasEstimate ? (
+                  <PlotRow
+                    scale={scale}
+                    value={s.diff ?? null}
+                    lo={s.ci_lo as number}
+                    hi={s.ci_hi as number}
+                    label={`${valueLabel(s)}: ${pp(s.diff)}, 95% CI ${ppRange(s.ci_lo, s.ci_hi)}`}
+                  />
+                ) : (
+                  <p class="plot-none">no estimate yet</p>
+                )}
+              </td>
+              <td class="num" data-label="Paired trials">
+                {typeof s.n_pairs === 'number' ? int(s.n_pairs) : DASH}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    ))
+  }
+</table>
+
+<style>
+  .strata__group th {
+    padding-top: 0.9rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--axis);
+  }
+
+  .strata th[scope='row'] {
+    width: 26%;
+  }
+
+  @media (max-width: 760px) {
+    .strata__group th {
+      padding-top: 0.2rem;
+      border-bottom: 0;
+    }
+
+    .dt--stack .strata__group {
+      border: 0;
+      background: none;
+      padding: 0;
+      margin-bottom: 0.2rem;
+    }
+  }
+</style>

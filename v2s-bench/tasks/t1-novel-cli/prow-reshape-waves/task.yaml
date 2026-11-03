@@ -1,0 +1,75 @@
+schema_version: 1
+id: prow-reshape-waves
+tier: t1-novel-cli
+title: "Reshape a prow plan to a written order and re-render the sheet"
+goal: >-
+  waves.txt states the rollout shape this prow plan is supposed to have.
+  Leave prow's plan matching it exactly -- the retired unit must be gone
+  from the plan altogether, not merely moved to a later wave -- and leave
+  rollout/sheet.txt holding the sequenced sheet for that reshaped plan,
+  with wave 2 gated on wave 1 and prow's own record describing the file on
+  disk.
+discoverability: good
+knowledge_gap:
+  summary: >-
+    Planning a unit that is already planned moves it rather than
+    duplicating it, so a wave is corrected by re-planning its units;
+    removing a unit is a separate step of its own and not a wave number;
+    and a sheet already on disk is a snapshot, not a view -- it has to be
+    rendered again after the plan changes, with the interlock switch, or it
+    keeps describing the old plan while looking current.
+  probe_question: >-
+    In prow, how do you move a unit that is already planned into a
+    different wave, how do you take a unit out of the plan altogether, and
+    what has to happen after changing the plan for the rollout sheet on
+    disk to match it?
+  probe_answer_pattern: '(?i)(?=[\s\S]*plan[^\n]*--wave)(?=[\s\S]*\bdrop\b)(?=[\s\S]*(re-?render|render again|re-?run|prow\s+sheet))'
+  taught_at: [22.0, 34.0, 46.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - prow plan --wave 1 --unit api-gw
+    - prow plan --wave 1 --unit cache
+    - prow plan --wave 1 --unit web
+    - prow plan --wave 1 --unit legacy-sync
+    - "printf 'ROLLOUT SHAPE\\nwave 1 = api-gw, cache\\nwave 2 = web\\nretired = legacy-sync\\n' > waves.txt"
+budget:
+  max_turns: 30
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - plan-matches-the-order
+    - retired-unit-is-gone
+    - sheet-sequences-the-waves
+    - sheet-matches-the-plan
+    - sheet-record-matches-file
+  key_actions:
+    - '(?mi)^\s*prow\s+plan\b[^\n]*--wave\s+2\b[^\n]*web|^\s*prow\s+plan\b[^\n]*web[^\n]*--wave\s+2\b'
+    - '(?mi)^\s*prow\s+drop\b[^\n]*legacy-sync'
+    - '(?mi)^\s*prow\s+sheet\b[^\n]*--interlock\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.prow'
+    - '(?mi)(>|tee)\s*[^\n]*\.prow/'
+    - '(?mi)(>|>>|tee|sed\s+-i)\s*[^\n]*rollout/sheet\.txt'
+  leakage_forbidden:
+    - prow-sheet-v1
+    - prow-sheet-rec-v1
+    - prow-plan-v1
+    - sheet_sha
+    - plan-matches-the-order
+    - retired-unit-is-gone
+    - sheet-record-matches-file
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: prow-reshape-waves
+  sha256: null
+notes: >-
+  The video reshapes a plan of queue, mailer and reports, so the unit
+  names on screen do not appear in the task.

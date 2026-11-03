@@ -1,0 +1,93 @@
+---
+/**
+ * One row of a plot: an interval and its point estimate.
+ *
+ * The SVG carries no `viewBox`, so its user units are CSS pixels and its
+ * horizontal positions are percentages of the column it sits in. Nothing is
+ * scaled: the marks stay round, the stroke stays 2px, and the same component
+ * works at 1280px and at 390px without a media query.
+ *
+ * An interval end outside the domain is drawn as an arrow at that end rather
+ * than silently clipped to it. Arrows need pixel offsets from a percentage
+ * position, which a transform cannot express, so each one sits in a nested
+ * <svg> placed by percentage with its own pixel coordinate space.
+ */
+import type { Scale } from '../lib/scale';
+
+interface Props {
+  scale: Scale;
+  /** Point estimate. Null draws the interval only. */
+  value: number | null;
+  lo: number;
+  hi: number;
+  /** Read out by assistive technology; the same numbers are in the table. */
+  label: string;
+  height?: number;
+}
+
+const { scale, value, lo, hi, label, height = 36 } = Astro.props;
+
+const mid = height / 2;
+const capTop = mid - 6;
+const capBottom = mid + 6;
+
+const loClipped = scale.clipped(lo);
+const hiClipped = scale.clipped(hi);
+const loAt = scale.at(lo);
+const hiAt = scale.at(hi);
+const pointAt = value === null ? null : scale.at(value);
+const pct = (n: number) => `${n.toFixed(3)}%`;
+---
+
+<svg
+  class="plot-row"
+  width="100%"
+  height={height}
+  role="img"
+  aria-label={label}
+  focusable="false"
+>
+  <line
+    class="mark-ci"
+    x1={pct(loAt)}
+    x2={pct(hiAt)}
+    y1={mid}
+    y2={mid}
+    shape-rendering="crispEdges"></line>
+
+  {
+    loClipped ? (
+      <svg x={pct(loAt)} y="0" width="1" height={height} overflow="visible">
+        <polygon class="mark-arrow" points={`0,${mid} 8,${mid - 5} 8,${mid + 5}`} />
+      </svg>
+    ) : (
+      <line
+        class="mark-cap"
+        x1={pct(loAt)}
+        x2={pct(loAt)}
+        y1={capTop}
+        y2={capBottom}
+        shape-rendering="crispEdges"
+      />
+    )
+  }
+
+  {
+    hiClipped ? (
+      <svg x={pct(hiAt)} y="0" width="1" height={height} overflow="visible">
+        <polygon class="mark-arrow" points={`0,${mid} -8,${mid - 5} -8,${mid + 5}`} />
+      </svg>
+    ) : (
+      <line
+        class="mark-cap"
+        x1={pct(hiAt)}
+        x2={pct(hiAt)}
+        y1={capTop}
+        y2={capBottom}
+        shape-rendering="crispEdges"
+      />
+    )
+  }
+
+  {pointAt !== null && <circle class="mark-point" cx={pct(pointAt)} cy={mid} r="5" />}
+</svg>

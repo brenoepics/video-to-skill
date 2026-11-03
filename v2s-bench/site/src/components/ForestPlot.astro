@@ -1,0 +1,117 @@
+---
+/**
+ * The forest plot: one pre-registered comparison per row, each a paired
+ * difference in success rate with its 95% interval, against a zero line.
+ *
+ * Built as a table with one graphical column, which is what a forest plot is.
+ * The numbers sit in cells beside the marks, so the figure needs no tooltip
+ * to be readable and the text alternative is not a separate artefact.
+ *
+ * One hue throughout. The hypotheses are nominal, not ordered, and the
+ * verdict must not be carried by colour: a row whose interval crosses zero
+ * looks exactly like a row whose interval does not, except in the geometry
+ * that is the actual evidence.
+ */
+import type { Comparison } from '../lib/types';
+import { diffScale } from '../lib/scale';
+import { pp, ppRange, int, DASH } from '../lib/format';
+import PlotAxis from './PlotAxis.astro';
+import PlotRow from './PlotRow.astro';
+import Verdict from './Verdict.astro';
+
+interface Props {
+  comparisons: Comparison[];
+}
+
+const { comparisons } = Astro.props;
+
+const scale = diffScale(
+  comparisons.flatMap((c) => [c.diff ?? null, c.ci_lo ?? null, c.ci_hi ?? null]),
+);
+
+const label = (c: Comparison) =>
+  c.diff === null || c.diff === undefined || c.ci_lo == null || c.ci_hi == null
+    ? `${c.hypothesis}: no estimate`
+    : `${c.hypothesis}, ${c.treatment} minus ${c.reference}: ${pp(c.diff)}, 95% CI ${ppRange(c.ci_lo, c.ci_hi)}`;
+
+const methods = Array.from(
+  new Set(comparisons.flatMap((c) => [c.ci_method, c.p_method].filter(Boolean) as string[])),
+);
+---
+
+<table class="dt dt--stack dt--rows" style={`--plot-grid: ${scale.gridImage()}`}>
+  <caption class="visually-hidden">
+    Paired difference in success rate for each pre-registered comparison, with its 95%
+    confidence interval and the computed verdict.
+  </caption>
+  <thead>
+    <tr>
+      <th scope="col">Comparison</th>
+      <th scope="col" class="num">Effect</th>
+      <th scope="col" class="num">95% CI</th>
+      <th scope="col" class="plot-col">
+        <PlotAxis scale={scale} left={'reference better'} right={'treatment better'} />
+        <span class="visually-hidden">Interval plot, in percentage points</span>
+      </th>
+      <th scope="col">Verdict</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      comparisons.map((c) => {
+        const hasEstimate =
+          typeof c.diff === 'number' && typeof c.ci_lo === 'number' && typeof c.ci_hi === 'number';
+        return (
+          <tr>
+            <th scope="row">
+              {c.hypothesis}
+              <span class="sub">
+                {c.treatment} {'−'} {c.reference}
+                {typeof c.n_tasks === 'number' && c.n_tasks > 0 && (
+                  <>
+                    {' '}
+                    &middot; {int(c.n_tasks)} task{c.n_tasks === 1 ? '' : 's'}
+                  </>
+                )}
+                {typeof c.n_pairs === 'number' && c.n_pairs > 0 && (
+                  <> &middot; {int(c.n_pairs)} paired trials</>
+                )}
+              </span>
+            </th>
+            <td class="num" data-label="Effect">{hasEstimate ? pp(c.diff) : DASH}</td>
+            <td class="num ci" data-label="95% CI">
+              {hasEstimate ? ppRange(c.ci_lo, c.ci_hi) : DASH}
+            </td>
+            <td class="plot-col" data-label="Interval">
+              {hasEstimate ? (
+                <PlotRow
+                  scale={scale}
+                  value={c.diff ?? null}
+                  lo={c.ci_lo as number}
+                  hi={c.ci_hi as number}
+                  label={label(c)}
+                />
+              ) : (
+                <p class="plot-none">no estimate yet</p>
+              )}
+            </td>
+            <td data-label="Verdict">
+              <Verdict verdict={c.verdict} />
+            </td>
+          </tr>
+        );
+      })
+    }
+  </tbody>
+</table>
+
+{
+  methods.length > 0 && (
+    <ul class="footnotes">
+      {methods.map((m) => (
+        <li>{m}</li>
+      ))}
+    </ul>
+  )
+}
+

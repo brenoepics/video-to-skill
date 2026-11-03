@@ -1,0 +1,40 @@
+---
+/**
+ * The axis for a plot column: tick labels only.
+ *
+ * The gridlines themselves are painted on the column (see lib/scale.ts), so
+ * they stay continuous down rows of unequal height. End labels are anchored
+ * inwards so they never overflow the column.
+ */
+import type { Scale } from '../lib/scale';
+
+interface Props {
+  scale: Scale;
+  /** Optional reading aid, e.g. "A0 better" / "A1 better". */
+  left?: string;
+  right?: string;
+}
+
+const { scale, left, right } = Astro.props;
+---
+
+{
+  (left || right) && (
+    <p class="plot-dir" aria-hidden="true">
+      <span>{left ? `← ${left}` : ''}</span>
+      <span>{right ? `${right} →` : ''}</span>
+    </p>
+  )
+}
+<div class="plot-axis" aria-hidden="true">
+  {
+    scale.ticks.map((tick) => (
+      <span
+        class={tick.align === 'start' ? 'is-start' : tick.align === 'end' ? 'is-end' : 'is-mid'}
+        style={`left:${tick.at.toFixed(3)}%`}
+      >
+        {tick.label}
+      </span>
+    ))
+  }
+</div>

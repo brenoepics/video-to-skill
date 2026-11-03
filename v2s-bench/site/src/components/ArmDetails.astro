@@ -1,0 +1,72 @@
+---
+/**
+ * The arm table's text alternative, and the place the remaining per-arm
+ * fields are rendered: mean wall-clock seconds and the key-action hit rate,
+ * alongside what each arm exists to isolate.
+ */
+import type { ArmSummary } from '../lib/types';
+import { intervalFor } from '../lib/stats';
+import { pct, pctRange, num, usd, int, DASH } from '../lib/format';
+import { ARM_BY_ID } from '../lib/prereg';
+
+interface Props {
+  arms: ArmSummary[];
+}
+
+const { arms } = Astro.props;
+---
+
+<dl class="defs detail">
+  {
+    arms.map((arm) => {
+      const spec = ARM_BY_ID.get(arm.id);
+      const interval = intervalFor(arm);
+      return (
+        <div>
+          <dt>
+            {arm.id} &middot; {arm.name ?? spec?.name ?? arm.id}
+          </dt>
+          <dd>
+            {interval.rate === null
+              ? 'No trials.'
+              : `${int(interval.successes)} of ${int(interval.n)} trials passed: ${pct(interval.rate)}, 95% Wilson interval ${pctRange(interval.lo, interval.hi)}.`}{' '}
+            Isolates {arm.isolates ?? spec?.isolates ?? DASH}.
+          </dd>
+          <dd class="detail__nums">
+            Mean wall clock {num(arm.mean_wall_secs, 0)} s &middot; mean turns{' '}
+            {num(arm.mean_turns, 1)} &middot; mean cost {usd(arm.mean_usd)} &middot; key-action
+            hit rate{' '}
+            {arm.key_action_hit_rate === null || arm.key_action_hit_rate === undefined
+              ? DASH
+              : pct(arm.key_action_hit_rate)}{' '}
+            &middot; error rate {arm.error_rate === undefined ? DASH : pct(arm.error_rate, 1)}
+          </dd>
+          {(arm.description ?? spec?.description) && (
+            <dd class="detail__method">{arm.description ?? spec?.description}</dd>
+          )}
+        </div>
+      );
+    })
+  }
+</dl>
+
+<style>
+  .detail {
+    margin-top: 0.6rem;
+    font-size: 0.89rem;
+  }
+
+  .detail dt {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+  }
+
+  .detail__nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .detail__method {
+    color: var(--text-muted);
+    font-size: 0.95em;
+  }
+</style>

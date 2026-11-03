@@ -1,0 +1,88 @@
+name: Bench CI
+
+# Fast, free checks for the v2s-bench monorepo. Nothing here calls a model
+# or spends money: paid trials live in bench-run.yml, behind a manual
+# dispatch and a protected environment.
+on:
+  pull_request:
+    paths: ["v2s-bench/**", ".github/workflows/bench-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["v2s-bench/**", ".github/workflows/bench-ci.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    name: harness (python)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: v2s-bench/harness
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # v6.5.0
+        with:
+          enable-cache: true
+      - name: Lint
+        run: uv run --with ruff ruff check .
+      - name: Unit and integration tests
+        # The integration suite drives the full pipeline -- sandbox, agent,
+        # checker, records, report -- with the stub agent, so the harness is
+        # covered end to end without a model or a container runtime.
+        run: uv run --with pytest --with pyyaml --with jsonschema python -m pytest tests -q
+
+  suite:
+    name: task suite integrity
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # v6.5.0
+        with:
+          enable-cache: true
+      - name: Every task validates against the schema
+        working-directory: v2s-bench/harness
+        run: uv run --with pyyaml --with jsonschema python -m v2sbench.cli tasks
+      - name: Schemas are themselves valid JSON Schema
+        working-directory: v2s-bench
+        run: uv run --with jsonschema python harness/tools/check_schemas.py
+      - name: Oracle and trivial-agent gates
+        # A task whose own solution fails is broken; a checker a null agent
+        # can satisfy measures nothing. Both are cheap and catch the class of
+        # defect that independent audits keep finding in published suites.
+        working-directory: v2s-bench/harness
+        run: >-
+          uv run --with pyyaml --with jsonschema python -m v2sbench.cli validate
+          --oracle --trivial --sandbox local --allow-unsandboxed
+      - name: Leakage gate over any built materials
+        working-directory: v2s-bench/harness
+        run: uv run --with pyyaml --with jsonschema python -m v2sbench.cli validate --blind
+
+  site:
+    name: results site
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: v2s-bench/site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v5.0.0
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+        with:
+          version: 10
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: The site must build with no results present
+        # The honest empty state is a feature, and a regression that makes a
+        # clean checkout render a chart of nothing is exactly what this guards.
+        run: test -d dist

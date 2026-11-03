@@ -41,13 +41,48 @@ Per task, a baseline rate ``p_i ~ Beta`` with mean ``base_rate`` and
 through a Gaussian copula at correlation ``rho``. Treatment rate is
 ``min(1, p_i + delta)``: the ceiling is real and is left in.
 
-Two honest caveats about rho. For binary marginals the realised Pearson
-correlation is *attenuated* relative to the copula parameter, so ``rho``
-here is a latent (tetrachoric-scale) correlation; at ``base_rate = 0.35``
-and a 15pp lift, ``rho = 0.6`` realises a Bernoulli correlation near
-0.50. And rho is assumed constant across tasks, which it will not be.
-Both make this a model, to be replaced by the pilot's measurement
-(section 8.1: the first run is a pilot for exactly this reason).
+``effect_sd`` is the between-task standard deviation of the treatment
+effect itself -- the thing hypothesis H2 asserts is non-zero. It defaults
+to 0.0, a *constant* additive effect, and that default is the optimistic
+assumption, declared rather than buried: with ``effect_sd = 0`` the only
+between-task variance in the paired difference comes from the ceiling, so
+the MDE improves with K much faster than it will in practice.
+
+**This simulation does not reproduce section 8.1's table at its
+defaults**, and the disagreement is reported rather than tuned away.
+At ``effect_sd = 0`` it returns MDEs 3 to 8pp *below* the published
+table, the gap widening with K. Reverse-engineering section 8.1's
+variance decomposition (``Var = Vb + Vw/K`` fitted to its K=1 and K=10
+columns) gives ``Vb ~ 0.096``, i.e. a between-task effect sd near 0.31,
+against the 0.035 this generator produces from the ceiling alone -- so
+the published table carries an effect-heterogeneity term that a constant
+additive effect does not. Setting ``effect_sd = 0.31`` closes most of the
+gap (to within 0.5-2.8pp). It is **not** made the default, for two
+reasons: section 8.1 does not declare such a term, and at non-zero
+``effect_sd`` the [0, 1] clamp truncates negative shifts harder than
+positive ones at a low base rate, so the realised mean effect is biased
+upwards and some of the apparent agreement is that artefact rather than
+the model. Treat ``effect_sd`` as a sensitivity knob, not a calibration.
+
+Two honest caveats about rho. It parameterises the *latent* Gaussian
+copula, not the Pearson correlation of the binary outcomes: measured at
+``base_rate = 0.35`` with a 15pp lift, ``rho = 0.6`` gives a within-task
+Bernoulli correlation near 0.39, while the correlation observed across a
+whole run is near 0.62 because between-task differences in difficulty
+contribute to it as well. Do not read a pilot's raw pooled correlation
+straight into this parameter. And rho is assumed constant across tasks,
+which it will not be. Both make this a model, to be replaced by the
+pilot's measurement (section 8.1: the first run is a pilot for exactly
+this reason).
+
+Measured calibration of the decision rule: at ``delta = 0`` and
+``effect_sd = 0`` the CI rule fires on 0.033 of simulated experiments at
+N=50/K=3 and 0.029 at N=100/K=3, against a nominal one-sided 0.025. The
+cluster bootstrap is therefore mildly anti-conservative at these sizes,
+which is section 8.2's declared under-coverage showing up as measurable
+excess rejection -- and it makes every MDE here slightly optimistic.
+``tests/test_stats_power.py`` pins that rate so a regression in the
+bootstrap would show up as a calibration failure.
 """
 
 from __future__ import annotations
@@ -159,6 +194,7 @@ def _simulate_power(
     base_rate: float,
     icc: float,
     rho: float,
+    effect_sd: float,
     resamples: int,
     trials: int,
     alpha: float,
@@ -183,7 +219,10 @@ def _simulate_power(
         clusters = []
         for _ in range(n_tasks):
             p = base_rate if beta is None else min(max(rng.betavariate(*beta), _EPS), 1 - _EPS)
-            q = min(max(p + delta, _EPS), 1.0 - _EPS)
+            # Drawn before the trial loop and independently of delta, so
+            # common random numbers survive the bisection.
+            shift = delta if effect_sd == 0.0 else delta + rng.gauss(0.0, effect_sd)
+            q = min(max(p + shift, _EPS), 1.0 - _EPS)
             t_cut, r_cut = norm_ppf(q), norm_ppf(p)
             pairs = []
             for _ in range(n_seeds):
@@ -206,6 +245,7 @@ def mde_for_grid(
     base_rate: float = DEFAULT_BASE_RATE,
     icc: float = DEFAULT_ICC,
     rho: float = DEFAULT_RHO,
+    effect_sd: float = 0.0,
     resamples: int = 200,
     trials: int = 150,
     alpha: float = 0.05,
@@ -249,6 +289,8 @@ def mde_for_grid(
         raise ValueError(f"icc must lie in [0, 1), got {icc!r}")
     if not math.isfinite(rho) or not -1.0 < rho < 1.0:
         raise ValueError(f"rho must lie strictly inside (-1, 1), got {rho!r}")
+    if not math.isfinite(effect_sd) or effect_sd < 0.0:
+        raise ValueError(f"effect_sd must be non-negative and finite, got {effect_sd!r}")
     if not math.isfinite(power) or not 0.0 < power < 1.0:
         raise ValueError(f"power must lie strictly inside (0, 1), got {power!r}")
     if not math.isfinite(alpha) or not 0.0 < alpha < 1.0:
@@ -258,7 +300,8 @@ def mde_for_grid(
 
     def power_at(delta: float) -> float:
         return _simulate_power(
-            delta, n_tasks, n_seeds, base_rate, icc, rho, resamples, trials, alpha, seed, method
+            delta, n_tasks, n_seeds, base_rate, icc, rho, effect_sd, resamples, trials,
+            alpha, seed, method,
         )
 
     lo, hi = 0.0, 1.0
@@ -283,6 +326,7 @@ class PowerRow:
     base_rate: float
     icc: float
     rho: float
+    effect_sd: float
     mde: float
     effective_trials: float
     power: float
@@ -297,6 +341,7 @@ def power_table(
     base_rate: float = DEFAULT_BASE_RATE,
     icc: float = DEFAULT_ICC,
     rho: float = DEFAULT_RHO,
+    effect_sd: float = 0.0,
     power: float = 0.8,
     alpha: float = 0.05,
     resamples: int = 200,
@@ -324,9 +369,10 @@ def power_table(
                 base_rate=base_rate,
                 icc=icc,
                 rho=rho,
+                effect_sd=effect_sd,
                 mde=mde_for_grid(
-                    n_tasks, n_seeds, base_rate, icc, rho, resamples, trials, alpha,
-                    power, seed, method,
+                    n_tasks, n_seeds, base_rate, icc, rho, effect_sd, resamples, trials,
+                    alpha, power, seed, method,
                 ),
                 effective_trials=effective_trials(icc, n_seeds),
                 power=power,
@@ -354,7 +400,8 @@ def render_markdown(rows: Sequence[PowerRow], target: float = 0.10) -> str:
     cell = {(row.n_tasks, row.n_seeds): row for row in rows}
     lines = [
         f"MDE in percentage points (alpha={head.alpha}, {head.power:.0%} power, "
-        f"base rate {head.base_rate}, ICC={head.icc}, rho={head.rho}; "
+        f"base rate {head.base_rate}, ICC={head.icc}, rho={head.rho}, "
+        f"effect sd {head.effect_sd}; "
         f"{head.trials} simulated experiments x {head.resamples} resamples, seed {head.seed}).",
         "",
         "| N tasks | " + " | ".join(f"K={k}" for k in ks) + " | effective trials |",

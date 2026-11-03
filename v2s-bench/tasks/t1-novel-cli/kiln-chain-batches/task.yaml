@@ -1,0 +1,78 @@
+schema_version: 1
+id: kiln-chain-batches
+tier: t1-novel-cli
+title: "Fire a kiln lane twice, the second batch descending from the first"
+goal: >-
+  The work directory holds a kiln lane called amber and five shards, and
+  the lane has never been fired. When you stop, out/ must hold two kiln
+  rollups for lane amber, and the second must be recorded as descending
+  from the first: both the newer rollup itself and kiln's own record of it
+  must name the older batch as their prior. The older rollup must be left
+  exactly as kiln first wrote it.
+discoverability: poor
+knowledge_gap:
+  summary: >-
+    Descent is declared in the lane profile, not on the command line: a
+    prior-batch field holding the batch id the earlier firing printed.
+    kiln refuses a prior batch it holds no record of, so the id has to be
+    carried over from the first firing's output rather than invented, and
+    because the profile has changed the lane must be primed again before
+    the second firing will run at all.
+  probe_question: >-
+    In kiln, how do you make a second firing of a lane record the first
+    firing's batch as its prior, where does the value you put there come
+    from, and what has to be done after setting it before kiln will fire?
+  probe_answer_pattern: '(?i)(?=[\s\S]*prior-batch)(?=[\s\S]*(batch id|last batch|printed|first firing|previous batch))(?=[\s\S]*\bprime)'
+  taught_at: [26.0, 38.0, 50.0]
+environment:
+  image: v2sbench/t1-novel-cli:0.1
+  workdir: /work
+  network: none
+  setup:
+    - chmod 0111 /usr/local/bin/kiln
+    - mkdir -p shards
+    - printf 'intake ok\n' > shards/01-intake.txt
+    - printf 'sweep ok\n' > shards/02-sweep.txt
+    - printf 'merge ok\n' > shards/03-merge.txt
+    - printf 'audit ok\n' > shards/04-audit.txt
+    - printf 'pack ok\n' > shards/05-pack.txt
+    - "printf 'fire-lane: amber\\nshard-glob: shards/*.txt\\nhold-count: 3\\n' > kiln.profile"
+budget:
+  max_turns: 40
+  wall_secs: 900
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - two-rollups
+    - first-rollup-unchained
+    - second-rollup-chains-the-first
+    - both-batch-ids-recompute
+    - batch-records-agree
+    - state-fresh-and-chained
+  key_actions:
+    - '(?mi)^\s*kiln\s+fire\b[\s\S]*^\s*kiln\s+(prime|fire)\b'
+    - '(?mi)(>|tee|sed|printf|echo|cat)[^\n]*kiln\.profile'
+    - '(?mi)prior-batch'
+  forbidden_actions:
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*(\.kiln|shards|out)'
+    - '(?mi)(>|tee)\s*[^\n]*\.kiln/'
+    - '(?mi)(>|tee|sed\s+-i)\s*[^\n]*\.rollup'
+  leakage_forbidden:
+    - kiln-batch-v1
+    - kiln-batch-rec-v1
+    - kiln-state-v1
+    - kiln-profile-v1
+    - second-rollup-chains-the-first
+    - both-batch-ids-recompute
+    - state-fresh-and-chained
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: kiln-chain-batches
+  sha256: null
+notes: >-
+  The video chains two firings of a cobalt lane, so the batch id on screen
+  cannot be reused here -- only the place it goes and the re-prime.

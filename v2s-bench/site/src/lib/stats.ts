@@ -81,6 +81,41 @@ export function intervalFor(input: {
   };
 }
 
+export interface DerivedInterval {
+  rate: number;
+  lo: number;
+  hi: number;
+  /** Count the rate implies over `n`. */
+  successes: number;
+  n: number;
+}
+
+/**
+ * An interval for a secondary rate the bundle publishes without its counts
+ * (error rate, policy-violation rate, key-action hit rate, skill-cited rate).
+ *
+ * The schema carries these as a bare fraction, and a bare point estimate is
+ * not something this site shows. So the count is recovered from the rate and
+ * the cell's own n, and the interval is marked as derived wherever it is
+ * rendered. If the rate is not a whole number of trials out of n -- which
+ * means the denominator is something other than n and the recovery would be
+ * a guess -- this returns null and the figure is shown without an interval
+ * and with a note saying why, rather than with an invented one.
+ */
+export function derivedInterval(
+  rate: number | null | undefined,
+  n: number,
+): DerivedInterval | null {
+  if (rate === null || rate === undefined || !Number.isFinite(rate)) return null;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const implied = rate * n;
+  const rounded = Math.round(implied);
+  if (Math.abs(implied - rounded) > 0.01) return null;
+  if (rounded < 0 || rounded > n) return null;
+  const [lo, hi] = wilsonInterval(rounded, n);
+  return { rate, lo, hi, successes: rounded, n };
+}
+
 function clamp01(v: number): number {
   return Math.min(Math.max(v, 0), 1);
 }

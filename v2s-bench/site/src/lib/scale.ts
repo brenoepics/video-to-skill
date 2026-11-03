@@ -107,6 +107,15 @@ function niceStep(bound: number): number {
   return 0.5;
 }
 
+/**
+ * One extra rule on the plot column, for a reference value such as the
+ * baseline arm's rate. Painted above the gridlines (CSS paints the first
+ * background layer on top), so compose it before `scale.gridImage()`.
+ */
+export function referenceLine(scale: Scale, value: number, color = 'var(--text-secondary)'): string {
+  return line(scale.at(value), color);
+}
+
 function gridImage(ticks: Tick[], zeroAt: number | null): string {
   const layers: string[] = [];
   if (zeroAt !== null) layers.push(line(zeroAt, 'var(--axis)'));

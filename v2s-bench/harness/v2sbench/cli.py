@@ -241,6 +241,55 @@ def cmd_power(args) -> int:
     return 0
 
 
+def cmd_probe(args) -> int:
+    from .probe import probe_task, saturated, write_probes
+
+    root, suite = _load(args)
+    if not args.model:
+        raise SystemExit("--model is required: a probe score belongs to one model")
+    results = []
+    for task in suite:
+        result = probe_task(task, model=args.model, repeats=args.repeats)
+        results.append(result)
+        flag = " SATURATED" if saturated(result, task) else ""
+        print(
+            f"  {task.id:<30} known={result.known:.2f} band={result.band():<6}"
+            f" ({result.correct}/{result.repeats - result.errors}){flag}"
+        )
+    path = write_probes(root, results, model=args.model)
+    print(f"\nwrote {path}")
+    print(
+        "Exclusion needs BOTH a high probe score and high feedback bandwidth: a task "
+        "the model can recite but whose environment gives no corrective signal is the "
+        "knowing-doing case this benchmark most wants to keep."
+    )
+    return 0
+
+
+def cmd_build_materials(args) -> int:
+    from .pipeline import plan, preflight
+
+    root, suite = _load(args)
+    problems = preflight(args.extractor)
+    if problems and not args.dry_run:
+        print("cannot build materials:")
+        for problem in problems:
+            print(f"  - {problem}")
+        print("\nRe-run with --dry-run to see the plan without these preconditions.")
+        return 1
+    for task in suite:
+        video = root / ".cache" / "videos" / f"{task.video.ref}.mp4"
+        print(plan(task, root=root, video=video, extractor=args.extractor, model=args.model or "").describe())
+        print()
+    if args.dry_run:
+        print("dry run: nothing executed.")
+        if problems:
+            print("outstanding preconditions:")
+            for problem in problems:
+                print(f"  - {problem}")
+    return 0
+
+
 def cmd_render(args) -> int:
     from .render import render
 
@@ -331,6 +380,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--power", type=float, default=0.8)
     p.add_argument("--seed", type=int, default=0)
     p.set_defaults(func=cmd_power)
+
+    p = sub.add_parser("probe", help="measure per-task headroom (what the model knows cold)")
+    common(p)
+    p.add_argument("--model", help="full model id; a probe score belongs to one model")
+    p.add_argument("--repeats", type=int, default=10)
+    p.set_defaults(func=cmd_probe)
+
+    p = sub.add_parser("build-materials", help="run the v2s pipeline to produce each arm's material")
+    common(p)
+    p.add_argument("--extractor", default="vts-extract")
+    p.add_argument("--model", help="model for the agent-driven analysis stage")
+    p.add_argument("--dry-run", action="store_true", help="print the stage plan and stop")
+    p.set_defaults(func=cmd_build_materials)
 
     p = sub.add_parser("render", help="render hermetic videos from recipes")
     p.add_argument("--only", action="append")

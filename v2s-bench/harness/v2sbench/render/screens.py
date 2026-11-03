@@ -231,8 +231,8 @@ def _dialog(screen: Screen, width: int, height: int, style: Style) -> Canvas:
                     style.ring if chosen else style.edge)
         canvas.rect(bx, by, bw, style.line + s, style.focus if chosen else style.button)
         canvas.text(bx + 2 * s, by + s, s, style.slide_fg if chosen else style.panel_fg, label)
-        if chosen:
-            focus = (bx + bw - 3 * s, by + style.line // 2)
+        if chosen:  # tip on the button's lower-right, so the label stays readable
+            focus = (bx + bw - 3 * s, by + style.line - 2 * s)
     _cursor(canvas, style, *(focus or (x + w // 2, y + h // 2)))
     return canvas
 

@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "id": "kiln-fire-newest-three",
+  "title": "Changing a kiln lane's batch size",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 54.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "work - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-look-at-the-lane",
+      "terminal": {
+        "type": "kiln peek"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-look-at-the-lane",
+      "terminal": {
+        "output": [
+          "lane: cobalt",
+          "primed: yes",
+          "glob: pieces/*.txt",
+          "hold: 4",
+          "prior: -",
+          "last batch: -",
+          "profile: fresh"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-change-the-count",
+      "terminal": {
+        "type": "sed -i 's/count: 4/count: 2/' kiln.profile"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-change-the-count",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-read-it-back",
+      "terminal": {
+        "type": "cat kiln.profile"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-read-it-back",
+      "terminal": {
+        "output": [
+          "fire-lane: cobalt",
+          "shard-glob: pieces/*.txt",
+          "hold-count: 2"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "04-notice-it-is-stale",
+      "terminal": {
+        "type": "kiln peek"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "04-notice-it-is-stale",
+      "terminal": {
+        "output": [
+          "lane: cobalt",
+          "primed: yes",
+          "glob: pieces/*.txt",
+          "hold: 4",
+          "prior: -",
+          "last batch: -",
+          "profile: stale"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "05-firing-is-refused",
+      "terminal": {
+        "type": "kiln fire"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "05-firing-is-refused",
+      "terminal": {
+        "output": [
+          "kiln: state stale"
+        ]
+      }
+    },
+    {
+      "t": 34.0,
+      "step": "06-prepare-it-again",
+      "terminal": {
+        "type": "kiln prime"
+      }
+    },
+    {
+      "t": 37.0,
+      "step": "06-prepare-it-again",
+      "terminal": {
+        "output": [
+          "primed lane cobalt",
+          "shards: 4 matched",
+          "hold: 2",
+          "prior: -"
+        ]
+      }
+    },
+    {
+      "t": 40.0,
+      "step": "07-fire-the-batch",
+      "terminal": {
+        "type": "kiln fire"
+      }
+    },
+    {
+      "t": 43.0,
+      "step": "07-fire-the-batch",
+      "terminal": {
+        "output": [
+          "fired cobalt",
+          "batch: fb3a64e4",
+          "prior: -",
+          "wrote out/cobalt-fb3a64e4.rollup"
+        ]
+      }
+    },
+    {
+      "t": 46.0,
+      "step": "08-see-which-pieces",
+      "terminal": {
+        "type": "grep '^-- ' out/cobalt-fb3a64e4.rollup"
+      }
+    },
+    {
+      "t": 49.0,
+      "step": "08-see-which-pieces",
+      "terminal": {
+        "output": [
+          "-- 03-three.txt",
+          "-- 04-four.txt"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "This lane holds too many pieces per batch. Fixing that is two steps, not one."
+    },
+    {
+      "t": 4.8,
+      "text": "The lane is prepared and set to take four pieces at a time. We want two."
+    },
+    {
+      "t": 10.8,
+      "text": "So we edit that one field in the description."
+    },
+    {
+      "t": 16.8,
+      "text": "Two it is."
+    },
+    {
+      "t": 22.8,
+      "text": "But look at the last line now. kiln is still holding what it read before our edit."
+    },
+    {
+      "t": 28.8,
+      "text": "And it will not fire like that. One line, no advice."
+    },
+    {
+      "t": 34.8,
+      "text": "So prepare the lane again, which is what picks the edit up."
+    },
+    {
+      "t": 40.8,
+      "text": "Now it fires, and it tells us the batch it made and where the artifact went."
+    },
+    {
+      "t": 46.8,
+      "text": "And see which pieces it took: the last two by name, not the first two."
+    },
+    {
+      "t": 50.5,
+      "text": "Change the description, prepare the lane again, then fire. In that order."
+    }
+  ],
+  "notes": "Teaches the hold-count field, that a changed description leaves the lane stale until it is prepared again, and that a batch keeps the last pieces in name order."
+}

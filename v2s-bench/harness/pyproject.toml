@@ -12,6 +12,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6"]
+# The hermetic video renderer itself is standard-library only: it draws with a
+# bundled bitmap font so that the same recipe yields the same pixels on every
+# machine, which FreeType rasterisation would not. Pillow is optional and is
+# used only to write single frames out as PNGs for inspection
+# (v2sbench.render.save_png), never on the path that produces the mp4.
+render = ["pillow>=10.0"]
 
 [project.scripts]
 v2sbench = "v2sbench.cli:main"

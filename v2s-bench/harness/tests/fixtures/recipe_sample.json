@@ -63,11 +63,11 @@
     { "t": 19.0, "desktop": { "status": "Done - repository ready" } }
   ],
   "narration": [
-    { "t": 0.3, "text": "In this short walkthrough we start a repository and make the first commit." },
+    { "t": 0.3, "text": "In this walkthrough we start a repository and commit a file." },
     { "t": 4.2, "text": "First, initialise the repository in a new directory called demo repo." },
-    { "t": 8.7, "text": "Then stage the readme file so Git knows what to include." },
-    { "t": 12.2, "text": "Now commit it with a short message. I am skipping signing on the command line." },
-    { "t": 16.7, "text": "Finally, turn signing on in the repository settings and save." }
+    { "t": 8.7, "text": "Then stage the readme so Git knows what to include." },
+    { "t": 12.2, "text": "Now commit it with a short message, skipping the signature." },
+    { "t": 16.7, "text": "Finally, turn on signing and save." }
   ],
   "notes": "Harness test fixture. Deliberately mixes a slide, a terminal with typed commands, a continuous streaming still and a GUI dialog so the renderer's four screen kinds are all covered."
 }

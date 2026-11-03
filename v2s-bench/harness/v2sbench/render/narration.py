@@ -91,12 +91,12 @@ def synthesise(
     if backend is None or not cues:
         return NarrationTrack(backend=backend, wav=None, cues=0)
     work.mkdir(parents=True, exist_ok=True)
-    total = int(round(duration_secs * SAMPLE_RATE))
+    total = round(duration_secs * SAMPLE_RATE)
     mixed = array.array("h", bytes(2 * total))
     spoken, overlaps, truncated = 0, 0, 0
     for index, cue in enumerate(cues):
         samples = _speak(cue.text, index, work, backend=backend, ffmpeg=ffmpeg)
-        start = int(round(cue.t * SAMPLE_RATE))
+        start = round(cue.t * SAMPLE_RATE)
         end = start + len(samples)
         spoken += len(samples)
         if end > total:
@@ -104,7 +104,7 @@ def synthesise(
             samples = samples[: max(0, total - start)]
             end = start + len(samples)
         nxt = cues[index + 1].t if index + 1 < len(cues) else duration_secs
-        if end > int(round(nxt * SAMPLE_RATE)):
+        if end > round(nxt * SAMPLE_RATE):
             overlaps += 1
         for at, value in enumerate(samples, start=start):
             total_at = mixed[at] + value

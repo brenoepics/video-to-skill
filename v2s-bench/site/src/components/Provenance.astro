@@ -1,0 +1,117 @@
+---
+/**
+ * The provenance block. Every field of `provenance`, plus the bundle's own
+ * timestamp and status.
+ *
+ * The pre-registration's rule is that a figure without this block is not
+ * published, so it is rendered on the results page itself rather than linked
+ * from it -- including when it is empty, because "which model" being blank is
+ * itself the thing a reader needs to know.
+ */
+import type { Gate } from '../lib/report';
+import type { Provenance, ReportStatus } from '../lib/types';
+import { isoDate, int, usd, DASH } from '../lib/format';
+
+interface Props {
+  provenance: Provenance;
+  status: ReportStatus;
+  generatedAt: string;
+  gate: Gate;
+  source: string;
+}
+
+const { provenance: p, status, generatedAt, gate, source } = Astro.props;
+
+const list = (values: string[] | undefined) =>
+  values && values.length > 0 ? values.join(', ') : DASH;
+
+const rows: Array<{ label: string; value: string; code?: boolean }> = [
+  { label: 'Models', value: list(p.models) },
+  { label: 'Harness version', value: p.harness_version ?? DASH, code: true },
+  { label: 'Task-suite version', value: p.suite_version ?? DASH, code: true },
+  { label: 'Suite commit', value: p.suite_commit ?? DASH, code: true },
+  { label: 'Pre-registration commit', value: p.prereg_commit ?? DASH, code: true },
+  { label: 'Run ids', value: list(p.run_ids), code: true },
+  { label: 'Trials recorded', value: int(p.trials_total ?? 0) },
+  { label: 'Trials excluded', value: int(p.trials_excluded ?? 0) },
+  { label: 'Total cost', value: usd(p.usd_total) },
+  { label: 'Video tiers', value: list(p.video_tiers) },
+  { label: 'Mock flag', value: p.is_mock === true ? 'is_mock = true' : 'is_mock = false' },
+  { label: 'Bundle generated', value: isoDate(generatedAt) },
+  { label: 'Bundle read from', value: source, code: true },
+  {
+    label: 'Status',
+    value:
+      gate.kind === gate.declaredKind
+        ? gate.kind
+        : `${gate.declaredKind} in the bundle, rendered as ${gate.kind}`,
+  },
+  {
+    label: 'Pre-registration',
+    value: status.prereg_frozen ? 'frozen' : 'not yet frozen',
+  },
+];
+---
+
+<div class="prov">
+  <dl>
+    {
+      rows.map((row) => (
+        <div class="prov__row">
+          <dt>{row.label}</dt>
+          <dd>{row.code && row.value !== DASH ? <code>{row.value}</code> : row.value}</dd>
+        </div>
+      ))
+    }
+  </dl>
+  {
+    gate.isMock && (
+      <p class="note prov__warn">
+        This bundle is mock data. The report builder refuses to aggregate mock and real
+        records, and nothing here was measured.
+      </p>
+    )
+  }
+  {
+    !status.prereg_frozen && (
+      <p class="note">
+        The pre-registration is not frozen yet. Until it is, treat every number on this
+        site as exploratory — that is the pre-registration&rsquo;s own instruction to
+        its readers.
+      </p>
+    )
+  }
+</div>
+
+<style>
+  .prov dl {
+    margin: 0;
+    display: grid;
+    gap: 0 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  }
+
+  .prov__row {
+    display: grid;
+    grid-template-columns: minmax(10ch, 38%) 1fr;
+    gap: 0.75rem;
+    padding: 0.33rem 0;
+    border-bottom: 1px solid var(--grid);
+    font-size: 0.91rem;
+  }
+
+  .prov__row dt {
+    color: var(--text-secondary);
+  }
+
+  .prov__row dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .prov__warn {
+    margin-top: 0.8rem;
+    color: var(--status-warning-ink);
+    font-weight: 600;
+  }
+</style>
