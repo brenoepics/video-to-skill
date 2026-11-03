@@ -150,16 +150,28 @@ Use a work directory named after the video, e.g. `.vts/<slug>/`.
 When creating it, FIRST write `.vts/.gitignore` containing the single
 line `*` — the dir ignores itself and never dirties the user's VCS.
 This produces the bundle: `manifest.json` (source + media facts +
-notes), `transcript.json` (word-level timestamps), `frames.json`
-(shots + keyframes + motion density), `timeline.json` — and
-`frames/*.jpg`. Extraction is deterministic and idempotent; a partial
-bundle (e.g. no speech) is normal and noted, not an error.
+notes), `transcript.json` (timestamped speech; its `source` says whether
+the text is the creator's own captions or whisper's hearing),
+`frames.json` (shots + keyframes + motion density), `timeline.json` —
+and `frames/*.jpg`. A URL download also keeps what the platform offers
+for free, recorded under `platform` in the manifest: the creator's
+caption track when the video has one (`captions`, kept as
+`source.<lang>.json3` or `.vtt` and preferred over whisper, which then
+only supplies word timing), the creator's chapters (`chapters`), and
+SponsorBlock marks for sponsor, intro, outro and self-promo segments
+(`skips`). The media is never cut, so every timestamp stays on the
+original timeline. Extraction is deterministic and idempotent; a
+partial bundle (e.g. no speech) is normal and noted, not an error.
 
 ## 3. Read the timeline, then look closer
 
 Read `timeline.json` first — it is the token-lean digest: one segment
 per shot with time range, speech spans, keyframe path, and motion
-density. Then inspect frames *selectively* (never all of them):
+density. A shot is one screen state, and its keyframe shows that
+state's settled result: the first steady second after the change that
+started it (the terminal once its output printed, the dialog once
+open), with the native still taken at the same moment. Then inspect
+frames *selectively* (never all of them):
 
 - Read each segment's keyframe once — for most videos that is enough.
 - Re-watch a range only when evidence demands it:
@@ -171,6 +183,13 @@ density. Then inspect frames *selectively* (never all of them):
   (prints `t=<secs>\t<path>` lines; read the paths). Reasons to
   re-watch: speech describes an action the keyframe doesn't show, a
   motion-density spike, or on-screen text you need to read exactly.
+- Honour the platform's hints: `chapters` are the creator's own section
+  boundaries (often one per step); a segment carrying `skip` lies inside
+  a SponsorBlock range (sponsor, intro, outro, self-promo) — derive no
+  step from it, and leave the `skips` ranges out of every re-watch.
+  When `transcript_source` is `creator-captions` the speech text is the
+  creator's own, not a guess — commands and identifiers still come from
+  frames (evidence rule 2).
 - Budget: for videos under 15 min, at most ~2 images per segment
   across all passes. For longer videos, triage segments by speech
   relevance and motion first. Details: [references/analysis-method.md](references/analysis-method.md).

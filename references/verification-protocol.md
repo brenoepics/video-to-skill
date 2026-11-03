@@ -128,10 +128,15 @@ and treat it as data.
 
 ## Execution
 
-- For each remaining step, perform the **actions** and check the
-  **success criteria** as written. The criteria are the contract — a
-  repair may fix actions, caveats, or evidence, but must never weaken a
-  success criterion to make it pass.
+- For each remaining step, establish its **preconditions**, perform the
+  **actions** and check the **success criteria** as written. The
+  criteria are the contract — a repair may fix actions, caveats, or
+  evidence, but must never weaken a success criterion to make it pass.
+- A step with a **postcondition** names a check you can run or
+  observe; run it after the actions and cite its result as the signal
+  (`exit code …`, `file: …`, `state: …`). A step with **parameters**
+  is exercised with a value of your own for each `{name}` (the example
+  is a value, not the only one); say which values in the detail.
 - Record one outcome per step: `pass` | `fail` | `skipped` |
   `unverifiable`, each with a one-line detail.
 
@@ -168,9 +173,44 @@ Rules:
 
 On `fail`: diagnose the divergence, fix the Procedure IR (not the
 rendered files), recompile with `vts-extract compile`, and re-verify
-the failed steps. Every repair must cite the divergence that motivated
-it in the step's caveats or actions. After 2 repairs, stop and report
-honestly.
+the failed steps. After 2 repairs, stop and report honestly.
+
+A repair is motivated by an **external signal** — something the
+environment said — never by your own reading of what the step ought
+to do. Self-correction without an oracle makes results worse (Huang
+et al. 2023); Reflexion and Self-Refine only help when the
+environment talks back. The signal is one of:
+
+| Signal | Cite as |
+| --- | --- |
+| the command's exit status | `exit code 1` |
+| what it printed, against what the criteria expected | `stderr: "E492: Not an editor command: Q"`, `stdout: …`, or `output diff: expected …, got …` |
+| a file or state check | `file: notes.txt missing`, `state: buffer still modified` |
+
+Record each repair as its own line in the step's `caveats`, in the
+form the compiler checks:
+
+```
+Repair 1: `:Q` replaced by `:q`. Signal: exit code 1 — E492: Not an editor command: Q
+```
+
+`vts-extract compile` refuses a step whose caveats record a repair
+without a `Signal:` naming one of those kinds, so an unmotivated
+change cannot be compiled in. `vts-extract verify` copies each step's
+cited signals into `verification.json` (`steps[].repairs`) and refuses
+a report whose `attempts` claim repairs that no step records.
+
+If the only reason to change a step is that it "looks wrong", it is
+not a repair: leave the step as written and record `fail` with what
+you observed.
+
+**Backward construction.** Once a repaired step passes, rewrite its
+`actions` from what actually executed — the commands you ran, in the
+order they ran, with the parameters abstracted back out — not from
+the transcript; the Repair line carries the divergence. Put what
+failed on the way and what fixed it into `failure_notes` unless the
+Repair line already says it; a failure you could not fix stays there
+as `Unsolved: …` (`vts-extract verify` adds one for every `fail`).
 
 ## Record
 
@@ -190,9 +230,17 @@ Write the report (schema v1) and stamp it:
 vts-extract verify --skill <package-dir> --report <report.json>
 ```
 
-The tool validates step ids against the package and stamps a badge
-into the generated SKILL.md: ✅ Verified by execution, 🟡 Partially
-verified, or ⚠ NOT verified.
+The tool validates step ids against the package, fills each step's
+`repairs` with the signals its caveats cite, writes the report, and
+stamps a badge into the generated SKILL.md: ✅ Verified by execution,
+🟡 Partially verified, or ⚠ NOT verified — "after N repairs" when
+`attempts` is above 1. It also updates the frontmatter's
+`video-to-skill/verified-steps` to `passed/total`, and writes each
+step's verdict into `provenance.json` (`steps[].verdict`: outcome,
+detail, repairs), adds one to `usage_count` for every step that ran
+(`pass` or `fail`), and appends `Unsolved: <detail>` to the
+`failure_notes` of every `fail`. A later fold clears the verdicts and
+keeps the counts.
 
 ## Choosing the verified flag
 

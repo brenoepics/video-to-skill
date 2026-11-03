@@ -16,7 +16,7 @@ mod video;
 use std::fs;
 use std::path::{Path, PathBuf};
 use vts_extract::compile::{
-    compile, Evidence, OnScreenArtifact, ProcedureIr, ScriptFile, SourceRef, Step,
+    compile, Evidence, OnScreenArtifact, ProcedureIr, ScriptFile, SourceRef, Step, TaskGraph,
 };
 
 use fixtures::{Channel, Fixture, FIXTURES};
@@ -47,12 +47,15 @@ fn clean_ir(fixture: &Fixture, frame: &str) -> ProcedureIr {
         skill_name: format!("redteam-{}", fixture.name),
         title: "Run the tests".into(),
         description: "Use when running the tutorial project's test suite.".into(),
+        license: None,
+        compatibility: None,
         overview: "A short screencast of running the tests.".into(),
         genre: "screencast".into(),
         source: SourceRef {
             original: format!("{}.mp4", fixture.name),
             title: None,
             duration_secs: 6.0,
+            sha256: None,
         },
         steps: vec![Step {
             id: "01-run-tests".into(),
@@ -69,10 +72,17 @@ fn clean_ir(fixture: &Fixture, frame: &str) -> ProcedureIr {
             }],
             scripts: vec![],
             variants: vec![],
+            preconditions: vec![],
+            parameters: vec![],
+            postcondition: None,
+            failure_notes: vec![],
+            usage_count: 0,
+            verdict: None,
         }],
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: TaskGraph::default(),
     }
 }
 

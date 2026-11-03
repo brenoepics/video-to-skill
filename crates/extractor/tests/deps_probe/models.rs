@@ -10,8 +10,9 @@ fn whisper_model_is_detected_by_verified_file_not_executability() {
     let data = scratch("model-data");
     let models = data.join("models");
     fs::create_dir_all(&models).unwrap();
-    fs::write(models.join("ggml-base.bin"), b"weights").unwrap();
-    write_current_marker(Tool::WhisperModel, &models.join("ggml-base.bin"));
+    let file_name = Tool::WhisperModel.file_name();
+    fs::write(models.join(file_name), b"weights").unwrap();
+    write_current_marker(Tool::WhisperModel, &models.join(file_name));
 
     let statuses = probe(&env_with(vec![bin], data.clone()));
 
@@ -20,7 +21,7 @@ fn whisper_model_is_detected_by_verified_file_not_executability() {
         .find(|s| s.tool == Tool::WhisperModel)
         .unwrap();
     assert_eq!(model.presence, Presence::Installed);
-    assert_eq!(model.location, Some(models.join("ggml-base.bin")));
+    assert_eq!(model.location, Some(models.join(file_name)));
 }
 
 #[test]
@@ -49,10 +50,15 @@ fn vad_model_is_detected_beside_the_whisper_weights() {
 #[test]
 fn stale_managed_marker_is_not_reported_ready() {
     let data = scratch("stale-managed-marker");
-    let model = data.join("models").join("ggml-base.bin");
+    let file_name = Tool::WhisperModel.file_name();
+    let model = data.join("models").join(file_name);
     fs::create_dir_all(model.parent().unwrap()).unwrap();
     fs::write(&model, b"old weights").unwrap();
-    fs::write(model.with_file_name("ggml-base.bin.verified"), "sha256:old").unwrap();
+    fs::write(
+        model.with_file_name(format!("{file_name}.verified")),
+        "sha256:old",
+    )
+    .unwrap();
 
     let statuses = probe(&env_with(vec![], data));
 

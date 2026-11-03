@@ -10,6 +10,7 @@
 //! reaches the installed package is enumerated here with the scope
 //! that decides its treatment.
 
+mod fields;
 mod injection;
 mod patterns;
 #[cfg(test)]
@@ -147,6 +148,16 @@ fn fields(ir: &ProcedureIr) -> Vec<Field<'_>> {
         field(meta(), "overview", &ir.overview, Prose),
     ];
     out.extend(ir.gaps.iter().map(|g| field(meta(), "gaps", g, Warning)));
+    out.extend(
+        ir.license
+            .iter()
+            .map(|l| field(meta(), "license", l, Prose)),
+    );
+    out.extend(
+        ir.compatibility
+            .iter()
+            .map(|c| field(meta(), "compatibility", c, Prose)),
+    );
 
     for step in &ir.steps {
         let at = || format!("step '{}'", step.id);
@@ -162,6 +173,7 @@ fn fields(ir: &ProcedureIr) -> Vec<Field<'_>> {
         if let Some(caveats) = &step.caveats {
             out.push(field(at(), "caveats", caveats, Warning));
         }
+        out.extend(fields::v2(step));
         for script in &step.scripts {
             out.push(field(at(), "script contents", &script.contents, Executable));
         }

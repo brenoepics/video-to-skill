@@ -25,6 +25,12 @@ fn step() -> Step {
         }],
         scripts: vec![],
         variants: vec![],
+        preconditions: vec![],
+        parameters: vec![],
+        postcondition: None,
+        failure_notes: vec![],
+        usage_count: 0,
+        verdict: None,
     }
 }
 
@@ -34,17 +40,21 @@ fn base_ir() -> ProcedureIr {
         skill_name: "demo".into(),
         title: "Demo".into(),
         description: "A demo skill.".into(),
+        license: None,
+        compatibility: None,
         overview: "It demonstrates.".into(),
         genre: "cli".into(),
         source: SourceRef {
             original: "demo.mp4".into(),
             title: None,
             duration_secs: 10.0,
+            sha256: None,
         },
         steps: vec![step()],
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: crate::compile::TaskGraph::default(),
     }
 }
 
@@ -92,6 +102,10 @@ fn secrets_in_skill_metadata_are_caught() {
         ("description", |i| i.description = format!("uses {LEAK}")),
         ("overview", |i| i.overview = format!("the key is {LEAK}")),
         ("gaps", |i| i.gaps = vec![format!("unseen {LEAK}")]),
+        ("license", |i| i.license = Some(format!("key {LEAK}"))),
+        ("compatibility", |i| {
+            i.compatibility = Some(format!("needs {LEAK}"));
+        }),
     ] {
         let mut ir = base_ir();
         mutate(&mut ir);

@@ -8,10 +8,10 @@
 use std::fs;
 use std::path::Path;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::compile::ProcedureIr;
+use crate::compile::{frontmatter, repairs, ProcedureIr, Verdict, SCHEMA_VERSION};
 
 pub const VERIFICATION_FILE: &str = "verification.json";
 const BADGE_START: &str = "<!-- verification-badge -->";
@@ -40,29 +40,38 @@ pub struct StepOutcome {
     pub id: String,
     pub outcome: String,
     pub detail: String,
+    /// External signals cited by this step's repairs — the `Repair N: …
+    /// Signal: …` lines of its caveats — filled in by
+    /// [`record_verification`] from the package's provenance.
+    #[serde(default)]
+    pub repairs: Vec<String>,
 }
 
-/// Validate `report` against the package at `skill_dir`, write
-/// `verification.json`, and stamp the badge into SKILL.md (replacing any
-/// previous badge).
-pub fn record_verification(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
+/// Validate `report` against the package at `skill_dir`, carry the
+/// repair signals its steps cite into it, write `verification.json`, and
+/// stamp the badge into SKILL.md (replacing any previous badge). Returns
+/// the report as written.
+pub fn record_verification(
+    skill_dir: &Path,
+    report: &VerificationReport,
+) -> Result<VerificationReport> {
     if report.schema_version != 1 {
         bail!(
             "unsupported report schema_version {}",
             report.schema_version
         );
     }
-    let provenance: ProcedureIr = serde_json::from_str(
+    let mut provenance: ProcedureIr = serde_json::from_str(
         &fs::read_to_string(skill_dir.join("provenance.json"))
             .context("not a generated skill package (missing provenance.json)")?,
     )
     .context("package provenance.json is not valid")?;
 
-    let known: Vec<&str> = provenance.steps.iter().map(|s| s.id.as_str()).collect();
-    for step in &report.steps {
-        if !known.contains(&step.id.as_str()) {
+    let mut recorded = report.clone();
+    for step in &mut recorded.steps {
+        let Some(known) = provenance.steps.iter().find(|s| s.id == step.id) else {
             bail!("report cites unknown step '{}'", step.id);
-        }
+        };
         if !OUTCOMES.contains(&step.outcome.as_str()) {
             bail!(
                 "step '{}': outcome '{}' is not one of {OUTCOMES:?}",
@@ -70,24 +79,100 @@ pub fn record_verification(skill_dir: &Path, report: &VerificationReport) -> Res
                 step.outcome
             );
         }
+        let cited =
+            repairs::cited_signals(known.caveats.as_deref().unwrap_or("")).map_err(|line| {
+                anyhow!(
+                    "step '{}': the package records a repair without an external signal \
+                     ('{line}') — fix the IR and recompile; the compiler refuses it",
+                    step.id
+                )
+            })?;
+        for signal in cited {
+            if !step.repairs.contains(&signal) {
+                step.repairs.push(signal);
+            }
+        }
+    }
+    let cited: usize = recorded.steps.iter().map(|s| s.repairs.len()).sum();
+    if report.attempts > 1 && cited == 0 {
+        bail!(
+            "report claims {} repair(s) (attempts: {}) but no step records one — every \
+             repair must be a 'Repair N: <change>. Signal: <external signal>' line in the \
+             caveats of the step it changed (see references/verification-protocol.md)",
+            report.attempts - 1,
+            report.attempts
+        );
     }
 
     fs::write(
         skill_dir.join(VERIFICATION_FILE),
-        serde_json::to_string_pretty(report)?,
+        serde_json::to_string_pretty(&recorded)?,
     )?;
-    stamp_badge(skill_dir, report)
-}
 
-fn stamp_badge(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
     let path = skill_dir.join("SKILL.md");
     let skill_md = fs::read_to_string(&path).context("package has no SKILL.md")?;
+    let stamped = stamp_badge(&skill_md, &recorded)?;
+    // The frontmatter's machine-readable counterpart of the badge:
+    // passed/total, so a catalogue can rank skills without parsing prose.
+    let passed = recorded
+        .steps
+        .iter()
+        .filter(|s| s.outcome == "pass")
+        .count();
+    let stamped = frontmatter::set_metadata(
+        &stamped,
+        frontmatter::METADATA_VERIFIED_STEPS,
+        &format!("{passed}/{}", provenance.steps.len()),
+    )
+    .context("recompile the package with this version of vts-extract first")?;
+    fs::write(&path, stamped)?;
 
+    record_verdicts(&mut provenance, &recorded);
+    fs::write(
+        skill_dir.join("provenance.json"),
+        serde_json::to_string_pretty(&provenance)?,
+    )?;
+    Ok(recorded)
+}
+
+/// Fold the report into the package's own record of its steps: the
+/// latest verdict, one more execution for every step that ran, and
+/// unsolved failures as failure notes.
+fn record_verdicts(provenance: &mut ProcedureIr, report: &VerificationReport) {
+    for outcome in &report.steps {
+        let Some(step) = provenance.steps.iter_mut().find(|s| s.id == outcome.id) else {
+            continue;
+        };
+        if matches!(outcome.outcome.as_str(), "pass" | "fail") {
+            step.usage_count += 1;
+        }
+        if outcome.outcome == "fail" {
+            let note = format!("Unsolved: {}", outcome.detail);
+            if !step.failure_notes.contains(&note) {
+                step.failure_notes.push(note);
+            }
+        }
+        step.verdict = Some(Verdict {
+            outcome: outcome.outcome.clone(),
+            detail: outcome.detail.clone(),
+            repairs: outcome.repairs.clone(),
+        });
+    }
+    provenance.schema_version = SCHEMA_VERSION;
+}
+
+fn stamp_badge(skill_md: &str, report: &VerificationReport) -> Result<String> {
     let counts = |outcome: &str| report.steps.iter().filter(|s| s.outcome == outcome).count();
     let any_failed = report.steps.iter().any(|s| s.outcome == "fail");
+    // A skill that needed repairing says so: the signals are in the report.
+    let repaired = match report.attempts.saturating_sub(1) {
+        0 => String::new(),
+        1 => " after 1 repair".to_string(),
+        n => format!(" after {n} repairs"),
+    };
     let body = if report.verified {
         format!(
-            "> ✅ **Verified by execution** — {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. Details: [verification.json](verification.json).",
+            "> ✅ **Verified by execution**{repaired} — {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. Details: [verification.json](verification.json).",
             counts("pass"),
             counts("skipped"),
             counts("unverifiable"),
@@ -95,7 +180,7 @@ fn stamp_badge(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
     } else if !any_failed {
         // Nothing that ran diverged; the skill is only partially exercised.
         format!(
-            "> 🟡 **Partially verified** — no executed step failed: {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. {}. Details: [verification.json](verification.json).",
+            "> 🟡 **Partially verified**{repaired} — no executed step failed: {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. {}. Details: [verification.json](verification.json).",
             counts("pass"),
             counts("skipped"),
             counts("unverifiable"),
@@ -103,7 +188,7 @@ fn stamp_badge(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
         )
     } else {
         format!(
-            "> ⚠ **NOT verified** — {}. Details: [verification.json](verification.json).",
+            "> ⚠ **NOT verified**{repaired} — {}. Details: [verification.json](verification.json).",
             report.summary
         )
     };
@@ -128,6 +213,5 @@ fn stamp_badge(skill_dir: &Path, report: &VerificationReport) -> Result<()> {
                 &skill_md[after..]
             )
         };
-    fs::write(&path, stamped)?;
-    Ok(())
+    Ok(stamped)
 }
