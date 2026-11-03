@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use vts_extract::bundle::{
     load_manifest, load_transcript, save_manifest, save_transcript, Manifest, MediaInfo,
-    SourceInfo, Tracks, Transcript,
+    PlatformPriors, SourceInfo, Tracks, Transcript,
 };
 
 fn scratch(name: &str) -> PathBuf {
@@ -40,6 +40,7 @@ fn manifest(original: &str) -> Manifest {
             language: None,
         },
         tracks: Tracks::default(),
+        platform: PlatformPriors::default(),
         notes: vec![],
     }
 }

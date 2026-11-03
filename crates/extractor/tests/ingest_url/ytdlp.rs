@@ -1,11 +1,14 @@
 use std::fs;
-use std::path::{Path, PathBuf};
 
-use vts_extract::bundle::{ingest_any, VideoDownloader, YtdlpDownloader};
+use vts_extract::bundle::{
+    ingest_any, CaptionTrack, Chapter, SkipRange, VideoDownloader, YtdlpDownloader,
+};
 
+use super::fake_ytdlp::{fake_ytdlp, write_canned_sidecars};
 use super::{scratch, toolchain};
 
 const FFMPEG_LOCATION_LOG: &str = "ffmpeg-locations.txt";
+const ARGS_LOG: &str = "args.txt";
 
 /// YouTube often rejects merged-stream downloads with a 403; the
 /// downloader must fall back to a combined single stream on its own.
@@ -30,84 +33,133 @@ fn ytdlp_hardens_retries_and_receives_ffmpeg_location() {
     );
 }
 
-#[cfg(unix)]
-fn fake_ytdlp(dir: &Path) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt;
+/// The platform's free priors are requested on every attempt: creator
+/// captions only (never auto-generated ones), the info json for
+/// chapters, and `SponsorBlock` *marks* — never removal, so `[t=]` keeps
+/// pointing at the original timeline.
+#[test]
+fn ytdlp_requests_creator_captions_chapters_and_sponsorblock_marks() {
+    let dir = scratch("priors-flags");
+    let fake = fake_ytdlp(&dir);
 
-    let fake = dir.join("yt-dlp");
-    fs::write(
-        &fake,
-        r#"#!/bin/bash
-out=""; title=""; fmt=""; ffmpeg_location=""
-ignore_config=""; no_plugin_dirs=""; no_remote_components=""
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -o) out="$2"; shift 2;;
-    --ffmpeg-location) ffmpeg_location="$2"; shift 2;;
-    --print-to-file) title="$3"; shift 3;;
-    -f) fmt="$2"; shift 2;;
-    --ignore-config) ignore_config=1; shift;;
-    --no-plugin-dirs) no_plugin_dirs=1; shift;;
-    --no-remote-components) no_remote_components=1; shift;;
-    *) shift;;
-  esac
-done
-if [[ -z "$ignore_config" || -z "$no_plugin_dirs" || -z "$no_remote_components" || -z "$ffmpeg_location" ]]; then
-  echo "ERROR: hardened yt-dlp flags missing" >&2
-  exit 2
-fi
-printf '%s\n' "$ffmpeg_location" >> "$(dirname "$0")/ffmpeg-locations.txt"
-if [[ -z "$fmt" ]]; then
-  echo "ERROR: unable to download video data: HTTP Error 403: Forbidden" >&2
-  exit 1
-fi
-echo "Fallback Video" > "$title"
-echo fake-media > "${out/\%(ext)s/mp4}"
-"#,
-    )
-    .unwrap();
-    fs::set_permissions(&fake, fs::Permissions::from_mode(0o755)).unwrap();
-    fake
+    YtdlpDownloader::new(fake, dir.join("ffmpeg"))
+        .download("https://youtube.example/watch?v=x", &dir)
+        .unwrap();
+
+    let args = fs::read_to_string(dir.join(ARGS_LOG)).unwrap();
+    let args: Vec<&str> = args.lines().collect();
+    assert!(args.contains(&"--write-subs"), "{args:?}");
+    assert!(!args.contains(&"--write-auto-subs"), "{args:?}");
+    assert_eq!(flag_value(&args, "--sub-langs"), Some("all,-live_chat"));
+    assert_eq!(flag_value(&args, "--sub-format"), Some("json3/vtt"));
+    assert!(args.contains(&"--write-info-json"), "{args:?}");
+    assert_eq!(
+        flag_value(&args, "--sponsorblock-mark"),
+        Some("sponsor,intro,outro,selfpromo")
+    );
+    assert!(!args.contains(&"--sponsorblock-remove"), "{args:?}");
+    assert!(args.contains(&"--no-plugin-dirs"), "{args:?}");
+    assert!(args.contains(&"--no-remote-components"), "{args:?}");
 }
 
-#[cfg(windows)]
-fn fake_ytdlp(dir: &Path) -> PathBuf {
-    let fake = dir.join("yt-dlp.cmd");
-    fs::write(
-        &fake,
-        r#"@echo off
-setlocal EnableDelayedExpansion
-set "out="
-set "title="
-set "fmt="
-set "ffmpeg_location="
-set "ignore_config="
-set "no_plugin_dirs="
-set "no_remote_components="
-:loop
-if "%~1"=="" goto parsed
-if "%~1"=="-o" (set "out=%~2" & shift & shift & goto loop)
-if "%~1"=="--ffmpeg-location" (set "ffmpeg_location=%~2" & shift & shift & goto loop)
-if "%~1"=="--print-to-file" (set "title=%~3" & shift & shift & shift & goto loop)
-if "%~1"=="-f" (set "fmt=%~2" & shift & shift & goto loop)
-if "%~1"=="--ignore-config" (set "ignore_config=1" & shift & goto loop)
-if "%~1"=="--no-plugin-dirs" (set "no_plugin_dirs=1" & shift & goto loop)
-if "%~1"=="--no-remote-components" (set "no_remote_components=1" & shift & goto loop)
-shift
-goto loop
-:parsed
-if not defined ignore_config (echo ERROR: hardened flags missing 1>&2 & exit /b 2)
-if not defined no_plugin_dirs (echo ERROR: hardened flags missing 1>&2 & exit /b 2)
-if not defined no_remote_components (echo ERROR: hardened flags missing 1>&2 & exit /b 2)
-if not defined ffmpeg_location (echo ERROR: FFmpeg location missing 1>&2 & exit /b 2)
-for %%F in ("!out!") do echo !ffmpeg_location!>>"%%~dpFffmpeg-locations.txt"
-if not defined fmt (echo ERROR: HTTP Error 403: Forbidden 1>&2 & exit /b 1)
->"!title!" echo Fallback Video
-for %%F in ("!out!") do >"%%~dpFsource.mp4" echo fake-media
-"#,
-    )
-    .unwrap();
-    fake
+/// yt-dlp writes one subtitle file per language plus `source.info.json`
+/// beside the media. The downloader keeps the track in the spoken
+/// language, discards the rest and the info json, and hands back the
+/// chapters and `SponsorBlock` ranges it read.
+#[test]
+fn ytdlp_keeps_the_spoken_language_track_and_reads_platform_priors() {
+    let dir = scratch("priors");
+    let fake = fake_ytdlp(&dir);
+    write_canned_sidecars(&dir);
+
+    let media = YtdlpDownloader::new(fake, dir.join("ffmpeg"))
+        .download("https://youtube.example/watch?v=x", &dir)
+        .unwrap();
+
+    let platform = &media.platform;
+    assert_eq!(
+        platform.captions,
+        Some(CaptionTrack {
+            path: "source.en.json3".into(),
+            language: "en".into(),
+            format: "json3".into(),
+            available_languages: vec!["de".into(), "en".into()],
+        })
+    );
+    assert!(dir.join("source.en.json3").is_file());
+    assert!(
+        !dir.join("source.de.vtt").exists(),
+        "unused tracks are dropped"
+    );
+    assert!(
+        !dir.join("source.info.json").exists(),
+        "info json is not kept"
+    );
+    assert_eq!(
+        platform.chapters,
+        vec![
+            chapter(0.0, 45.0, "Intro"),
+            chapter(45.0, 200.0, "Install the CLI"),
+            chapter(200.0, 300.0, "Wrap up"),
+        ]
+    );
+    assert_eq!(
+        platform.skips,
+        vec![skip(12.5, 40.0, "sponsor"), skip(280.0, 300.0, "outro")]
+    );
+    assert!(media.notes.is_empty(), "{:?}", media.notes);
+}
+
+/// `SponsorBlock` is a third-party service; when its API is unreachable
+/// yt-dlp aborts the whole download. The downloader retries without the
+/// marks and says so, rather than failing the ingest.
+#[test]
+fn ytdlp_retries_without_sponsorblock_when_the_api_is_unreachable() {
+    let dir = scratch("sponsorblock-down");
+    let fake = fake_ytdlp(&dir);
+    write_canned_sidecars(&dir);
+    fs::write(dir.join("sponsorblock-down"), b"").unwrap();
+
+    let media = YtdlpDownloader::new(fake, dir.join("ffmpeg"))
+        .download("https://youtube.example/watch?v=x", &dir)
+        .unwrap();
+
+    assert!(media.path.ends_with("source.mp4"));
+    assert_eq!(media.platform.chapters.len(), 3, "chapters still arrive");
+    assert!(media.platform.captions.is_some());
+    assert!(
+        media.notes.iter().any(|n| n.contains("SponsorBlock")),
+        "{:?}",
+        media.notes
+    );
+    let args = fs::read_to_string(dir.join(ARGS_LOG)).unwrap();
+    let marks = args.lines().filter(|l| *l == "--sponsorblock-mark").count();
+    assert_eq!(
+        marks, 1,
+        "marks are dropped after the first SponsorBlock failure"
+    );
+}
+
+fn flag_value<'a>(args: &[&'a str], flag: &str) -> Option<&'a str> {
+    args.iter()
+        .position(|a| *a == flag)
+        .and_then(|i| args.get(i + 1).copied())
+}
+
+fn chapter(start: f64, end: f64, title: &str) -> Chapter {
+    Chapter {
+        start_secs: start,
+        end_secs: end,
+        title: title.into(),
+    }
+}
+
+fn skip(start: f64, end: f64, category: &str) -> SkipRange {
+    SkipRange {
+        start_secs: start,
+        end_secs: end,
+        category: category.into(),
+    }
 }
 
 /// Real yt-dlp download of the yt-dlp project's own tiny test video.
@@ -140,4 +192,8 @@ fn real_youtube_download_end_to_end() {
     assert!(m.source.title.is_some(), "title should be recorded");
     assert!(m.media.duration_secs > 5.0);
     assert!(m.media.width > 0);
+    // "Me at the zoo" carries creator captions in English and German.
+    let captions = m.platform.captions.as_ref().expect("creator captions");
+    assert_eq!(captions.language, "en");
+    assert!(bundle.join(&captions.path).is_file());
 }
