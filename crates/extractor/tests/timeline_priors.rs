@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use vts_extract::asr::{extract_audio_track, EngineOutput, TranscriptionEngine};
+use vts_extract::asr::{extract_audio_track, EngineOutput, Hints, TranscriptionEngine};
 use vts_extract::bundle::{
     extract_caption_track, ingest, load_captions, load_manifest, save_manifest, CaptionTrack,
     Chapter, Segment, SkipRange, TranscriptSource,
@@ -87,6 +87,7 @@ impl TranscriptionEngine for CannedEngine {
     fn transcribe(
         &self,
         _wav: &Path,
+        _hints: &Hints,
         _progress: &mut dyn FnMut(u8),
     ) -> anyhow::Result<EngineOutput> {
         Ok(EngineOutput {
