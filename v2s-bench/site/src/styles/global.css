@@ -509,6 +509,8 @@ main {
 .verdict {
   display: inline-flex;
   align-items: baseline;
+  justify-content: flex-start;
+  min-width: 15.5ch;
   gap: 0.4rem;
   font-size: 0.86rem;
   font-weight: 600;
@@ -756,6 +758,10 @@ main {
   font-size: 0.74rem;
   color: var(--text-muted);
   padding: 0 0 0.15rem;
+}
+
+.plot-axis-inline {
+  display: none;
 }
 
 .plot-row {
@@ -1012,6 +1018,11 @@ main {
 
   .plot-col {
     width: auto;
+  }
+
+  .plot-axis-inline {
+    display: block;
+    margin-bottom: 1px;
   }
 }
 

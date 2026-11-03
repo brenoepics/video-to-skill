@@ -30,7 +30,7 @@ environment:
   workdir: /work
   network: none
   setup:
-    - chmod 0111 /usr/local/bin/zep
+    - chmod 0111 "$V2SBENCH_BIN"/zep
     - zep open base-19
     - zep put base-19 lane amber
     - zep put base-19 release 19

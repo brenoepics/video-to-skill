@@ -16,7 +16,7 @@ import type { Comparison } from '../lib/types';
 import { diffScale } from '../lib/scale';
 import { pp, ppRange, int, DASH } from '../lib/format';
 import PlotAxis from './PlotAxis.astro';
-import PlotRow from './PlotRow.astro';
+import PlotCell from './PlotCell.astro';
 import Verdict from './Verdict.astro';
 
 interface Props {
@@ -82,19 +82,14 @@ const methods = Array.from(
             <td class="num ci" data-label="95% CI">
               {hasEstimate ? ppRange(c.ci_lo, c.ci_hi) : DASH}
             </td>
-            <td class="plot-col" data-label="Interval">
-              {hasEstimate ? (
-                <PlotRow
-                  scale={scale}
-                  value={c.diff ?? null}
-                  lo={c.ci_lo as number}
-                  hi={c.ci_hi as number}
-                  label={label(c)}
-                />
-              ) : (
-                <p class="plot-none">no estimate yet</p>
-              )}
-            </td>
+            <PlotCell
+              scale={scale}
+              show={hasEstimate}
+              value={c.diff ?? null}
+              lo={c.ci_lo ?? 0}
+              hi={c.ci_hi ?? 0}
+              label={label(c)}
+            />
             <td data-label="Verdict">
               <Verdict verdict={c.verdict} />
             </td>

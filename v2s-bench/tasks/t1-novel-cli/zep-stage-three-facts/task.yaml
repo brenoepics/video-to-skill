@@ -30,7 +30,7 @@ environment:
   workdir: /work
   network: none
   setup:
-    - chmod 0111 /usr/local/bin/zep
+    - chmod 0111 "$V2SBENCH_BIN"/zep
     - printf 'lane amber\nwindow 30m\nowner payments\n' > handover.txt
 budget:
   max_turns: 30

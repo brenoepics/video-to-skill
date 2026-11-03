@@ -12,7 +12,7 @@ import { diffScale } from '../lib/scale';
 import { pp, ppRange, int, DASH } from '../lib/format';
 import { tierLabel } from '../lib/prereg';
 import PlotAxis from './PlotAxis.astro';
-import PlotRow from './PlotRow.astro';
+import PlotCell from './PlotCell.astro';
 
 interface Props {
   strata: Stratum[];
@@ -82,19 +82,14 @@ const valueLabel = (s: Stratum) =>
               <td class="num ci" data-label="95% CI">
                 {hasEstimate ? ppRange(s.ci_lo, s.ci_hi) : DASH}
               </td>
-              <td class="plot-col" data-label="Interval">
-                {hasEstimate ? (
-                  <PlotRow
-                    scale={scale}
-                    value={s.diff ?? null}
-                    lo={s.ci_lo as number}
-                    hi={s.ci_hi as number}
-                    label={`${valueLabel(s)}: ${pp(s.diff)}, 95% CI ${ppRange(s.ci_lo, s.ci_hi)}`}
-                  />
-                ) : (
-                  <p class="plot-none">no estimate yet</p>
-                )}
-              </td>
+              <PlotCell
+                scale={scale}
+                show={hasEstimate}
+                value={s.diff ?? null}
+                lo={s.ci_lo ?? 0}
+                hi={s.ci_hi ?? 0}
+                label={`${valueLabel(s)}: ${pp(s.diff)}, 95% CI ${ppRange(s.ci_lo, s.ci_hi)}`}
+              />
               <td class="num" data-label="Paired trials">
                 {typeof s.n_pairs === 'number' ? int(s.n_pairs) : DASH}
               </td>

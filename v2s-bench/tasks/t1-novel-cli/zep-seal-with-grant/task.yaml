@@ -29,7 +29,7 @@ environment:
   workdir: /work
   network: none
   setup:
-    - chmod 0111 /usr/local/bin/zep
+    - chmod 0111 "$V2SBENCH_BIN"/zep
     - zep open rc-7
     - zep put rc-7 port 8080
     - zep put rc-7 region eu-west

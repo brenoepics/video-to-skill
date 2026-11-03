@@ -191,16 +191,23 @@ def trivial_agent_gate(
 
 def oracle_gate(
     config: RunConfig, tasks: Sequence[Any], *, suite_version: str
-) -> list[str]:
-    """Run each task's oracle; it must pass. Returns the ids that failed.
+) -> tuple[list[str], list[tuple[str, str]]]:
+    """Run each task's oracle; it must pass.
+
+    Returns ``(failed, errored)``. The split matters: a *failed* oracle
+    means the task or its checker is broken, while an *errored* one means
+    the environment did not come up -- a missing image, a setup command
+    that assumed a path. Reporting the second as the first sends a reviewer
+    hunting for a logic bug in a task that is fine.
 
     Independent measurements put the defect rate in borrowed agent
-    benchmarks at 10-15%. A failing oracle means the task is broken, not
-    that the agent is bad -- and a task nobody can pass measures nothing.
+    benchmarks at 10-15%, so this gate pays for itself; but only if its
+    output distinguishes a broken task from a broken machine.
     """
     from .agent.oracle import OracleAgent
 
     failed: list[str] = []
+    errored: list[tuple[str, str]] = []
     for task in tasks:
         provenance = record.Provenance(
             model="none", started_at=record.utcnow(),
@@ -212,9 +219,12 @@ def oracle_gate(
             backend=config.backend, allow_unsandboxed=config.allow_unsandboxed,
             strict_materials=False,
         )
-        if not outcome.record["outcome"].get("success"):
+        result = outcome.record["outcome"]
+        if result.get("status") != "ok":
+            errored.append((task.id, (result.get("error_detail") or "")[:200]))
+        elif not result.get("success"):
             failed.append(task.id)
-    return failed
+    return failed, errored
 
 
 def elapsed(started: float) -> str:

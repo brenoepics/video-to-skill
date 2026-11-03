@@ -18,8 +18,8 @@ import { rateScale, referenceLine } from '../lib/scale';
 import { pct, pctRange, num, usd, int } from '../lib/format';
 import { ARM_BY_ID } from '../lib/prereg';
 import PlotAxis from './PlotAxis.astro';
+import PlotCell from './PlotCell.astro';
 import RateCell from './RateCell.astro';
-import PlotRow from './PlotRow.astro';
 
 interface Props {
   arms: ArmSummary[];
@@ -91,19 +91,15 @@ const anyMismatch = rows.some((r) => r.interval.mismatch);
                 {interval.mismatch && <sup aria-hidden="true">&para;</sup>}
               </span>
             </td>
-            <td class="plot-col" data-label="Interval">
-              {interval.n > 0 ? (
-                <PlotRow
-                  scale={scale}
-                  value={interval.rate}
-                  lo={interval.lo}
-                  hi={interval.hi}
-                  label={`${arm.id} ${name}: success rate ${pct(interval.rate)}, 95% Wilson interval ${pctRange(interval.lo, interval.hi)}, ${int(interval.n)} trials`}
-                />
-              ) : (
-                <p class="plot-none">no trials</p>
-              )}
-            </td>
+            <PlotCell
+              scale={scale}
+              show={interval.n > 0}
+              value={interval.rate}
+              lo={interval.lo}
+              hi={interval.hi}
+              empty="no trials"
+              label={`${arm.id} ${name}: success rate ${pct(interval.rate)}, 95% Wilson interval ${pctRange(interval.lo, interval.hi)}, ${int(interval.n)} trials`}
+            />
             <td class="num" data-label="Errors">
               <RateCell rate={arm.error_rate} n={arm.n} digits={0} />
             </td>

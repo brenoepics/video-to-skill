@@ -155,8 +155,17 @@ def _provision(box, task, root: Path) -> None:
                     target = f"{box.bin_dir}/{script.stem}"
                     box.put(script, target)
                     box.exec(["chmod", "+x", target])
+    # Setup commands must not hardcode a backend's directory layout: the
+    # docker backend installs tools into /usr/local/bin, the local one into
+    # a per-sandbox bin so the host is never modified. Tasks address them
+    # through these variables instead.
+    setup_env = {
+        "V2SBENCH_BIN": box.bin_dir,
+        "V2SBENCH_WORKDIR": box.workdir,
+        "PATH_PREPEND": box.bin_dir,
+    }
     for command in task.environment.setup:
-        result = box.exec(["sh", "-lc", command], timeout=300)
+        result = box.exec(["sh", "-lc", command], timeout=300, env=setup_env)
         if not result.ok:
             raise sandbox_mod.SandboxError(
                 f"setup failed for {task.id}: {command!r}: {result.stderr.strip()[:300]}"

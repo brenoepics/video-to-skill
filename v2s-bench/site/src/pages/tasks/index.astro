@@ -89,7 +89,7 @@ const bandRank: Record<string, number> = {
             <h2 id="task-list">
               {int(tasks.length)} task{tasks.length === 1 ? '' : 's'}
             </h2>
-            <p class="eyebrow">Headroom is a measurement, not a label</p>
+            <p class="eyebrow">Probed before any arm ran</p>
           </div>
 
           <fieldset class="tier-filter">
@@ -153,7 +153,6 @@ const bandRank: Record<string, number> = {
                             <>
                               {pct(task.probe_known)}
                               <sup aria-hidden="true">&dagger;</sup>
-                              <span class="sub">probes answered cold</span>
                             </>
                           )}
                         </td>
@@ -162,7 +161,12 @@ const bandRank: Record<string, number> = {
                           data-value={bandRank[task.headroom_band ?? 'unknown'] ?? 9}
                         >
                           {task.headroom_band ?? DASH}
-                          {task.saturated && <span class="sub">saturated &mdash; excluded</span>}
+                          {task.saturated && task.headroom_band !== 'saturated' && (
+                            <span class="sub">saturated</span>
+                          )}
+                          {task.saturated && (
+                            <span class="sub">excluded from the primary endpoint</span>
+                          )}
                         </td>
                         <td data-label="Video tier" data-value={task.video_tier ?? ''}>
                           {task.video_tier ?? DASH}

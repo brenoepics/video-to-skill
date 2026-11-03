@@ -1,0 +1,41 @@
+---
+/**
+ * The graphical cell of a plot table: the marks, plus the axis that the
+ * stacked phone layout needs.
+ *
+ * On a wide screen the axis lives once in the table header. At phone width
+ * the table becomes a list of cards and the header is gone, so each cell
+ * carries its own copy -- in the same element the gridlines are painted on,
+ * which is the only way the labels and the rules stay aligned.
+ */
+import type { Scale } from '../lib/scale';
+import PlotAxis from './PlotAxis.astro';
+import PlotRow from './PlotRow.astro';
+
+interface Props {
+  scale: Scale;
+  /** False renders the empty message instead of marks. */
+  show: boolean;
+  value?: number | null;
+  lo?: number;
+  hi?: number;
+  label?: string;
+  empty?: string;
+}
+
+const { scale, show, value = null, lo = 0, hi = 0, label = '', empty = 'no estimate yet' } =
+  Astro.props;
+---
+
+<td class="plot-col" data-label="Interval">
+  <div class="plot-axis-inline">
+    <PlotAxis scale={scale} />
+  </div>
+  {
+    show ? (
+      <PlotRow scale={scale} value={value} lo={lo} hi={hi} label={label} />
+    ) : (
+      <p class="plot-none">{empty}</p>
+    )
+  }
+</td>

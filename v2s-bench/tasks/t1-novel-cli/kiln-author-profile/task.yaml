@@ -31,7 +31,7 @@ environment:
   workdir: /work
   network: none
   setup:
-    - chmod 0111 /usr/local/bin/kiln
+    - chmod 0111 "$V2SBENCH_BIN"/kiln
     - mkdir -p shards
     - printf 'intake ok\n' > shards/01-intake.txt
     - printf 'sweep ok\n' > shards/02-sweep.txt

@@ -130,11 +130,15 @@ def cmd_validate(args) -> int:
         version = tasks_mod.suite_version(root)
         if args.oracle:
             print("\noracle gate (every task's own solution must pass):")
-            broken = oracle_gate(config, suite, suite_version=version)
+            broken, errored = oracle_gate(config, suite, suite_version=version)
             failures += [f"oracle failed: {t}" for t in broken]
-            print(f"  {len(suite) - len(broken)}/{len(suite)} oracles passed")
+            failures += [f"oracle could not run: {t}" for t, _ in errored]
+            passed = len(suite) - len(broken) - len(errored)
+            print(f"  {passed}/{len(suite)} oracles passed")
             for t in broken:
-                print(f"  FAIL {t}")
+                print(f"  FAIL  {t} — the oracle ran and did not satisfy the checker")
+            for t, detail in errored:
+                print(f"  ERROR {t} — the environment did not come up: {detail}")
         if args.trivial:
             print("\ntrivial-agent gate (a do-nothing agent must score zero):")
             passed = trivial_agent_gate(config, suite, suite_version=version)

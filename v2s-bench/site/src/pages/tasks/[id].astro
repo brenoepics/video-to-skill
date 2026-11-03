@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Figure from '../../components/Figure.astro';
 import PlotAxis from '../../components/PlotAxis.astro';
-import PlotRow from '../../components/PlotRow.astro';
+import PlotCell from '../../components/PlotCell.astro';
 import RateCell from '../../components/RateCell.astro';
 import StatusBanner from '../../components/StatusBanner.astro';
 import { cellsForTask, loadReport } from '../../lib/report';
@@ -165,19 +165,15 @@ const totalTrials = rows.reduce((acc, r) => acc + r.interval.n, 0);
                           {interval.mismatch && <sup aria-hidden="true">&para;</sup>}
                         </span>
                       </td>
-                      <td class="plot-col" data-label="Interval">
-                        {interval.n > 0 ? (
-                          <PlotRow
-                            scale={scale}
-                            value={interval.rate}
-                            lo={interval.lo}
-                            hi={interval.hi}
-                            label={`${cell.arm}: success rate ${pct(interval.rate)}, 95% Wilson interval ${pctRange(interval.lo, interval.hi)}, ${int(interval.n)} trials`}
-                          />
-                        ) : (
-                          <p class="plot-none">no trials</p>
-                        )}
-                      </td>
+                      <PlotCell
+                        scale={scale}
+                        show={interval.n > 0}
+                        value={interval.rate}
+                        lo={interval.lo}
+                        hi={interval.hi}
+                        empty="no trials"
+                        label={`${cell.arm}: success rate ${pct(interval.rate)}, 95% Wilson interval ${pctRange(interval.lo, interval.hi)}, ${int(interval.n)} trials`}
+                      />
                       <td class="num" data-label="Procedure fidelity">
                         <RateCell rate={cell.key_action_hit_rate} n={cell.n} />
                       </td>
@@ -315,7 +311,8 @@ const totalTrials = rows.reduce((acc, r) => acc + r.interval.n, 0);
   }
 
   .cell-grid .plot-col {
-    width: 22%;
+    width: 26%;
+    min-width: 170px;
   }
 
   .cell-grid td.num .sub {
