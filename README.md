@@ -101,7 +101,7 @@ A fresh sub-agent — seeing only the generated package, not the video — runs 
 
 ```mermaid
 flowchart LR
-    A["video<br/>(URL or file)"] --> B["local extraction<br/>word-timestamped whisper ·<br/>pHash shot detection · motion density"]
+    A["video<br/>(URL or file)"] --> B["local extraction<br/>word-timestamped whisper ·<br/>screen-state detection · motion density"]
     B --> C[aligned timeline]
     C --> D[agent inspects<br/>keyframes selectively]
     D --> E["skill package<br/>steps + frames + timestamp provenance"]
@@ -111,7 +111,7 @@ flowchart LR
     F -->|unverifiable| I["⚠ labeled honestly"]
 ```
 
-The extractor (`vts-extract`, Rust) does the deterministic work locally: download, demux, voice activity detection and word-timestamped whisper transcription, perceptual-hash shot detection, motion density, and keyframe export. The agent does the reading: it inspects keyframes selectively and produces evidence-grounded steps.
+The extractor (`vts-extract`, Rust) does the deterministic work locally: download, demux, voice activity detection and word-timestamped whisper transcription, screen-state detection (one keyframe at the settled result of each screen change, scrolling folded in), motion density, and keyframe export. The agent does the reading: it inspects keyframes selectively and produces evidence-grounded steps.
 
 ## Skills that grow
 
@@ -149,7 +149,7 @@ Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed au
 <!-- bench-summary:start -->
 | 2-min 720p extract | transcription | measured on |
 | --- | --- | --- |
-| 8.6s wall · 14.0x realtime | 2.8x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
+| 6.3s wall · 18.9x realtime | 2.3x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
 
 Full methodology and results: [BENCHMARK.md](BENCHMARK.md)
 <!-- bench-summary:end -->

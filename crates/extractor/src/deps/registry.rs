@@ -3,13 +3,13 @@
 //! Every entry pins an exact version and the sha256 of its artifact —
 //! "latest" URLs are never used, so an upstream release can't change what
 //! we install. All sources are public and ungated (no accounts, no tokens).
-//!
-//! Default whisper model: multilingual `base` (142 MB) — fast on Apple
-//! Silicon and adequate for tutorial narration; larger models can become
-//! configurable later without touching this mechanism.
+//! The whisper model is chosen per compute device in `registry::whisper`.
+
+mod whisper;
 
 use super::bootstrap::{Archive, ArchiveMember, ToolSpec};
 use super::Tool;
+pub use whisper::{default_whisper_model, whisper_model_for, whisper_model_spec, WhisperModel};
 
 const WINDOWS_FFMPEG_URL: &str =
     "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip";
@@ -20,7 +20,6 @@ const WINDOWS_YTDLP_URL: &str =
     "https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.26/yt-dlp.exe";
 const WINDOWS_YTDLP_SHA256: &str =
     "f5389d3698ecde4ef06f4e6b1ce0294fe9ac1396228c8990b8d3416d6d177a7d";
-const WHISPER_BASE_REVISION: &str = "5359861c739e955e79d9a303bcbc70fb988958b1";
 const SILERO_VAD_REVISION: &str = "9ffd54a1e1ee413ddf265af9913beaf518d1639b";
 
 /// The install spec for `tool` on this platform, or `None` when no
@@ -39,16 +38,8 @@ pub fn spec_for(tool: Tool) -> Option<ToolSpec> {
         // value published alongside the release.
         Tool::Ytdlp if windows_x64() => Some(windows_ytdlp(tool)),
         Tool::Ytdlp => macos().then(|| macos_ytdlp(tool)),
-        // ggerganov/whisper.cpp model repo on Hugging Face: public, ungated;
-        // checksum from the repo's git-lfs pointer. Platform-independent.
-        Tool::WhisperModel => Some(ToolSpec {
-            tool,
-            url: format!(
-                "https://huggingface.co/ggerganov/whisper.cpp/resolve/{WHISPER_BASE_REVISION}/ggml-base.bin"
-            ),
-            sha256: "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe".into(),
-            archive: Archive::None,
-        }),
+        // Whichever model this machine's compute device affords.
+        Tool::WhisperModel => Some(whisper_model_spec(default_whisper_model())),
         // Silero VAD weights in ggml format, from the ggml-org/whisper-vad
         // repo on Hugging Face (where whisper.cpp's own download script
         // fetches them): public, ungated, pinned to a commit; checksum from
@@ -183,6 +174,26 @@ mod tests {
     }
 
     #[test]
+    fn the_default_whisper_model_follows_the_compute_device() {
+        use crate::host::{self, WhisperDevice};
+
+        assert_eq!(
+            whisper_model_for(WhisperDevice::Metal).file_name,
+            "ggml-large-v3-turbo-q5_0.bin"
+        );
+        assert_eq!(
+            whisper_model_for(WhisperDevice::Cpu).file_name,
+            "ggml-small-q8_0.bin"
+        );
+        let default = default_whisper_model();
+        assert_eq!(default, whisper_model_for(host::whisper_device()));
+        assert_eq!(Tool::WhisperModel.file_name(), default.file_name);
+        let spec = spec_for(Tool::WhisperModel).expect("whisper weights are platform-independent");
+        assert!(spec.url.ends_with(default.file_name), "{}", spec.url);
+        assert_eq!(spec.sha256, default.sha256);
+    }
+
+    #[test]
     fn the_silero_vad_model_is_pinned_from_the_ggml_org_repo() {
         let spec = spec_for(Tool::WhisperVad).expect("VAD model is platform-independent");
         assert_eq!(
@@ -204,8 +215,17 @@ mod tests {
 
     #[test]
     fn every_available_spec_is_immutable_and_verifiable() {
-        for tool in Tool::ALL {
-            let Some(spec) = spec_for(tool) else { continue };
+        let whisper_models = [
+            crate::host::WhisperDevice::Metal,
+            crate::host::WhisperDevice::Cpu,
+        ]
+        .map(|device| whisper_model_spec(whisper_model_for(device)));
+        for spec in Tool::ALL
+            .into_iter()
+            .filter_map(spec_for)
+            .chain(whisper_models)
+        {
+            let tool = spec.tool;
             assert!(spec.url.starts_with("https://"), "{tool:?}: https only");
             assert!(
                 !spec.url.contains("latest"),

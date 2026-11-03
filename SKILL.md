@@ -167,7 +167,11 @@ partial bundle (e.g. no speech) is normal and noted, not an error.
 
 Read `timeline.json` first — it is the token-lean digest: one segment
 per shot with time range, speech spans, keyframe path, and motion
-density. Then inspect frames *selectively* (never all of them):
+density. A shot is one screen state, and its keyframe shows that
+state's settled result: the first steady second after the change that
+started it (the terminal once its output printed, the dialog once
+open), with the native still taken at the same moment. Then inspect
+frames *selectively* (never all of them):
 
 - Read each segment's keyframe once — for most videos that is enough.
 - Re-watch a range only when evidence demands it:
