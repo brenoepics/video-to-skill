@@ -52,7 +52,15 @@ frames.
 2. Motion-density spike relative to the video's median — something
    happened between keyframes.
 3. On-screen text is present but unreadable at keyframe resolution —
-   fetch the native still (frames/shotNNN-native.jpg) before re-watching.
+   read the segment's `changed_region` crop first
+   (frames/shotNNN-changed.jpg, referenced with its pixel rectangle in
+   `timeline.json`): it is the part of the screen that changed since
+   the previous segment, at native resolution, so a new terminal line
+   or dialog arrives at full pixel size in a small image. Fall back to
+   the native still (frames/shotNNN-native.jpg) when the segment has no
+   crop (the opening screen, or a change of the whole screen) or the
+   text you need lies outside the changed part. Re-watch only after
+   both.
 4. A step's success signal (output, dialog, result state) needs visual
    confirmation.
 

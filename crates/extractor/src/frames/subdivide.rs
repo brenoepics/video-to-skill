@@ -4,7 +4,7 @@
 //! Pure planning: the caller exports the planned frames in one batch.
 
 use super::sample::SampledFrame;
-use super::{analyze, FrameConfig, Keyframe};
+use super::{hash, FrameConfig, Keyframe};
 
 /// Interior candidates closer than this to the shot's main keyframe
 /// are duplicates and are skipped.
@@ -71,6 +71,6 @@ fn nearest_sample_hash(samples: &[SampledFrame], timestamp: f64) -> String {
                 .abs()
                 .total_cmp(&(b.timestamp_secs - timestamp).abs())
         })
-        .map(|f| format!("{:016x}", analyze::thumbnail_hash(f.luma())))
+        .map(|f| format!("{:016x}", hash::thumbnail_hash(f.luma())))
         .unwrap_or_default()
 }

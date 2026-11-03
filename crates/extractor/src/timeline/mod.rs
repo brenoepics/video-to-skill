@@ -15,7 +15,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::bundle::{load_manifest, load_transcript, save_manifest};
-use crate::frames::load_frame_track;
+use crate::frames::{load_frame_track, ChangedRegion};
 
 pub const TIMELINE_FILE: &str = "timeline.json";
 
@@ -40,6 +40,11 @@ pub struct TimelineSegment {
     /// track so the agent sees them without reading `frames.json`.
     #[serde(default)]
     pub interior_keyframes: Vec<KeyframeRef>,
+    /// Native-resolution crop of what changed since the previous
+    /// segment, taken at the keyframe's moment — read it before the
+    /// native still when the keyframe's text is too small.
+    #[serde(default)]
+    pub changed_region: Option<ChangedRegion>,
     pub speech: Vec<SpeechSpan>,
 }
 
@@ -103,6 +108,7 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
                         timestamp_secs: kf.timestamp_secs,
                     })
                     .collect(),
+                changed_region: s.changed_region.clone(),
                 speech: Vec::new(),
             })
             .collect(),
@@ -113,6 +119,7 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
             motion_density: None,
             keyframe: None,
             interior_keyframes: Vec::new(),
+            changed_region: None,
             speech: Vec::new(),
         }],
     };

@@ -1,5 +1,5 @@
-//! Pure frame analysis: screen-state segmentation, perceptual hashes
-//! and motion density over the sampled thumbnails. No I/O; unit-tested.
+//! Pure frame analysis: screen-state segmentation and motion density
+//! over the sampled thumbnails. No I/O; unit-tested.
 //!
 //! A screen *state* is a stretch of the recording that shows one
 //! result — a terminal after its command printed, a dialog once open.
@@ -16,9 +16,13 @@
 //! drifted from its state's evidence frame by [`DRIFT_RATIO`] times
 //! that much (slow typing adds up) also ends the state; and a change the strip matcher
 //! explains as a vertical scroll ([`super::scroll`]) is folded into the
-//! running state instead of ending it.
+//! running state instead of ending it. Each state also records where
+//! it differs from the one before ([`super::region`]): the previous
+//! state as last seen (its evidence frame, or where a scroll left it)
+//! against this state's evidence frame.
 
-use super::sample::{SampledFrame, THUMB_H, THUMB_W};
+use super::region::{self, Region};
+use super::sample::SampledFrame;
 use super::scroll::scroll_shift;
 use super::ssim::{window_ssims, WINDOWS};
 
@@ -42,11 +46,6 @@ pub const LIVE_MEMORY: usize = 10;
 /// settled result of a change (Video2Action's steady-state rule).
 pub const STEADY_SECS: f64 = 1.0;
 
-/// Thumbnail dimensions of the perceptual hash (9 wide for dHash's 8
-/// horizontal comparisons per row, 8 tall).
-pub const HASH_W: usize = 9;
-pub const HASH_H: usize = 8;
-
 /// One screen state, as sample indices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct State {
@@ -54,6 +53,9 @@ pub struct State {
     pub start: usize,
     /// The sample that shows the settled result — the keyframe.
     pub evidence: usize,
+    /// Where the evidence frame differs from the previous state; none
+    /// for the first state or when the whole screen changed.
+    pub region: Option<Region>,
 }
 
 /// Tunables for [`segment_states`].
@@ -72,10 +74,21 @@ pub fn segment_states(frames: &[SampledFrame], rule: &StateRule) -> Vec<State> {
     let transitions = Transitions::of(frames);
     let mut states = Vec::new();
     let mut start = 0usize;
+    // The previous state as last seen: its anchor when it ended.
+    let mut before: Option<usize> = None;
     while start < frames.len() {
         let evidence = transitions.first_steady(start, rule);
-        let end = transitions.state_end(frames, evidence, rule);
-        states.push(State { start, evidence });
+        let (end, anchor) = transitions.state_end(frames, evidence, rule);
+        let region = before.and_then(|before| {
+            let changed = changed_windows(&frames[before], &frames[evidence]);
+            region::changed_region(&changed, &transitions.live_through(start, evidence))
+        });
+        states.push(State {
+            start,
+            evidence,
+            region,
+        });
+        before = Some(anchor);
         start = end;
     }
     states
@@ -119,6 +132,17 @@ impl Transitions {
         live
     }
 
+    /// Windows live at any transition from `from` to `to`, inclusive.
+    fn live_through(&self, from: usize, to: usize) -> Vec<bool> {
+        let mut live = vec![false; WINDOWS];
+        for i in from..=to {
+            for (live, hit) in live.iter_mut().zip(self.live(i)) {
+                *live |= hit;
+            }
+        }
+        live
+    }
+
     /// Did the screen change at transition `i`, live windows aside?
     fn changed_at(&self, i: usize, rule: &StateRule) -> bool {
         fraction(&self.changed[i], &self.live(i)) >= rule.change_fraction
@@ -141,13 +165,20 @@ impl Transitions {
     /// shows a different state: one that changed since the previous
     /// sample, or drifted from the anchor. A change the strip matcher
     /// explains as a scroll re-anchors the state instead of ending it.
-    fn state_end(&self, frames: &[SampledFrame], evidence: usize, rule: &StateRule) -> usize {
+    /// Returns the end and the anchor the state was last measured
+    /// against (its evidence frame, or the last scrolled frame).
+    fn state_end(
+        &self,
+        frames: &[SampledFrame],
+        evidence: usize,
+        rule: &StateRule,
+    ) -> (usize, usize) {
         let mut anchor = evidence;
         for i in evidence + 1..self.len() {
             let (prev, cur) = (&frames[i - 1], &frames[i]);
             if self.changed_at(i, rule) {
                 if scroll_shift(prev.luma(), cur.luma()).is_none() {
-                    return i;
+                    return (i, anchor);
                 }
                 anchor = i;
                 continue;
@@ -155,12 +186,12 @@ impl Transitions {
             let drift = fraction(&changed_windows(&frames[anchor], cur), &self.live(i));
             if drift >= DRIFT_RATIO * rule.change_fraction {
                 if scroll_shift(frames[anchor].luma(), cur.luma()).is_none() {
-                    return i;
+                    return (i, anchor);
                 }
                 anchor = i;
             }
         }
-        self.len()
+        (self.len(), anchor)
     }
 }
 
@@ -196,42 +227,6 @@ fn fraction(changed: &[bool], live: &[bool]) -> f64 {
     {
         fresh as f64 / WINDOWS as f64
     }
-}
-
-/// 64-bit difference hash of a luma thumbnail: box-downscaled to
-/// [`HASH_W`]x[`HASH_H`], each bit compares horizontal neighbours.
-#[must_use]
-pub fn thumbnail_hash(luma: &[u8]) -> u64 {
-    let gray = downscale(luma);
-    let mut hash = 0u64;
-    let mut bit = 0;
-    for row in 0..HASH_H {
-        for col in 0..HASH_W - 1 {
-            if gray[row * HASH_W + col] > gray[row * HASH_W + col + 1] {
-                hash |= 1 << bit;
-            }
-            bit += 1;
-        }
-    }
-    hash
-}
-
-/// Box-average a [`THUMB_W`]x[`THUMB_H`] luma plane to the hash grid.
-fn downscale(luma: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(HASH_W * HASH_H);
-    for row in 0..HASH_H {
-        let (y0, y1) = (row * THUMB_H / HASH_H, (row + 1) * THUMB_H / HASH_H);
-        for col in 0..HASH_W {
-            let (x0, x1) = (col * THUMB_W / HASH_W, (col + 1) * THUMB_W / HASH_W);
-            let total: u32 = (y0..y1)
-                .flat_map(|y| luma[y * THUMB_W + x0..y * THUMB_W + x1].iter())
-                .map(|&v| u32::from(v))
-                .sum();
-            #[allow(clippy::cast_possible_truncation)] // a mean of bytes is a byte
-            out.push((total / ((y1 - y0) * (x1 - x0)) as u32) as u8);
-        }
-    }
-    out
 }
 
 /// Mean absolute byte difference, 0.0–255.0.
