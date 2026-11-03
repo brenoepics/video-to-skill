@@ -1,0 +1,63 @@
+[
+  {
+    "seq": 1,
+    "actor": "intake",
+    "status": "ok",
+    "bytes": 1024,
+    "note": "first pass over the queue"
+  },
+  {
+    "seq": 2,
+    "actor": "sweep",
+    "status": "ok",
+    "bytes": 2048,
+    "note": "nothing stale"
+  },
+  {
+    "seq": 3,
+    "actor": "merge",
+    "status": "retry",
+    "bytes": 512,
+    "note": "lock held by intake, backing off"
+  },
+  {
+    "seq": 4,
+    "actor": "merge",
+    "status": "ok",
+    "bytes": 512,
+    "note": "lock acquired on the second try"
+  },
+  {
+    "seq": 5,
+    "actor": "audit",
+    "status": "ok",
+    "bytes": 7731,
+    "note": "ledger agrees"
+  },
+  {
+    "seq": 6,
+    "actor": "pack",
+    "status": "ok",
+    "bytes": 65536,
+    "note": "rolled 14 shards"
+  },
+  {
+    "seq": 7,
+    "actor": "ship",
+    "status": "ok",
+    "bytes": 65536,
+    "note": "handed to the courier"
+  },
+  {
+    "seq": 8,
+    "actor": "sweep",
+    "status": "ok",
+    "bytes": 0,
+    "note": "clean"
+  },
+  {
+    "seq": 9,
+    "actor": "intake",
+    "status": "ok",
+    "bytes": 20
+    , "note": "second pass over the qu

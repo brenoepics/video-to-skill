@@ -412,17 +412,51 @@ B = 300 runs per arm, N=300/K=1 gives a 9.4pp MDE against N=30/K=10 at
 17.7pp. We nonetheless run **K=3**, because K=1 cannot detect a flaky task,
 cannot estimate our own intra-task correlation, and cannot report pass^k.
 
-Minimum detectable effect (α=.05, 80% power, .35→.50, ICC=.5, ρ=.6), in
-percentage points:
+Minimum detectable effect (α=.05, 80% power, .35 base, ICC=.5, ρ=.6), in
+percentage points. Two models, which disagree:
 
-| N tasks | K=1 | K=3 | K=5 | K=10 |
-|---|---|---|---|---|
-| 50 | 22.9 | 16.6 | 15.0 | 13.7 |
-| 75 | 18.7 | 13.5 | 12.3 | 11.2 |
-| **100** | 16.2 | **11.7** | 10.6 | 9.7 |
-| 150 | 13.2 | 9.6 | 8.7 | 7.9 |
+| N tasks | K=1 | K=3 | K=5 | K=10 | | K=1 | K=3 | K=5 | K=10 |
+|---|---|---|---|---|---|---|---|---|---|
+| | **constant effect** | | | | | **heterogeneous effect** | | | |
+| 50 | 19.5 | 10.2 | 7.8 | 5.5 | | 22.9 | 16.6 | 15.0 | 13.7 |
+| 75 | 15.6 | 7.8 | 6.2 | 4.7 | | 18.7 | 13.5 | 12.3 | 11.2 |
+| **100** | 13.3 | **7.0** | 5.5 | 3.9 | | 16.2 | **11.7** | 10.6 | 9.7 |
+| 150 | 10.2 | 5.5 | 4.7 | 3.1 | | 13.2 | 9.6 | 8.7 | 7.9 |
 
-**Target: N=100, K=3 (MDE ≈ 11.7pp). Minimum defensible: N=60, K=3.**
+The left block is produced by our own simulator and is regenerable:
+`v2sbench power --tasks 50 75 100 150 --seeds 1 3 5 10`. The right block
+comes from the literature review that informed this design. They differ by
+3–8pp, widening with K, and the difference was diagnosed rather than
+averaged away: fitting `Var = V_b + V_w/K` to the right block implies a
+between-task effect standard deviation of about 0.31, whereas a constant
+additive effect implies about 0.03. The right-hand model carries **effect
+heterogeneity** — the treatment helping different tasks by different
+amounts — and ours, by default, does not.
+
+**We plan against the right block, the more pessimistic one**, because
+heterogeneity is not hypothetical here: published per-configuration gains
+for the same intervention span +4.1 to +25.7pp, which is direct evidence
+that an effect of this kind varies a great deal across conditions. A
+planning number that assumes a constant effect would under-provision.
+
+Our simulator exposes the term as `effect_sd` (default 0) rather than
+defaulting it to 0.31, for a reason worth recording: at non-zero
+`effect_sd` and a low base rate, clamping to [0,1] truncates negative
+shifts harder than positive ones, so part of the apparent agreement at
+0.31 is that artefact rather than a match. The disagreement is pinned by a
+test so that nobody later closes it by tuning the generator.
+
+**Target: N=100, K=3 (planning MDE ≈ 11.7pp; ≈7.0pp if the effect is
+uniform). Minimum defensible: N=60, K=3.**
+
+One further disagreement, recorded for the same reason: the two models move
+in *opposite* directions in ICC. The review's design-effect model has MDE
+rising with ICC; our generative model has it falling, because there ICC
+*is* the beta-binomial ICC, so raising it pushes per-task rates toward 0
+and 1 and shrinks the `p(1−p)` that dominates. Both are defensible and they
+are not the same quantity. The ρ direction and magnitude do reproduce
+across both, so §8.3's practical conclusion — tighten the pairing rather
+than buy more trials — is unaffected.
 
 These numbers are conditional on assumed ICC and ρ, so the **first run is a
 pilot**: 15 tasks × 10 trials × {A0, A1} = 300 runs, to measure our actual
@@ -463,6 +497,17 @@ interval and say so**, rather than a verdict.
   H6, H8); H1 is not in the family. Uncorrected values also shown.
 - **Difference-of-differences** between ablations carries a √2 penalty and
   is reported as an estimate only — no p-value, no verdict.
+- **Declared-but-not-derived constants.** The verdict rule has to be total,
+  so a few thresholds are fixed here rather than argued from the design:
+  a comparison with fewer than **10 paired trials**, or fewer than **2
+  tasks**, reports `insufficient-data` (a cluster bootstrap over one task
+  cannot estimate the only thing it exists to estimate). These are module
+  constants in `stats/analysis.py` and are reported beside each figure.
+- **`error_rate` covers every non-`ok` status**, not only `error`:
+  `timeout`, `budget_exceeded` and `refused` all leave success undefined
+  and none can enter the endpoint. One "produced no measurement" rate is
+  reported, with a per-status breakdown beside it, so a timeout-heavy arm
+  is not mistaken for a flaky one.
 - **Stopping rule:** N fixed in advance. No peeking-and-extending; any
   extension is an amendment with its own analysis.
 - **Exclusions:** §5.4 only, plus trials whose harness or container errored

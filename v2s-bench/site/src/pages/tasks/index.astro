@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import MockShield from '../../components/MockShield.astro';
 import StatusBanner from '../../components/StatusBanner.astro';
 import { loadReport } from '../../lib/report';
 import { href } from '../../lib/url';
@@ -89,7 +90,13 @@ const bandRank: Record<string, number> = {
             <h2 id="task-list">
               {int(tasks.length)} task{tasks.length === 1 ? '' : 's'}
             </h2>
-            <p class="eyebrow">Probed before any arm ran</p>
+            {
+              gate.figureLabel ? (
+                <span class:list={['chip', gate.isMock && 'chip--mock']}>{gate.figureLabel}</span>
+              ) : (
+                <p class="eyebrow">Probed before any arm ran</p>
+              )
+            }
           </div>
 
           <fieldset class="tier-filter">
@@ -107,6 +114,7 @@ const bandRank: Record<string, number> = {
                 ))}
               </div>
               <div class="tier-scope">
+                <MockShield gate={gate} id="task-table">
                 <table class="dt dt--stack dt--rows task-table" id="task-table" data-sortable>
                   <caption class="visually-hidden">
                     Tasks with tier, discoverability, measured headroom, saturation flag and
@@ -137,12 +145,12 @@ const bandRank: Record<string, number> = {
                           {tierLabel(task.tier)}
                           <span class="sub">{task.tier}</span>
                         </td>
-                        <td data-label="Documentation" data-value={task.discoverability ?? ''}>
+                        <td data-label="Docs" data-value={task.discoverability ?? ''}>
                           {task.discoverability ?? DASH}
                         </td>
                         <td
                           class="num"
-                          data-label="Headroom (probe_known)"
+                          data-label="Headroom"
                           data-value={task.probe_known ?? -1}
                         >
                           {task.probe_known === null || task.probe_known === undefined ? (
@@ -168,13 +176,14 @@ const bandRank: Record<string, number> = {
                             <span class="sub">excluded from the primary endpoint</span>
                           )}
                         </td>
-                        <td data-label="Video tier" data-value={task.video_tier ?? ''}>
+                        <td data-label="Video" data-value={task.video_tier ?? ''}>
                           {task.video_tier ?? DASH}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </MockShield>
               </div>
           </fieldset>
 
@@ -252,9 +261,11 @@ const bandRank: Record<string, number> = {
 </script>
 
 <style>
-  .task-table th[scope='row'] {
-    width: 34%;
-  }
+@media (min-width: 761px) {
+    .task-table th[scope='row'] {
+      width: 34%;
+    }
+}
 
   .task-table td.num .sub,
   .task-table td .sub {

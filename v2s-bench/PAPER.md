@@ -163,6 +163,11 @@ second. Secondary endpoints distinguish them further: anchoring should show
 up as fewer turns, higher `first_try` and lower variance even where success
 is unchanged.
 
+Reported as **per-stratum effects with intervals, not as an interaction
+test**. With three or four bands of a handful of tasks each, an interaction
+statistic has no power worth quoting, and quoting one anyway would dress a
+coin flip as an inference.
+
 This matters for the project, not just the paper. If H2b holds, the
 headline feature is less "we read the exact command off the pixels" and
 more "we hand the agent a stable procedure" — and the roadmap implied by
@@ -201,12 +206,22 @@ published figure without a scientific stack.
 
 **Sample size.** Variance is `σ_b²/N + σ_w²/(N·K)`; at fixed budget `B=N·K`
 the second term is `σ_w²/B` and invariant to the split, so only N helps.
-Target **N=100, K=3** (MDE ≈ 11.7pp at ICC 0.5, ρ 0.6); minimum defensible
-N=60, K=3. K=3 rather than K=1 because K=1 cannot detect a flaky task or
-estimate our own ICC.
+Target **N=100, K=3**; minimum defensible N=60, K=3. K=3 rather than K=1
+because K=1 cannot detect a flaky task or estimate our own ICC.
 
-Those figures are conditional on assumed parameters, so **the first run is
-a pilot** — 15 tasks × 10 trials × {A0, A1} ≈ 300 trials — after which the
+The detectable effect at that grid depends on a modelling choice we are
+explicit about. Our own simulator, assuming the treatment helps every task
+by the same amount, gives ≈**7.0pp**. The literature-derived model, which
+carries between-task *effect heterogeneity*, gives ≈**11.7pp**. We plan
+against the pessimistic figure, because heterogeneity is not hypothetical
+here: published per-configuration gains for the same intervention span
++4.1 to +25.7pp (§2, row 1). Both tables, the diagnosis of why they
+disagree — and a test pinning the disagreement so it cannot be closed by
+tuning the generator — are in
+[the pre-registration §8.1](docs/preregistration.md).
+
+All of it is conditional on assumed ICC and ρ, so **the first run is a
+pilot** — 15 tasks × 10 trials × {A0, A1} ≈ 300 trials — after which the
 table is regenerated from measured values and recorded as an amendment.
 
 **Cost is a first-class result.** Row 6 measured +8.9pp at 61× token

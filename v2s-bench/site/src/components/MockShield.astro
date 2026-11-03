@@ -1,0 +1,31 @@
+---
+/**
+ * The mock treatment for a block of numbers that is not a chart.
+ *
+ * `Figure` watermarks every chart, but a mock bundle also puts numbers in
+ * plain tables -- the task list's probe scores, a task's measured headroom.
+ * Those are results too, and a cropped screenshot of one would read as real,
+ * so they get the same watermark.
+ */
+import type { Gate } from '../lib/report';
+import MockWatermark from './MockWatermark.astro';
+
+interface Props {
+  gate: Gate;
+  /** Unique per block: SVG pattern ids are document-global. */
+  id: string;
+}
+
+const { gate, id } = Astro.props;
+---
+
+<div class:list={[gate.isMock && 'mock-shield']}>
+  <slot />
+  {gate.isMock && <MockWatermark id={id} />}
+</div>
+
+<style>
+  .mock-shield {
+    position: relative;
+  }
+</style>

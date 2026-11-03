@@ -336,9 +336,11 @@ const taskedCells = cells.length;
     margin-top: 0.9rem;
   }
 
-  .arm-roster th[scope='row'] {
-    width: 15ch;
-  }
+@media (min-width: 761px) {
+    .arm-roster th[scope='row'] {
+      width: 15ch;
+    }
+}
 
   .arm-roster th[scope='row'] .sub {
     white-space: nowrap;

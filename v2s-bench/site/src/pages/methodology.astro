@@ -661,9 +661,11 @@ const toc = [
     max-width: var(--measure);
   }
 
-  .mde th[scope='row'] {
-    width: 12ch;
-  }
+@media (min-width: 761px) {
+    .mde th[scope='row'] {
+      width: 12ch;
+    }
+}
 
   .verdict-rules dt {
     margin-bottom: 0.3rem;

@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Figure from '../../components/Figure.astro';
+import MockShield from '../../components/MockShield.astro';
 import PlotAxis from '../../components/PlotAxis.astro';
 import PlotCell from '../../components/PlotCell.astro';
 import RateCell from '../../components/RateCell.astro';
@@ -47,6 +48,7 @@ const totalTrials = rows.reduce((acc, r) => acc + r.interval.n, 0);
       </p>
       <h1>{task.title}</h1>
       <p class="task-id"><code>{task.id}</code></p>
+      <MockShield gate={gate} id="task-facts">
       <ul class="facts">
         <li><span class="facts__k">Tier</span> {tierLabel(task.tier)} &middot; {task.tier}</li>
         <li>
@@ -69,6 +71,7 @@ const totalTrials = rows.reduce((acc, r) => acc + r.interval.n, 0);
         </li>
         <li><span class="facts__k">Video tier</span> {task.video_tier ?? DASH}</li>
       </ul>
+      </MockShield>
     </div>
 
     <StatusBanner

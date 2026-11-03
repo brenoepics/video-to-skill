@@ -127,9 +127,11 @@ const valueLabel = (s: Stratum) =>
     border-bottom: 1px solid var(--axis);
   }
 
-  .strata th[scope='row'] {
-    width: 26%;
-  }
+@media (min-width: 761px) {
+    .strata th[scope='row'] {
+      width: 26%;
+    }
+}
 
   @media (max-width: 760px) {
     .strata__group th {

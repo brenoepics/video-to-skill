@@ -14,7 +14,7 @@ goal: >-
   are not objects replace what was there. The three layer files must be left
   exactly as they are.
 discoverability: poor
-feedback_bandwidth: low
+feedback_bandwidth: silent   # `jq -s add` exits 0 and prints well-formed configuration with the nested siblings quietly gone
 knowledge_gap:
   summary: >-
     Addition over JSON objects in jq is a one-level overwrite: the right-hand

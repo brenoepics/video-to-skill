@@ -986,6 +986,8 @@ main {
     color: var(--text-secondary);
     font-size: 0.82rem;
     line-height: 1.5;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .dt--stack td.num,

@@ -235,18 +235,38 @@ def cmd_verify_results(args) -> int:
 def cmd_power(args) -> int:
     from .stats.power import power_table
 
+    grids = [(n, k) for n in args.tasks for k in args.seeds]
     rows = power_table(
-        n_tasks=tuple(args.tasks), n_seeds=tuple(args.seeds),
-        base_rate=args.base_rate, icc=args.icc, rho=args.rho, seed=args.seed,
+        grids=grids,
+        base_rate=args.base_rate,
+        icc=args.icc,
+        rho=args.rho,
+        power=args.power,
+        alpha=args.alpha,
+        resamples=args.resamples,
+        trials=args.trials,
+        seed=args.seed,
     )
+    by_cell = {(r.n_tasks, r.n_seeds): r for r in rows}
     print(f"| N tasks | {' | '.join(f'K={k}' for k in args.seeds)} |")
     print(f"|---|{'---|' * len(args.seeds)}")
     for n in args.tasks:
-        cells = [f"{row['mde'] * 100:.1f}" for row in rows if row["n_tasks"] == n]
+        cells = [f"{by_cell[(n, k)].mde * 100:.1f}" for k in args.seeds]
         print(f"| {n} | {' | '.join(cells)} |")
     print(
-        f"\nMDE in percentage points · alpha={args.alpha} power={args.power} "
-        f"base={args.base_rate} ICC={args.icc} rho={args.rho}"
+        f"\nMinimum detectable effect, percentage points. "
+        f"alpha={args.alpha} power={args.power} base={args.base_rate} "
+        f"ICC={args.icc} rho={args.rho}"
+    )
+    print(
+        "Simulated, not derived: lower --resamples/--trials run faster and "
+        "wobble more. Every cell uses identical settings by construction."
+    )
+    sample = rows[0]
+    print(
+        f"Effective trials per task at K={sample.n_seeds}, ICC={sample.icc}: "
+        f"{sample.effective_trials:.2f} "
+        "(1/(1+(K-1)*ICC); correlated trials are worth less than their count)"
     )
     return 0
 
@@ -393,6 +413,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--alpha", type=float, default=0.05)
     p.add_argument("--power", type=float, default=0.8)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--resamples", type=int, default=200)
+    p.add_argument("--trials", type=int, default=150)
     p.set_defaults(func=cmd_power)
 
     p = sub.add_parser("probe", help="measure per-task headroom (what the model knows cold)")

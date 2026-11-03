@@ -341,3 +341,28 @@ def test_comparisons_cover_every_declared_hypothesis() -> None:
     for comparison in arms_mod.COMPARISONS:
         arms_mod.resolve(comparison.treatment)
         arms_mod.resolve(comparison.reference)
+
+
+def test_every_declared_arm_can_be_recorded(bench_root: Path) -> None:
+    """A record for any declared arm must validate.
+
+    This exists because it did not hold: the run-record schema enumerated
+    A0-A6 while ``arms.py`` already declared A7, so an A7 trial could not be
+    written and hypothesis H8 was untestable by the very schema meant to
+    protect the data. Any future arm is covered without editing two places.
+    """
+    from v2sbench import materials
+
+    suite = tasks_mod.load_suite(bench_root)
+    validator = record_mod.validator(bench_root)
+    provenance = record_mod.Provenance(model="m", started_at=record_mod.utcnow())
+
+    for arm in arms_mod.ALL_ARMS:
+        rec = record_mod.build(
+            run_id="r", task=suite[0], arm=arm, seed=0, status="ok", success=True,
+            assertions=[{"id": "a", "passed": True}], metrics={},
+            material=materials.ArmMaterial(kind=arm.material), provenance=provenance,
+            commands=[],
+        )
+        errors = list(validator.iter_errors(rec))
+        assert errors == [], f"arm {arm.id} cannot be recorded: {errors[:1]}"

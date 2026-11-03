@@ -66,15 +66,9 @@
       }
     },
     "arm": {
-      "enum": [
-        "A0",
-        "A1",
-        "A2",
-        "A3",
-        "A4",
-        "A5",
-        "A6"
-      ]
+      "type": "string",
+      "pattern": "^A[0-9]+$",
+      "description": "The arm id, as declared in harness/v2sbench/arms.py, which is the single source of truth. A pattern rather than an enum on purpose: the enum stopped at A6 while arms.py already declared A7, so a real A7 record could not validate and hypothesis H8 was untestable by a schema that was supposed to be protecting it. Duplicating a list that already exists in code buys nothing and silently rots."
     },
     "seed": {
       "type": "integer",
