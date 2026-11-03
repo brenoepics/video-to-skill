@@ -10,7 +10,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use vts_extract::bundle::{ingest, save_manifest, Manifest, MediaInfo, SourceInfo, Tracks};
+use vts_extract::bundle::{
+    ingest, save_manifest, Manifest, MediaInfo, PlatformPriors, SourceInfo, Tracks,
+};
 use vts_extract::frames::{extract_frame_track, FrameConfig};
 use vts_extract::ocr::{
     self, extract_text_track, save_screen_text, BBox, OcrEngine, Recognized, ScreenTextLine,
@@ -223,6 +225,7 @@ fn the_text_subcommand_explains_an_absent_track_from_the_manifest_note() {
             language: None,
         },
         tracks: Tracks::default(),
+        platform: PlatformPriors::default(),
         notes: vec!["screen_text: no local OCR engine on this platform".into()],
     };
     save_manifest(&dir, &manifest).unwrap();
