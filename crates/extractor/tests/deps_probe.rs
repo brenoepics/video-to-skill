@@ -29,6 +29,11 @@ const YTDLP_FILE_NAME: &str = "yt-dlp";
 #[path = "deps_probe/models.rs"]
 mod models;
 
+/// The probe while executables are being written (Linux `ETXTBSY`).
+#[cfg(unix)]
+#[path = "deps_probe/busy.rs"]
+mod busy;
+
 fn scratch(name: &str) -> PathBuf {
     let dir = std::env::temp_dir()
         .join("vts-deps-tests")

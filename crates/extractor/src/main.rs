@@ -55,7 +55,7 @@ enum Command {
         /// Path to the Procedure IR JSON
         #[arg(long)]
         ir: String,
-        /// Output directory for the skill package
+        /// Output directory for the skill package; must be named after the skill
         #[arg(long)]
         out: String,
     },
@@ -70,9 +70,10 @@ enum Command {
         /// New video's extraction bundle (for its frames)
         #[arg(long)]
         bundle: String,
-        /// Output directory for the merged package
-        #[arg(long, default_value = "merged-skill")]
-        out: String,
+        /// Output directory for the merged package, named after the skill
+        /// (default: merged/<skill-name>)
+        #[arg(long)]
+        out: Option<String>,
         /// Show the fold plan without writing anything
         #[arg(long)]
         dry_run: bool,
@@ -153,6 +154,27 @@ enum Command {
         #[arg(last = true)]
         command: Vec<String>,
     },
+    /// Observe read-only GUI postconditions (window titles, elements,
+    /// checkboxes, menu items, files) for the verifier. Executes nothing,
+    /// so it runs outside the sandbox. Exit 0: every check holds; 1: a
+    /// check failed; 2: nothing could be observed (treat as unverifiable).
+    Observe {
+        /// A JSON check object or array; repeatable
+        #[arg(long, required = true)]
+        check: Vec<String>,
+        /// Also print the accessibility tree(s) that were read
+        #[arg(long)]
+        dump: bool,
+    },
+    /// Print on-screen text read from the keyframes, one `t=<secs>\t<frame>\t<text>` line each
+    Text {
+        /// Extraction bundle directory
+        #[arg(long, default_value = "extraction")]
+        bundle: String,
+        /// Only lines matching this regular expression (case-insensitive: OCR case is unreliable)
+        #[arg(long)]
+        grep: Option<String>,
+    },
     /// Export densely-sampled frames for a time range (agent "re-watch")
     Clip {
         #[arg(long, default_value = "extraction")]
@@ -193,7 +215,7 @@ fn main() -> Result<()> {
             bundle,
             out,
             dry_run,
-        } => commands::merge::run(&skill, &ir, &bundle, &out, dry_run),
+        } => commands::merge::run(&skill, &ir, &bundle, out.as_deref(), dry_run),
         Command::Bench { write_docs } => commands::bench::run(write_docs.as_deref()),
         Command::Eval {
             gold,
@@ -219,6 +241,8 @@ fn main() -> Result<()> {
             print_policy,
             command,
         } => commands::sandbox::run(&workspace, &command, print_policy),
+        Command::Observe { check, dump } => commands::observe::run(&check, dump),
+        Command::Text { bundle, grep } => commands::text::run(&bundle, grep.as_deref()),
         Command::Clip {
             bundle,
             start,

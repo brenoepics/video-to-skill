@@ -1,6 +1,8 @@
 name: Bench
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -14,10 +16,11 @@ jobs:
   bench:
     name: bench + write docs
     runs-on: macos-latest
-    # Results get committed back to the branch, which needs a writable
-    # token — fork PRs never have one, so only same-repo PRs (or a manual
-    # dispatch) run.
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    # Pull requests get the numbers in the job summary only; the results
+    # commit lands on main after the merge, so a stack of PRs never
+    # fights over BENCHMARK.md and the README summary row. Fork PRs have
+    # no writable token and are skipped.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -60,8 +63,24 @@ jobs:
       - name: Run benchmark suite
         if: steps.guard.outputs.skip != 'true'
         run: ./target/release/vts-extract bench --write-docs .
-      - name: Commit results if changed
+      - name: Publish the results to the job summary
         if: steps.guard.outputs.skip != 'true'
+        run: |
+          {
+            echo '## Benchmark results'
+            echo
+            if git diff --quiet README.md BENCHMARK.md; then
+              echo 'No change to the committed results.'
+            else
+              echo '```diff'
+              git diff README.md BENCHMARK.md
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit results if changed
+        # Only on main: a PR run never pushes, so the branch under review
+        # keeps the exact commits its author pushed.
+        if: steps.guard.outputs.skip != 'true' && github.event_name != 'pull_request'
         run: |
           git diff --quiet README.md BENCHMARK.md || (
             git config user.name "github-actions[bot]"
