@@ -12,12 +12,11 @@ pub mod registry;
 
 mod archive;
 mod install_lock;
+mod probe;
 mod recovery;
 mod transaction;
 
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
 
 const YTDLP_PROBE_ARGS: [&str; 4] = [
     "--ignore-config",
@@ -26,8 +25,6 @@ const YTDLP_PROBE_ARGS: [&str; 4] = [
     "--version",
 ];
 const FFMPEG_PROBE_ARGS: [&str; 1] = ["-version"];
-const EXECUTABLE_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
-const EXECUTABLE_PROBE_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Tool {
@@ -222,32 +219,7 @@ fn executable_supports_required_options(tool: Tool, path: &Path) -> bool {
         Tool::Ytdlp => &YTDLP_PROBE_ARGS[..],
         Tool::WhisperModel | Tool::WhisperVad => return false,
     };
-    command_succeeds_within(path, args)
-}
-
-fn command_succeeds_within(path: &Path, args: &[&str]) -> bool {
-    let Ok(mut child) = Command::new(path)
-        .args(args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-    else {
-        return false;
-    };
-    let deadline = Instant::now() + EXECUTABLE_PROBE_TIMEOUT;
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) => return status.success(),
-            Ok(None) if Instant::now() < deadline => {
-                std::thread::sleep(EXECUTABLE_PROBE_POLL_INTERVAL);
-            }
-            Ok(None) | Err(_) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return false;
-            }
-        }
-    }
+    probe::command_succeeds_within(path, args)
 }
 
 #[cfg(unix)]

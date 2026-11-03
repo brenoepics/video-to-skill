@@ -1,9 +1,19 @@
-//! The frame track: shot boundaries, deduplicated keyframes, and a
-//! motion-density signal, recorded as `frames.json` in the bundle.
+//! The frame track: screen states (recorded as `shots`), one evidence
+//! keyframe per state, and a motion-density signal, written to
+//! `frames.json` in the bundle.
+//!
+//! A state is a stretch of the recording that shows one result; its
+//! keyframe is the first sample after the change where the picture
+//! holds still — the terminal after its output, the dialog once open —
+//! rather than the midpoint of the stretch. See [`analyze`] for the
+//! rule and [`scroll`] for why scrolling is not a state change.
 
 pub mod analyze;
 pub mod export;
+mod plan;
 mod sample;
+mod scroll;
+mod ssim;
 mod subdivide;
 
 use std::fs;
@@ -14,7 +24,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::bundle::{load_manifest, save_manifest};
 use crate::tools::Toolchain;
-use export::FrameRequest;
 
 pub const FRAMES_FILE: &str = "frames.json";
 const FRAMES_DIR: &str = "frames";
@@ -24,9 +33,12 @@ const FRAMES_DIR: &str = "frames";
 pub struct FrameConfig {
     /// Thumbnails sampled per second for analysis.
     pub sample_fps: f64,
-    /// Mean-absolute-difference (0–255) beyond which a frame starts a
-    /// new shot.
-    pub boundary_threshold: f64,
+    /// Fraction (0–1) of the screen's SSIM windows that must change
+    /// between samples for the screen to be in a new state.
+    pub change_fraction: f64,
+    /// How long the picture must hold still after a change before a
+    /// sample is that state's evidence keyframe.
+    pub steady_secs: f64,
     /// Width bound for agent-readable keyframes (native stills keep
     /// full resolution).
     pub max_keyframe_width: u32,
@@ -39,7 +51,8 @@ impl Default for FrameConfig {
     fn default() -> FrameConfig {
         FrameConfig {
             sample_fps: 1.0,
-            boundary_threshold: 25.0,
+            change_fraction: analyze::CHANGE_FRACTION,
+            steady_secs: analyze::STEADY_SECS,
             max_keyframe_width: 1024,
             subdivision_interval_secs: 15.0,
         }
@@ -52,14 +65,18 @@ pub struct FrameTrack {
     pub shots: Vec<Shot>,
 }
 
+/// One screen state (the field keeps its historical name `shots`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Shot {
     pub index: usize,
+    /// First sampled second that differs from the previous state.
     pub start_secs: f64,
     pub end_secs: f64,
     /// Mean frame-to-frame change inside the shot, 0.0–1.0. High values
     /// flag demos/action worth denser inspection.
     pub motion_density: f64,
+    /// The state's evidence frame: the first steady second after the
+    /// change that started it.
     pub keyframe: Keyframe,
     /// Periodic keyframes inside long shots (one per subdivision
     /// interval), width-bounded, no native variants.
@@ -72,8 +89,8 @@ pub struct Keyframe {
     pub timestamp_secs: f64,
     /// Bundle-relative path of the width-bounded JPEG.
     pub path: String,
-    /// Bundle-relative path of the native-resolution still (at shot
-    /// boundaries).
+    /// Bundle-relative path of the native-resolution still of the same
+    /// moment, for reading on-screen text.
     pub native_path: Option<String>,
     /// 64-bit perceptual dhash, hex — stable identity across runs.
     pub hash: String,
@@ -94,72 +111,25 @@ pub fn extract_frame_track(
     let mut manifest = load_manifest(bundle_dir)?;
     let media = Path::new(&manifest.source.media_path).to_path_buf();
 
-    let sampled = sample::sample_tiny(tools, &media, config.sample_fps)?;
-    let pixels: Vec<Vec<u8>> = sampled.iter().map(|f| f.pixels.clone()).collect();
-    let boundaries = analyze::segment(&pixels, config.boundary_threshold);
+    let sampled = sample::sample_thumbnails(tools, &media, config.sample_fps)?;
+    let rule = analyze::StateRule {
+        change_fraction: config.change_fraction,
+        steady_samples: steady_samples(config),
+    };
+    let states = analyze::segment_states(&sampled, &rule);
 
     let frames_dir = bundle_dir.join(FRAMES_DIR);
     fs::create_dir_all(&frames_dir)?;
 
     // Plan every frame first, then export them all in one concurrent
     // batch: exports are independent and dominate this stage's time.
-    let mut requests = Vec::new();
-    let mut shots = Vec::new();
-    let mut start = 0usize;
-    let ends: Vec<usize> = boundaries.iter().copied().chain([sampled.len()]).collect();
-    for (index, &end) in ends.iter().enumerate() {
-        if end <= start {
-            continue;
-        }
-        let mid = usize::midpoint(start, end.saturating_sub(1));
-        let timestamp = sampled[mid].timestamp_secs;
-        let shot_end = end_time(&sampled, end, manifest.media.duration_secs);
-        let kf_rel = format!("{FRAMES_DIR}/shot{index:03}.jpg");
-        let native_rel = format!("{FRAMES_DIR}/shot{index:03}-native.jpg");
-        requests.push(FrameRequest::bounded(
-            timestamp,
-            bundle_dir.join(&kf_rel),
-            config.max_keyframe_width,
-        ));
-        requests.push(FrameRequest::native(
-            sampled[start].timestamp_secs,
-            bundle_dir.join(&native_rel),
-        ));
-        let interior_keyframes = subdivide::plan_interior_keyframes(
-            &subdivide::ShotSpan {
-                index,
-                start_secs: sampled[start].timestamp_secs,
-                end_secs: shot_end,
-                main_keyframe_secs: timestamp,
-                samples: &sampled[start..end],
-            },
-            config,
-        );
-        requests.extend(interior_keyframes.iter().map(|kf| {
-            FrameRequest::bounded(
-                kf.timestamp_secs,
-                bundle_dir.join(&kf.path),
-                config.max_keyframe_width,
-            )
-        }));
-        shots.push(Shot {
-            index,
-            start_secs: sampled[start].timestamp_secs,
-            end_secs: shot_end,
-            motion_density: motion_density(&pixels[start..end]),
-            keyframe: Keyframe {
-                timestamp_secs: timestamp,
-                path: kf_rel,
-                native_path: Some(native_rel),
-                hash: format!(
-                    "{:016x}",
-                    analyze::dhash(&analyze::to_gray(&sampled[mid].pixels))
-                ),
-            },
-            interior_keyframes,
-        });
-        start = end;
-    }
+    let (shots, requests) = plan::plan_shots(
+        &states,
+        &sampled,
+        manifest.media.duration_secs,
+        bundle_dir,
+        config,
+    );
     export::export_frames(tools, &media, &requests)?;
 
     let track = FrameTrack {
@@ -173,21 +143,11 @@ pub fn extract_frame_track(
     Ok(track)
 }
 
-fn end_time(sampled: &[sample::SampledFrame], end: usize, duration: f64) -> f64 {
-    sampled.get(end).map_or(duration, |f| f.timestamp_secs)
-}
-
-/// Mean frame-to-frame change across a shot, normalized to 0.0–1.0.
-fn motion_density(shot_pixels: &[Vec<u8>]) -> f64 {
-    if shot_pixels.len() < 2 {
-        return 0.0;
-    }
-    let total: f64 = shot_pixels
-        .windows(2)
-        .map(|w| analyze::mean_abs_diff(&w[0], &w[1]))
-        .sum();
-    #[allow(clippy::cast_precision_loss)] // frame counts are small
+/// Steady sample-to-sample transitions required after a change: the
+/// steady duration in samples, at least one.
+fn steady_samples(config: &FrameConfig) -> usize {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // tiny, non-negative
     {
-        total / ((shot_pixels.len() - 1) as f64) / 255.0
+        (config.steady_secs * config.sample_fps).round().max(1.0) as usize
     }
 }

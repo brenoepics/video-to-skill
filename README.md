@@ -32,7 +32,7 @@ npx skills@latest add brenoepics/video-to-skill
 ```
 
 > [!IMPORTANT]
-> That is the whole setup, on macOS, Windows 10/11 and Linux. The first time you use it, it fetches a few helper tools it needs: a small extractor program, ffmpeg, yt-dlp, and the speech models (574 MB of whisper weights on Apple Silicon, 264 MB on other machines, plus a 1 MB voice-activity model). You see the list before anything is downloaded, and every file is checked against a known fingerprint. No Homebrew, Python, account, or API key is needed. Tools you already have installed are reused.
+> That is the whole setup, on macOS, Windows 10/11 and Linux. The first time you use it, it fetches a few helper tools it needs (a small extractor program, ffmpeg, yt-dlp, and the speech models). You see the list before anything is downloaded, and every file is checked against a known fingerprint. No Homebrew, Python, account, or API key is needed. Tools you already have installed are reused.
 
 ## Use it
 
@@ -101,7 +101,7 @@ A fresh sub-agent — seeing only the generated package, not the video — runs 
 
 ```mermaid
 flowchart LR
-    A["video<br/>(URL or file)"] --> B["local extraction<br/>word-timestamped whisper ·<br/>pHash shot detection · motion density"]
+    A["video<br/>(URL or file)"] --> B["local extraction<br/>word-timestamped whisper ·<br/>screen-state detection · motion density"]
     B --> C[aligned timeline]
     C --> D[agent inspects<br/>keyframes selectively]
     D --> E["skill package<br/>steps + frames + timestamp provenance"]
@@ -111,7 +111,7 @@ flowchart LR
     F -->|unverifiable| I["⚠ labeled honestly"]
 ```
 
-The extractor (`vts-extract`, Rust) does the deterministic work locally: download, demux, voice activity detection and word-timestamped whisper transcription, perceptual-hash shot detection, motion density, and keyframe export. The agent does the reading: it inspects keyframes selectively and produces evidence-grounded steps.
+The extractor (`vts-extract`, Rust) does the deterministic work locally: download, demux, voice activity detection and word-timestamped whisper transcription, screen-state detection (one keyframe at the settled result of each screen change, scrolling folded in), motion density, and keyframe export. The agent does the reading: it inspects keyframes selectively and produces evidence-grounded steps.
 
 ## Skills that grow
 
@@ -137,7 +137,7 @@ _Nothing else takes an arbitrary pre-existing video and emits a portable, execut
 
 ## Installation details
 
-- **What first use fetches:** a prebuilt `vts-extract` release, static ffmpeg and ffprobe, yt-dlp, the whisper weights, and the Silero VAD weights, where a pinned build exists for the platform. The whisper model follows the compute device: `ggml-large-v3-turbo-q5_0` (574 MB) on Apple Silicon, where Metal keeps it well above realtime, and `ggml-small-q8_0` (264 MB) where whisper runs on the CPU — Linux, Windows, Intel Macs and macOS virtual machines. Each is version-pinned and sha256-verified; `vts-extract check --fix` prints the full list and downloads nothing until `--yes`. Existing ffmpeg/ffprobe executables, and yt-dlp builds that accept the required hardening flags, are reused from `PATH` and never downloaded. Whisper runs Metal-accelerated on Apple Silicon.
+- **What first use fetches:** a prebuilt `vts-extract` release, static ffmpeg and ffprobe, yt-dlp, and the whisper `ggml-base` and Silero VAD weights, where a pinned build exists for the platform. Each is version-pinned and sha256-verified; `vts-extract check --fix` prints the full list and downloads nothing until `--yes`. Existing ffmpeg/ffprobe executables, and yt-dlp builds that accept the required hardening flags, are reused from `PATH` and never downloaded. Whisper runs Metal-accelerated on Apple Silicon.
 - **Where the extractor comes from:** every release archive is built by this repository's GitHub Actions release workflow and carries a signed build provenance attestation (SLSA Build Level 2). With the GitHub CLI installed, `gh attestation verify <archive> -R brenoepics/video-to-skill` confirms, before the binary runs, that the archive came from that workflow at the tagged commit; without `gh`, the sha256 check still applies. The binary embeds its own dependency list (built with `cargo auditable`), so `cargo audit bin` can scan a release for known vulnerabilities without the source.
 - **Where generated skills go:** one real copy in the universal `~/.agents/skills`, and a relative symlink from each supported agent that is actually installed. If Windows policy denies symlink creation, installation falls back to a full copy and reports that choice; re-run `install --force --yes` after a later fold to refresh those copies. `vts-extract install --package <dir>` prints the exact plan and writes nothing until you re-run it with `--yes`.
 - **Windows:** the extractor and managed tools live under `%LOCALAPPDATA%\video-to-skill` by default. Releases include `vts-extract-windows-x86_64.zip`; source builds use the MSVC target and require Rust 1.89+, CMake 3.15+, Ninja, LLVM/libclang, and the Visual Studio C++ Build Tools. From PowerShell, run `. .\.github\scripts\setup-msvc.ps1` before Cargo; the script selects a complete x64 toolset, configures `LIBCLANG_PATH`, and keeps whisper.cpp on the portable x86-64 CPU baseline instead of the build machine's ISA. Verification uses the Windows AppContainer security boundary and does not depend on the optional Windows Sandbox feature. Some hardened Windows policies deny child-process creation inside LPAC; those steps are reported as unverifiable and are never retried outside the sandbox.
@@ -149,7 +149,7 @@ Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed au
 <!-- bench-summary:start -->
 | 2-min 720p extract | transcription | measured on |
 | --- | --- | --- |
-| 4.4s wall · 27.0x realtime | 1.7x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
+| 4.3s wall · 28.0x realtime | 2.5x realtime | Apple M1 (Virtual) (3 cores, whisper on cpu) |
 
 Full methodology and results: [BENCHMARK.md](BENCHMARK.md)
 <!-- bench-summary:end -->
