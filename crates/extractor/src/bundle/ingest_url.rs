@@ -193,7 +193,11 @@ impl YtdlpDownloader {
         if let Some(format) = format {
             cmd.args(["-f", format]);
         }
-        let output = cmd.arg(url).output().context("running yt-dlp")?;
+        cmd.arg(url);
+        // A yt-dlp that is still being written (a test stand-in, or a
+        // concurrent install) fails to exec with "text file busy" for an
+        // instant; wait it out like the PATH probe does.
+        let output = crate::deps::retry_while_busy(|| cmd.output()).context("running yt-dlp")?;
         if !output.status.success() {
             bail!(
                 "download failed: {}",

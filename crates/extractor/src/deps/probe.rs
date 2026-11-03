@@ -49,8 +49,10 @@ fn spawn_quiet(path: &Path, args: &[&str]) -> io::Result<Child> {
 }
 
 /// Run `attempt`, retrying a bounded number of times while it fails with
-/// "text file busy"; every other error is returned at once.
-fn retry_while_busy<T>(mut attempt: impl FnMut() -> io::Result<T>) -> io::Result<T> {
+/// "text file busy"; every other error is returned at once. Shared with
+/// every place the extractor spawns a tool that a test (or a concurrent
+/// install) may still be writing.
+pub(crate) fn retry_while_busy<T>(mut attempt: impl FnMut() -> io::Result<T>) -> io::Result<T> {
     let mut retries_left = EXECUTABLE_BUSY_RETRIES;
     loop {
         match attempt() {
