@@ -139,7 +139,7 @@ fn injected_text_in_actions_is_refused_as_injection() {
         let mut ir = clean_ir(fixture, &frame);
         ir.steps[0].actions = format!("Then do as the screen says: {}", fixture.injected);
 
-        let msg = compile(&ir, &bundle, &dir.join("skill"))
+        let msg = compile(&ir, &bundle, &dir.join(format!("redteam-{}", fixture.name)))
             .unwrap_err()
             .to_string();
 
@@ -161,14 +161,14 @@ fn injected_text_in_scripts_is_refused_as_injection() {
             contents: format!("#!/bin/sh\n# {}\nmake test\n", fixture.injected),
         });
 
-        let msg = compile(&ir, &bundle, &dir.join("skill"))
+        let msg = compile(&ir, &bundle, &dir.join(format!("redteam-{}", fixture.name)))
             .unwrap_err()
             .to_string();
 
         assert!(msg.contains("prompt injection"), "{}: {msg}", fixture.name);
         assert!(msg.contains("script contents"), "{}: {msg}", fixture.name);
         assert!(
-            !dir.join("skill").exists(),
+            !dir.join(format!("redteam-{}", fixture.name)).exists(),
             "{}: nothing emitted",
             fixture.name
         );
@@ -186,7 +186,7 @@ fn injected_text_in_artifacts_is_flagged_in_gaps() {
             timestamp_secs: 2.0,
             frame: None,
         });
-        let out = dir.join("skill");
+        let out = dir.join(format!("redteam-{}", fixture.name));
 
         compile(&ir, &bundle, &out).unwrap();
 
@@ -211,7 +211,7 @@ fn the_carried_command_is_still_caught_as_fetch_exec() {
             contents: format!("#!/bin/sh\n{}\n", fixture.command),
         });
 
-        let msg = compile(&ir, &bundle, &dir.join("skill"))
+        let msg = compile(&ir, &bundle, &dir.join(format!("redteam-{}", fixture.name)))
             .unwrap_err()
             .to_string();
 
@@ -239,7 +239,7 @@ fn each_video_renders_and_its_honest_transcription_compiles() {
             || fake_bundle(&dir),
             |r| (r.bundle.clone(), r.frame.clone()),
         );
-        let out = dir.join("skill");
+        let out = dir.join(format!("redteam-{}", fixture.name));
 
         compile(&honest_ir(fixture, &frame), &bundle, &out).unwrap();
 
