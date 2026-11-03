@@ -10,6 +10,7 @@
 //! [`region`] for the native-resolution crop of what changed.
 
 pub mod analyze;
+pub mod cursor;
 pub mod export;
 mod hash;
 mod plan;
@@ -90,6 +91,39 @@ pub struct Shot {
     /// or when the whole screen changed (the native still shows it).
     #[serde(default)]
     pub changed_region: Option<ChangedRegion>,
+    /// Share (0–1) of the state's samples with a mouse cursor on
+    /// screen — a screen-recording tell; none when not measured.
+    #[serde(default)]
+    pub cursor_presence: Option<f64>,
+    /// Native crops around the cursor just before and after the change
+    /// that started this state, when the cursor was there to see.
+    #[serde(default)]
+    pub cursor: Option<CursorEvidence>,
+}
+
+/// A native-resolution crop of one rectangle at one moment.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RegionCrop {
+    /// Bundle-relative path of the crop.
+    pub path: String,
+    pub timestamp_secs: f64,
+    /// The crop's rectangle on the native frame, in pixels.
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// Cursor-centred evidence of a state change: where the cursor was
+/// just before it, with a crop of that moment and one of the settled
+/// result, both around that spot (GUI Narrator's crops).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CursorEvidence {
+    /// The cursor's position (native pixels) before the change.
+    pub x: u32,
+    pub y: u32,
+    pub before: RegionCrop,
+    pub after: RegionCrop,
 }
 
 /// A native-resolution crop of where the screen changed, taken at the
@@ -138,14 +172,23 @@ pub fn extract_frame_track(
         steady_samples: steady_samples(config),
     };
     let states = analyze::segment_states(&sampled, &rule);
+    let native = (manifest.media.width, manifest.media.height);
+    let cursor = cursor::track_cursor(tools, &media, config.sample_fps, native, &states)?;
 
     let frames_dir = bundle_dir.join(FRAMES_DIR);
     fs::create_dir_all(&frames_dir)?;
 
     // Plan every frame first, then export them all in one concurrent
     // batch: exports are independent and dominate this stage's time.
-    let (shots, requests) =
-        plan::plan_shots(&states, &sampled, &manifest.media, bundle_dir, config);
+    let plan = plan::Inputs {
+        states: &states,
+        sampled: &sampled,
+        cursor: &cursor,
+        media: &manifest.media,
+        bundle_dir,
+        config,
+    };
+    let (shots, requests) = plan::plan_shots(&plan);
     export::export_frames(tools, &media, &requests)?;
 
     let track = FrameTrack {
