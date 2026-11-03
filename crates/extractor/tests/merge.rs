@@ -53,6 +53,7 @@ fn ir(url: &str, steps: Vec<Step>) -> ProcedureIr {
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     }
 }
 

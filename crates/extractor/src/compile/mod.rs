@@ -4,6 +4,7 @@
 
 mod emit;
 pub mod frontmatter;
+pub mod graph;
 pub mod repairs;
 mod safety;
 mod validate;
@@ -13,6 +14,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+
+pub use graph::{TaskGraph, Transition};
 
 /// The current Procedure IR schema. v1 IRs still compile (see
 /// [`deprecation_note`]); packages are always written at this version.
@@ -51,6 +54,11 @@ pub struct ProcedureIr {
     /// Multi-source history: one record per folded video (set by merge).
     #[serde(default)]
     pub history: Vec<FoldRecord>,
+    /// Keysteps and the transitions every folded video took between
+    /// them. Empty when authored; the compiler derives the single
+    /// video's chain, and each fold adds a walk.
+    #[serde(default)]
+    pub task_graph: TaskGraph,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -64,6 +72,11 @@ pub struct FoldRecord {
     pub added: Vec<String>,
     #[serde(default)]
     pub variants: Vec<String>,
+    /// Step orders this video contradicted, as "`a` before `b` (n vs m
+    /// videos)": the lighter direction of a bidirectional edge, which the
+    /// merged order does not follow.
+    #[serde(default)]
+    pub order_variants: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

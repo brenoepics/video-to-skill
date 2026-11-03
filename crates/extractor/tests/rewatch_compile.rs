@@ -113,6 +113,7 @@ fn ir_citing(frames: Vec<String>) -> ProcedureIr {
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     }
 }
 

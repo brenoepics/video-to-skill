@@ -51,14 +51,28 @@ pub fn run(
             PlanAction::Unconfirmed => "keep   ",
         };
         println!(
-            "  {label}  {} {}",
+            "  {label}  {} {}{}",
             entry.existing_id.as_deref().unwrap_or("-"),
             entry
                 .incoming_id
                 .as_deref()
                 .map(|id| format!("<- {id}"))
-                .unwrap_or_default()
+                .unwrap_or_default(),
+            if entry.relabelled {
+                "  (matched by its position in the task graph)"
+            } else {
+                ""
+            }
         );
+    }
+    for variant in result
+        .merged
+        .history
+        .last()
+        .map(|record| record.order_variants.as_slice())
+        .unwrap_or_default()
+    {
+        println!("  order    {variant} — the merged order keeps the heavier direction");
     }
     if dry_run {
         println!("dry run — nothing written.");

@@ -124,6 +124,25 @@ These are what make a step reusable rather than a replay of one video
   executed step and records the verdict; `merge` clears verdicts (a fold
   invalidates verification) and keeps the counts.
 
+### Tool-maintained: fold history and the task graph
+
+Leave these out when authoring; `merge` writes them and `compile`
+carries them through.
+
+- `history[]` — one record per folded video: `source`, `date`, and the
+  step ids it `confirmed`, `added`, gave `variants` to, plus
+  `order_variants`: orders the video contradicted, as `"a before b (n vs
+  m videos)"` — the lighter direction of a disagreement, which the
+  merged order does not follow.
+- `task_graph` — the keystep graph the fold reasons over: `nodes` (step
+  ids, the skill's vocabulary) and `transitions` (`{from, to, count}`,
+  how many videos performed `to` right after `from`; `START` and `END`
+  are sentinels). The compiler derives a single video's chain; every
+  fold adds that video's walk, assigns steps that match no goal
+  confidently by their position between steps that do, and orders the
+  merged steps along the heaviest path (see the design note at the top
+  of `src/merge/mod.rs`).
+
 ## Migrating from v1
 
 A v1 IR (`"schema_version": 1`, none of the v2 step fields) still

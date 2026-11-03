@@ -22,11 +22,16 @@ pub fn emit(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
     emit_scripts(ir, out_dir)?;
     copy_frames(ir, bundle_dir, out_dir)?;
     // Packages always carry the current schema, whatever the IR was
-    // written at: every field v2 added has a default.
-    let provenance = ProcedureIr {
+    // written at: every field v2 added has a default. A single video's
+    // task graph is the chain of its steps.
+    let mut provenance = ProcedureIr {
         schema_version: super::SCHEMA_VERSION,
         ..ir.clone()
     };
+    if provenance.task_graph.is_empty() {
+        let ids: Vec<String> = ir.steps.iter().map(|s| s.id.clone()).collect();
+        provenance.task_graph = super::TaskGraph::from_sequence(&ids);
+    }
     write(
         out_dir,
         "provenance.json",
@@ -82,9 +87,13 @@ fn render_skill_md(ir: &ProcedureIr) -> String {
             ir.source.original
         );
         for record in &ir.history {
+            let orders = match record.order_variants.len() {
+                0 => String::new(),
+                n => format!(", {n} order variants"),
+            };
             let _ = writeln!(
                 md,
-                "- \"{}\" ({}) — folded {} ({} confirmed, {} added, {} variants)",
+                "- \"{}\" ({}) — folded {} ({} confirmed, {} added, {} variants{orders})",
                 record.source.title.as_deref().unwrap_or("(untitled)"),
                 record.source.original,
                 record.date,

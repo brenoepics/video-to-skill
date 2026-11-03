@@ -70,6 +70,7 @@ fn compiled_package(dir: &Path) -> PathBuf {
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     };
     let bundle = dir.join("bundle");
     fs::create_dir_all(&bundle).unwrap();

@@ -94,6 +94,7 @@ fn valid_ir() -> ProcedureIr {
         artifacts: vec![],
         gaps: vec!["22 of 27 keyframes not inspected".into()],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     }
 }
 
@@ -238,6 +239,7 @@ fn variants_and_fold_history_are_rendered() {
         confirmed: vec!["02-paste-clipboard".into()],
         added: vec![],
         variants: vec!["01-quit-vim".into()],
+        order_variants: vec![],
     });
 
     compile(&ir, &bundle, &dir.join("vim-basics")).unwrap();
