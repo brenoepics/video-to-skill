@@ -21,10 +21,11 @@ Three properties are deliberate and load-bearing:
    arithmetic. Editing the journal therefore cannot manufacture a win:
    the only thing that passes is a move sequence that really does reach
    the target under canonical rules.
-3. **The seed is provisioned, not chosen.** ``init`` writes it once;
-   the agent-facing verbs cannot set it. Seed-shopping -- restarting
-   until an easy board appears -- would otherwise be the dominant
-   strategy and would measure luck.
+3. **The seeds are provisioned, not chosen.** ``init`` writes the whole
+   board sequence once, refuses to run twice, and is not reachable
+   without ``V2S_GAME_PROVISION=1``; the agent-facing verbs cannot set a
+   seed. Seed-shopping -- restarting until an easy board appears --
+   would otherwise be the dominant strategy and would measure luck.
 
 Verbs (the frozen action vocabulary):
 
@@ -32,11 +33,12 @@ Verbs (the frozen action vocabulary):
     v2s-game state
     v2s-game move <up|down|left|right> [<dir> ...]
     v2s-game new
-    v2s-game init --seed N --goal T --budget B --sessions S   (provisioning)
+    v2s-game init --seeds S1,S2 --goal T --budget B   (provisioning only)
 
 Exit status: 0 on an accepted verb, 2 on a usage error, 3 when a verb is
-refused by the rules (``new`` while a game is still playing, ``move``
-after the game ended).
+refused by the rules (``new`` while a board is
+still playing, ``move`` after a board ended, ``init`` after
+provisioning).
 """
 
 from __future__ import annotations
@@ -60,7 +62,7 @@ v2s-game {game} -- protocol {protocol}
 
   state                 print the board and status
   move DIR [DIR ...]    play one or more moves, in order
-  new                   start the next attempt (refused while playing)
+  new                   move on to the next board (refused while playing)
   help                  this text
 
 DIR is one of: up down left right.  Nothing else is accepted.
@@ -74,16 +76,17 @@ Rules, in full:
     direction therefore costs nothing but a line of output.
   - After every accepted move one tile appears in a uniformly chosen
     empty cell: a 2 with probability 0.9, a 4 with probability 0.1.
-  - status=won as soon as a tile reaches the goal; the attempt then
-    ends. status=lost when no direction changes the board.
+  - status=won as soon as a tile reaches the goal; the board then ends.
+    status=lost when no direction changes the board.
     status=exhausted when the move budget runs out.
-  - The seed is fixed by the environment and is the same for every
-    attempt. You cannot change it, and `new` is refused while the
-    current attempt is still playing.
+  - A run is a fixed sequence of boards, each with its own seed, fixed by
+    the environment before you started. You cannot choose or change a
+    seed, boards are played in order, and `new` is refused while the
+    current board is still playing. There is no way to retry a board.
 
 Observation format (exactly this, every time):
   line 1  V2S-GAME {game} protocol={protocol}
-  line 2  session=<i> of <n>  seed=<s>  move=<k>/<budget>  status=<st>
+  line 2  board=<i> of <n>  seed=<s>  move=<k>/<budget>  status=<st>
   line 3  score=<n>  max_tile=<n>  goal=<n>
   then    a {size}x{size} grid, cells right-aligned in width 5, empty cells blank
   last    row-major: comma-separated cells, '.' for empty
@@ -196,8 +199,8 @@ def start(seed):
 def render(session):
     board = session["board"]
     head = "V2S-GAME %s protocol=%d" % (GAME, PROTOCOL)
-    meta = "session=%d of %d  seed=%d  move=%d/%d  status=%s" % (
-        session["index"], session["sessions"], session["seed"],
+    meta = "board=%d of %d  seed=%d  move=%d/%d  status=%s" % (
+        session["index"], session["boards"], session["seed"],
         session["moves"], session["budget"], session["status"],
     )
     stats = "score=%d  max_tile=%d  goal=%d" % (
@@ -242,22 +245,23 @@ class Store:
         with self.journal.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
 
-    def sessions_opened(self):
+    def boards_opened(self):
         if not self.journal.exists():
             return 0
-        count = 0
-        for line in self.journal.read_text(encoding="utf-8").splitlines():
-            if line.strip().startswith("{") and '"kind": "session"' in line:
-                count += 1
-        return count
+        return sum(
+            1 for line in self.journal.read_text(encoding="utf-8").splitlines()
+            if line.strip().startswith("{") and '"kind": "board"' in line
+        )
 
 
 def new_session(store, config, index):
-    board, rng = start(config["seed"])
+    """Open board ``index`` (1-based) of the provisioned sequence."""
+    seed = config["seeds"][index - 1]
+    board, rng = start(seed)
     session = {
         "index": index,
-        "sessions": config["sessions"],
-        "seed": config["seed"],
+        "boards": len(config["seeds"]),
+        "seed": seed,
         "goal": config["goal"],
         "budget": config["budget"],
         "board": board,
@@ -267,9 +271,9 @@ def new_session(store, config, index):
         "rng": rng.state,
     }
     store.append({
-        "kind": "session", "protocol": PROTOCOL, "game": GAME,
-        "index": index, "seed": config["seed"], "goal": config["goal"],
-        "budget": config["budget"], "sessions": config["sessions"],
+        "kind": "board", "protocol": PROTOCOL, "game": GAME,
+        "index": index, "seed": seed, "goal": config["goal"],
+        "budget": config["budget"], "boards": len(config["seeds"]),
         "board": board,
     })
     store.write_session(session)
@@ -315,21 +319,31 @@ def apply_move(store, session, direction):
 
 
 def cmd_init(store, argv):
-    opts = {"seed": None, "goal": 512, "budget": 400, "sessions": 3}
+    """Provisioning only. Refused unless V2S_GAME_PROVISION=1 is set, and
+    refused outright once a run exists: re-provisioning would let an agent
+    shop for an easy board, which would measure luck instead of play."""
+    if os.environ.get("V2S_GAME_PROVISION") != "1":
+        return refuse("init is a provisioning verb; it is not part of play")
+    if store.config.exists() or store.journal.exists():
+        return refuse("this run is already provisioned; a run cannot be restarted")
+    opts = {"seeds": None, "goal": 1024, "budget": 500}
     i = 0
     while i < len(argv):
         key = argv[i].lstrip("-")
         if key not in opts or i + 1 >= len(argv):
-            return usage("init takes --seed N [--goal T] [--budget B] [--sessions S]")
-        opts[key] = int(argv[i + 1])
+            return usage("init takes --seeds S1,S2[,...] [--goal T] [--budget B]")
+        if key == "seeds":
+            opts[key] = [int(part) for part in argv[i + 1].split(",") if part != ""]
+        else:
+            opts[key] = int(argv[i + 1])
         i += 2
-    if opts["seed"] is None:
-        return usage("init requires --seed")
+    if not opts["seeds"]:
+        return usage("init requires --seeds")
     store.dir.mkdir(parents=True, exist_ok=True)
     store.config.write_text(json.dumps(opts, sort_keys=True), encoding="utf-8")
     session = new_session(store, opts, 1)
-    print("initialised %s: seed=%d goal=%d budget=%d sessions=%d"
-          % (GAME, opts["seed"], opts["goal"], opts["budget"], opts["sessions"]))
+    print("provisioned %s: boards=%d goal=%d budget=%d"
+          % (GAME, len(opts["seeds"]), opts["goal"], opts["budget"]))
     print(render(session))
     return 0
 
@@ -347,12 +361,14 @@ def cmd_new(store, _argv):
     config = store.read_config()
     if session is not None and session["status"] == "playing":
         return refuse(
-            "attempt %d is still playing (move=%d/%d); `new` is refused until it "
+            "board %d is still playing (move=%d/%d); `new` is refused until it "
             "ends" % (session["index"], session["moves"], session["budget"])
         )
     index = (session["index"] + 1) if session else 1
-    if index > config["sessions"]:
-        return refuse("no attempts left: %d of %d used" % (config["sessions"], config["sessions"]))
+    if index > len(config["seeds"]):
+        return refuse(
+            "the run is over: all %d boards have been played" % (len(config["seeds"]),)
+        )
     session = new_session(store, config, index)
     print(render(session))
     return 0
@@ -369,13 +385,12 @@ def cmd_move(store, argv):
         return refuse("no game in progress")
     if session["status"] != "playing":
         return refuse(
-            "attempt %d is %s; start the next one with `new`"
-            % (session["index"], session["status"])
+            "board %d is %s; move on with `new`" % (session["index"], session["status"])
         )
     for direction in argv:
         print(apply_move(store, session, direction))
         if session["status"] != "playing":
-            print("attempt %d ended: %s" % (session["index"], session["status"]))
+            print("board %d ended: %s" % (session["index"], session["status"]))
             break
     store.write_session(session)
     print(render(session))

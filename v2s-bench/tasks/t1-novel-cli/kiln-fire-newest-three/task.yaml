@@ -11,8 +11,8 @@ goal: >-
   kiln's state must be consistent with the lane description it was built
   from.
 discoverability: poor
-feedback_bandwidth: high   # editing the profile leaves the lane stale and firing is refused by name, and the status command reports the staleness
-placebo_source: prow-latch-sheet
+feedback_bandwidth: uninformative   # editing the profile leaves the lane stale and firing is refused by name, and the status command reports the staleness
+placebo_source: kiln-chain-batches
 knowledge_gap:
   summary: >-
     How many shards a batch holds is the hold-count field of the lane

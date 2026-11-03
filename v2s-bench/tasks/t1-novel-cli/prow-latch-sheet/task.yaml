@@ -9,8 +9,8 @@ goal: >-
   status must report a released sheet, and the released sheet must be the
   one whose text is on disk when you stop, not an earlier rendering of it.
 discoverability: good
-feedback_bandwidth: low   # releasing one rendering and then re-rendering leaves a clean status line pointing at text that is no longer on disk
-placebo_source: kiln-fire-newest-three
+feedback_bandwidth: silent   # releasing one rendering and then re-rendering leaves a clean status line pointing at text that is no longer on disk
+placebo_source: prow-reshape-waves
 knowledge_gap:
   summary: >-
     Releasing a sheet is a step of its own that takes the sheet id the

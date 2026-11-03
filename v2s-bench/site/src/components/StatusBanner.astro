@@ -97,7 +97,9 @@ const RULE = {
     Bundle generated {isoDate(generatedAt)}
     {source && <> &middot; <code>{source}</code></>}
     &middot; pre-registration {status.prereg_frozen ? 'frozen' : 'not yet frozen'}
-    {!status.prereg_frozen && <> — treat any number as exploratory</>}
+    {!status.prereg_frozen && gate.showFigures && (
+      <> — treat every number here as exploratory</>
+    )}
   </p>
 
   {

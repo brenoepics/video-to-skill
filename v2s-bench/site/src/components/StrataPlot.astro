@@ -36,10 +36,22 @@ const groups = order
 const ungrouped = strata.filter((s) => !s.dimension || !order.includes(s.dimension));
 if (ungrouped.length) groups.push({ dim: 'other', rows: ungrouped });
 
+/** When every stratum compares the same two arms, say so once, not per row. */
+const pairs = new Set(strata.map((s) => `${s.treatment ?? ''}\u2212${s.reference ?? ''}`));
+const uniformPair = pairs.size === 1 && strata[0]?.treatment ? strata[0] : null;
+
 const valueLabel = (s: Stratum) =>
   s.dimension === 'tier' ? `${tierLabel(s.value)} · ${s.value ?? DASH}` : (s.value ?? DASH);
 ---
 
+{
+  uniformPair && (
+    <p class="note strata__pair">
+      Every row is {uniformPair.treatment} {'\u2212'} {uniformPair.reference}, paired within
+      the stratum.
+    </p>
+  )
+}
 <table class="dt dt--stack dt--rows strata" style={`--plot-grid: ${scale.gridImage()}`}>
   <caption class="visually-hidden">
     Paired difference in success rate within each stratum, with its 95% confidence
@@ -102,6 +114,10 @@ const valueLabel = (s: Stratum) =>
 </table>
 
 <style>
+  .strata__pair {
+    margin: 0 0 0.3rem;
+  }
+
   .strata__group th {
     padding-top: 0.9rem;
     font-size: 0.8rem;

@@ -10,8 +10,8 @@ goal: >-
   wrote from those layers, and lath's own record of the merge must describe
   exactly that file.
 discoverability: good
-feedback_bandwidth: low   # the reversed stack order merges cleanly and silently yields the other layer's value
-placebo_source: kiln-chain-batches
+feedback_bandwidth: silent   # the reversed stack order merges cleanly and silently yields the other layer's value
+placebo_source: lath-stage-pair
 knowledge_gap:
   summary: >-
     lath precedence is first-wins: the layer stacked FIRST supplies a

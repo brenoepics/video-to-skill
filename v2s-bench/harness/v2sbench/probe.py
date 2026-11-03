@@ -164,8 +164,12 @@ def saturated(probe: ProbeResult, task: Any) -> bool:
     """The only pre-declared exclusion: known cold AND self-correcting.
 
     Both conditions are required. A task the model can recite but whose
-    environment gives no corrective feedback is exactly the knowing-doing
-    case the benchmark is most interested in, so a high probe score alone
-    must not remove it.
+    environment gives it nothing to correct against is exactly the
+    knowing-doing case the benchmark is most interested in, so a high probe
+    score alone must not remove it.
+
+    "Self-correcting" means `informative` specifically. A tool that refuses
+    without saying why leaves a persistent agent as stuck as silence does,
+    so `uninformative` is not grounds for exclusion.
     """
-    return probe.known >= 0.9 and task.feedback_bandwidth == "high"
+    return probe.known >= 0.9 and task.feedback_bandwidth == "informative"

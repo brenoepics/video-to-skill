@@ -88,7 +88,7 @@ const rows: Array<{ label: string; value: string; code?: boolean }> = [
     margin: 0;
     display: grid;
     gap: 0 1.25rem;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
   }
 
   .prov__row {
@@ -107,6 +107,10 @@ const rows: Array<{ label: string; value: string; code?: boolean }> = [
   .prov__row dd {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  .prov__row dd code {
+    font-size: 0.86em;
   }
 
   .prov__warn {

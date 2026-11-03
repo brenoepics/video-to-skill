@@ -9,8 +9,8 @@ goal: >-
   layer must agree -- asking lath to show base must print those two keys
   holding those two values, and nothing else.
 discoverability: good
-feedback_bandwidth: low   # the reversed argument order is accepted and stages a key named after the value
-placebo_source: zep-stage-three-facts
+feedback_bandwidth: silent   # the reversed argument order is accepted and stages a key named after the value
+placebo_source: lath-pin-fingerprint
 knowledge_gap:
   summary: >-
     lath's staging command takes the layer, then the VALUE, then the key --

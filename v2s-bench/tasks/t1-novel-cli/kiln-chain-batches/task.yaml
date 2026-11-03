@@ -10,8 +10,8 @@ goal: >-
   must name the older batch as their prior. The older rollup must be left
   exactly as kiln first wrote it.
 discoverability: poor
-feedback_bandwidth: high   # firing after a profile edit is refused as stale and a fabricated prior batch is refused as unknown
-placebo_source: zep-stage-three-facts
+feedback_bandwidth: uninformative   # firing after a profile edit is refused as stale and a fabricated prior batch is refused as unknown
+placebo_source: kiln-fire-newest-three
 knowledge_gap:
   summary: >-
     Descent is declared in the lane profile, not on the command line: a

@@ -9,8 +9,8 @@ goal: >-
   record of the sheet must describe the file that is actually on disk, and
   the plan itself must be left unchanged.
 discoverability: good
-feedback_bandwidth: low   # omitting the switch renders a complete, valid-looking sheet at exit 0
-placebo_source: kiln-author-profile
+feedback_bandwidth: silent   # omitting the switch renders a complete, valid-looking sheet at exit 0
+placebo_source: prow-reshape-waves
 knowledge_gap:
   summary: >-
     Rendering only sequences the waves when the interlock switch is passed.

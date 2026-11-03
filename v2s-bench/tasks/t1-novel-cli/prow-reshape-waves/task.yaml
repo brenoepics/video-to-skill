@@ -10,8 +10,8 @@ goal: >-
   with wave 2 gated on wave 1 and prow's own record describing the file on
   disk.
 discoverability: good
-feedback_bandwidth: low   # parking a retired unit in a late wave, and leaving the old sheet in place, both go unreported
-placebo_source: lath-pin-fingerprint
+feedback_bandwidth: silent   # parking a retired unit in a late wave, and leaving the old sheet in place, both go unreported
+placebo_source: prow-interlock-sheet
 knowledge_gap:
   summary: >-
     Planning a unit that is already planned moves it rather than

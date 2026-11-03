@@ -1,0 +1,77 @@
+schema_version: 1
+id: jq-deep-merge-layers
+tier: t2-real-cli
+title: "Flatten three JSON configuration layers into one effective configuration"
+goal: >-
+  The work directory holds three configuration layers for the same service:
+  base.json, then site.json, then local.json, each later layer overriding the
+  earlier ones. Write the effective configuration to effective.json.
+
+  A later layer overrides only the settings it actually mentions. Where a
+  later layer gives an object, that object is itself a layer: its keys
+  override the matching keys underneath and every sibling key the later
+  layer is silent about survives, however deeply nested. Only values that
+  are not objects replace what was there. The three layer files must be left
+  exactly as they are.
+discoverability: poor
+feedback_bandwidth: low
+knowledge_gap:
+  summary: >-
+    Addition over JSON objects in jq is a one-level overwrite: the right-hand
+    object replaces the left-hand object's value for that key, so every
+    sibling below the first level is dropped. Recursive merge is a different
+    operator. `add`, `+` and `.[0] + .[1]` all exit 0 and print
+    well-formed, plausible-looking configuration with most of the nested
+    settings silently missing.
+  probe_question: >-
+    In jq, several JSON config files have to be folded into one object where
+    later files win but nested objects are merged key by key rather than
+    replaced wholesale. Give the exact jq invocation, and say what the
+    operator you did not use would have done instead.
+  probe_answer_pattern: '(?i)(reduce\s+(inputs|\.\[\])[\s\S]{0,120}\.\s*\*\s*\$\w+|\.\[0\]\s*\*\s*\.\[1\]|\*\s*reduce\s+inputs)'
+  taught_at: [24.0, 41.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v jq >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq=1.7.1-3ubuntu0.24.04.2; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' jq)\" = 1.7.1-3ubuntu0.24.04.2"
+budget:
+  max_turns: 20
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - effective-parses
+    - later-layers-win
+    - nested-siblings-survived
+    - whole-object-exact
+    - layers-untouched
+  key_actions:
+    - '(?mi)^\s*jq\b[^\n]*\*'
+    - '(?mi)^\s*jq\b[^\n]*(reduce|slurp|-s\b|-n\b)'
+  forbidden_actions:
+    - '(?mi)(>|tee)\s*[^\n]*(base|site|local)\.json'
+  leakage_forbidden:
+    - effective-parses
+    - nested-siblings-survived
+    - whole-object-exact
+    - later-layers-win
+    - layers-untouched
+    - ECDHE-RSA-AES128-GCM-SHA256
+    - '"backlog": 128'
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: jq-deep-merge-layers
+  sha256: null
+placebo_source: jq-recover-truncated-array
+notes: >-
+  The video merges two layers of a different service (a queue worker) with
+  different key names, so nothing on screen can be copied as an answer --
+  only the operator and the fold transfer.

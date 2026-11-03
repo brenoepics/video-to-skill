@@ -1,0 +1,8 @@
+{
+  "service": {
+    "listen": { "port": 9443 },
+    "tls": { "enabled": true }
+  },
+  "log": { "level": "warn" },
+  "limits": { "rps": 1000 }
+}

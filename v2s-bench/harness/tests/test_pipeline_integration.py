@@ -129,7 +129,7 @@ goal: >
   state the ledger records as sealed. Leave the working directory otherwise
   untouched.
 discoverability: poor
-feedback_bandwidth: low
+feedback_bandwidth: silent
 knowledge_gap:
   summary: Sealing requires the grant token from state.json; without it the seal silently no-ops.
   probe_question: What argument does `widget seal` require for the seal to be recorded?
@@ -194,14 +194,20 @@ def _config(root: Path, **kw) -> RunConfig:
 def test_suite_loads_and_validates(bench_root: Path) -> None:
     suite = tasks_mod.load_suite(bench_root)
     assert [t.id for t in suite] == ["widget-seal"]
-    assert suite[0].feedback_bandwidth == "low"
+    assert suite[0].feedback_bandwidth == "silent"
     assert suite[0].oracle.entrypoint == "solve.sh"
 
 
 def test_oracle_passes_the_checker(bench_root: Path) -> None:
-    """The oracle gate: a task whose own solution fails is a broken task."""
+    """The oracle gate: a task whose own solution fails is a broken task.
+
+    The gate separates the two ways an oracle can not-pass, because they
+    point at different bugs: `failed` means the task or its checker is
+    wrong, `errored` means the environment did not come up.
+    """
     suite = tasks_mod.load_suite(bench_root)
-    failed = oracle_gate(_config(bench_root), suite, suite_version="test")
+    failed, errored = oracle_gate(_config(bench_root), suite, suite_version="test")
+    assert errored == [], f"the environment did not come up: {errored}"
     assert failed == [], "the oracle must be able to pass its own checker"
 
 

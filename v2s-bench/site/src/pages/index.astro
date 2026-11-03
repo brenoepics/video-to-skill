@@ -150,7 +150,9 @@ const taskedCells = cells.length;
     <section aria-labelledby="arms">
       <div class="section__head">
         <h2 id="arms">Per-arm summary</h2>
-        <p class="eyebrow">H7 is the policy-violation column</p>
+        <p class="eyebrow">
+          {gate.showFigures ? 'H7 is the policy-violation column' : 'Identity only — no measurements'}
+        </p>
       </div>
       {
         gate.showFigures ? (
@@ -171,7 +173,7 @@ const taskedCells = cells.length;
               arms the suite will run. Each is a choice of context material and nothing
               else.
             </p>
-            <table class="dt dt--stack dt--rows">
+            <table class="dt dt--stack dt--rows arm-roster">
               <caption class="visually-hidden">
                 The experimental arms and what each isolates. No measurements.
               </caption>
@@ -332,5 +334,13 @@ const taskedCells = cells.length;
 
   .prov-after {
     margin-top: 0.9rem;
+  }
+
+  .arm-roster th[scope='row'] {
+    width: 15ch;
+  }
+
+  .arm-roster th[scope='row'] .sub {
+    white-space: nowrap;
   }
 </style>

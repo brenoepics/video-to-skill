@@ -128,13 +128,27 @@ placebo and the wrong one: topically-adjacent irrelevant documents have
 been measured to *improve* task performance, while random text helps least,
 so random noise would understate the confound it is supposed to bound.
 
-`A5` therefore runs the **real v2s pipeline on a different video from the
-same tool family** — genuine extraction, genuine `[t=MM:SS]` citations, a
-genuine verification badge, a procedure that does not solve this task. It
-matches A1 on length, register, formatting and provenance decoration, and
-differs only in whether the content is the right content. If A5 recovers
-most of A1's gain over A0, the effect was never about what the video
-taught.
+`A5` therefore runs the **real v2s pipeline on a different video for the
+same tool** — genuine extraction, genuine `[t=MM:SS]` citations, a genuine
+verification badge, a procedure that does not solve this task. In tier 1
+each task's placebo is a sibling task's video for the same invented tool,
+chosen for the closest duration match, so A5 matches A1 on length,
+register, formatting, provenance decoration *and* subject matter, and
+differs only in whether the procedure is the right procedure. If A5
+recovers most of A1's gain over A0, the effect was never about what the
+video taught.
+
+**This choice is deliberately conservative, and it can backfire in our
+favour's opposite direction.** A skill for the same tool may teach genuine
+transferable conventions — that this tool uses a two-phase commit, that it
+stamps its state — so A5 is not guaranteed to be inert. Where that
+happens, A5 acts as a partial treatment and `A1 − A5` *understates* the
+value of the right content. We accept that: a benchmark run by the authors
+of the tool under test should prefer the error that makes its own product
+look worse. It does mean H5 must be read as a lower bound on content
+specificity rather than a clean placebo contrast, and a failure of H5 is
+evidence to be interpreted, not an automatic verdict — the first question
+would be whether the sibling skill transferred real knowledge.
 
 ## 4. Task suite
 
@@ -212,10 +226,37 @@ state* and *cannot do*.
 
 The published null attributes its result to the environment already
 correcting the agent: when a tool emits a clear error, trial-and-error
-substitutes for instruction. Each task therefore declares
-`feedback_bandwidth: high|low` — whether a wrong attempt produces a
-diagnostic error (high) or silently produces a plausible-looking wrong
-result (low). We expect the effect to concentrate in `low`, and we test it.
+substitutes for instruction. Each task therefore declares how much a wrong
+attempt tells the agent.
+
+This started as a binary — error versus silence — and that was wrong in a
+way building the tier-1 tools exposed. One of those tools refuses invalid
+input *loudly but contentlessly*: `kiln: profile incomplete`, naming no
+field. The agent learns that something is wrong and nothing about what, so
+repeated attempts cannot converge. On a binary that counts as "has
+feedback", alongside a tool that tells you exactly what to fix — which
+collapses the distinction the hypothesis actually turns on.
+
+So the field is **ordinal**, ordered by how far trial-and-error can
+substitute for instruction:
+
+| value | a wrong attempt… | can the agent converge unaided? |
+|---|---|---|
+| `silent` | exits 0 and produces a plausible-looking wrong result | no — there is no signal |
+| `uninformative` | is refused, but the refusal names nothing fixable | no — signal without content |
+| `informative` | is refused with an error naming what to change | yes, given persistence |
+
+Prediction, as an ordinal trend rather than a single contrast: the effect
+should be largest on `silent`, smaller on `uninformative`, smallest on
+`informative`.
+
+**Realised distribution in tier 1: 9 `silent`, 3 `uninformative`, 0
+`informative`.** Tier 1 therefore cannot test this moderator — it has no
+`informative` tasks to contrast against — and it is biased toward the
+regime where an effect is most likely. Supplying `informative` tasks is an
+explicit requirement on tier 2, where real tools vary in documentation
+quality and error quality independently. Until tier 2 lands, any
+feedback-bandwidth claim is reported as `insufficient-data`.
 
 ### 5.2a Two accounts of why a skill would help
 

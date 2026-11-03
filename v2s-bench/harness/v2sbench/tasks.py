@@ -93,7 +93,7 @@ class Task:
     oracle: OracleSpec
     directory: Path
     discoverability: str = "good"
-    feedback_bandwidth: str = "high"
+    feedback_bandwidth: str = "silent"
     placebo_source: str | None = None
     budget: Budget = field(default_factory=Budget)
     saturated: bool = False
@@ -193,7 +193,7 @@ def load_task(path: Path, root: Path, *, validate: bool = True) -> Task:
         ),
         directory=directory,
         discoverability=data.get("discoverability", "good"),
-        feedback_bandwidth=data.get("feedback_bandwidth", "high"),
+        feedback_bandwidth=data["feedback_bandwidth"],
         placebo_source=data.get("placebo_source"),
         budget=Budget(
             max_turns=int(bud.get("max_turns", 40)),
