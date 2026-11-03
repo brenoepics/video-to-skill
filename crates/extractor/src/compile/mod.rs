@@ -198,7 +198,8 @@ pub struct OnScreenArtifact {
 /// skill: the Agent Skills spec requires `name` to equal the directory.
 pub fn compile(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
     validate::validate(ir, bundle_dir, out_dir)?;
-    emit::emit(ir, bundle_dir, out_dir)
+    let ir = safety::flag(ir)?;
+    emit::emit(&ir, bundle_dir, out_dir)
 }
 
 /// The note a command prints when it reads an IR written at an older
