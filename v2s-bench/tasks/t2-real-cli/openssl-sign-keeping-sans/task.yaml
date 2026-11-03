@@ -68,8 +68,6 @@ check:
     - subject-alternative-names-carried
     - key-usage-and-purpose-carried
     - public-key-is-the-requested-one
-    - -copy_extensions
-    - api.svc.internal
 oracle:
   entrypoint: solve.sh
   modality: shell

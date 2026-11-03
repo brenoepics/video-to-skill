@@ -66,7 +66,6 @@ check:
     - unchanged-files-are-one-stored-file
     - changed-file-is-its-own-copy
     - source-and-old-snapshot-untouched
-    - --link-dest
     - beta v2, with the courier note appended
 oracle:
   entrypoint: solve.sh

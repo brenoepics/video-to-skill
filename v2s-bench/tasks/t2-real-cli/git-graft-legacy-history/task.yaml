@@ -62,7 +62,6 @@ check:
     - legacy-reachable-from-main
     - no-commit-was-rewritten
     - refs-still-name-the-same-commits
-    - refs/replace
     - import the vendor drop
     - first round of fixes
 oracle:

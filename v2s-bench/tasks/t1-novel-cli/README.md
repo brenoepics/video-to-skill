@@ -1,5 +1,14 @@
 # Tier 1 — novel CLI (the internal-validity anchor)
 
+> **Grader-visible documentation.** This file names each tool's
+> non-obvious behaviour and the wrong procedures its checkers are built to
+> catch. Anyone authoring arm material (A1–A5, including the hand-written
+> A4 skill) must not read it — that is the same structural blinding
+> `docs/preregistration.md` §3.2 applies to `check/` and `oracle/`. A
+> procedure shaped by this file is an answer key, and the string-level
+> leakage gate cannot detect prose. It is here for reviewers and
+> maintainers.
+
 Four purpose-built command-line tools, three tasks each, twelve tasks in
 all. Every tool was written for this benchmark and has never existed
 anywhere else, so no model can have memorised it: that is the whole point

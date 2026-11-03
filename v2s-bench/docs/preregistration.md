@@ -114,6 +114,13 @@ task's checker**. Enforced structurally:
   materials in `artifacts/skills/<id>/`.
 - Skill generation runs with `check/` and `oracle/` absent from its
   workspace.
+- **The per-tier `README.md` files are blinded too.** They describe each
+  tool's non-obvious behaviour and the wrong procedures the checkers are
+  built to catch — the same information the checkers encode, in prose. The
+  automated gate matches strings and so cannot see a procedure that was
+  merely *informed* by that prose, which makes this the weakest link in the
+  blinding and the one that rests on discipline rather than on code. Each
+  such file carries the warning in its own first paragraph.
 - `v2sbench validate --blind` rejects any material containing a declared
   forbidden literal, a checker/oracle filename, or a mined string literal
   from either (`harness/v2sbench/materials.py`). Without this rule a skill

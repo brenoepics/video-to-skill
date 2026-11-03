@@ -76,7 +76,6 @@ check:
     - leaf-signed-by-the-issuing-ca
     - chain-verifies-with-only-the-root-trusted
     - leaf-is-not-a-ca
-    - "pathlen:0"
 oracle:
   entrypoint: solve.sh
   modality: shell

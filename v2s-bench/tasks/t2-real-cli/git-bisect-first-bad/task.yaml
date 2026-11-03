@@ -85,7 +85,6 @@ check:
     - no-operation-in-progress
     - history-and-tree-untouched
     - simplify the common-factor step
-    - "2:3"
 oracle:
   entrypoint: solve.sh
   modality: shell

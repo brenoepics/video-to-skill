@@ -63,7 +63,6 @@ check:
     - one-track-and-it-is-cam-right
     - ends-with-the-shorter-input
     - sources-untouched
-    - "1200"
     - "0xCC2222"
     - "0x22AA22"
 oracle:

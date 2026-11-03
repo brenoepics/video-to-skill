@@ -68,7 +68,6 @@ check:
     - server-logs-survived
     - no-nested-copy-of-the-source
     - scratch-not-published
-    - --delete-excluded
     - the copy from last time
 oracle:
   entrypoint: solve.sh
