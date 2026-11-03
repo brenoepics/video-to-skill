@@ -71,6 +71,6 @@ fn nearest_sample_hash(samples: &[SampledFrame], timestamp: f64) -> String {
                 .abs()
                 .total_cmp(&(b.timestamp_secs - timestamp).abs())
         })
-        .map(|f| format!("{:016x}", analyze::dhash(&analyze::to_gray(&f.pixels))))
+        .map(|f| format!("{:016x}", analyze::thumbnail_hash(f.luma())))
         .unwrap_or_default()
 }
