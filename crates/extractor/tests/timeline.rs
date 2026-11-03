@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use vts_extract::asr::{extract_audio_track, EngineOutput, TranscriptionEngine};
+use vts_extract::asr::{extract_audio_track, EngineOutput, Hints, TranscriptionEngine};
 use vts_extract::bundle::{ingest, load_manifest, Segment};
 use vts_extract::frames::{extract_frame_track, FrameConfig};
 use vts_extract::timeline::{assemble, load_timeline, TIMELINE_FILE};
@@ -82,6 +82,7 @@ impl TranscriptionEngine for CannedEngine {
     fn transcribe(
         &self,
         _wav: &Path,
+        _hints: &Hints,
         _progress: &mut dyn FnMut(u8),
     ) -> anyhow::Result<EngineOutput> {
         Ok(EngineOutput {
@@ -210,12 +211,12 @@ fn segments_carry_interior_keyframe_refs_from_the_frame_track() {
 
     assert_eq!(timeline.segments.len(), 1, "one long shot, one segment");
     let interior = &timeline.segments[0].interior_keyframes;
-    // Mirrors the frame track: 15s-interval keyframes minus the one
-    // deduped against the main (midpoint) keyframe.
+    // Mirrors the frame track: 15s-interval keyframes, none of which
+    // duplicates the main keyframe (the opening screen, at 0s).
     let times: Vec<f64> = interior.iter().map(|k| k.timestamp_secs).collect();
-    assert_eq!(times, vec![15.0, 45.0], "interior refs: {times:?}");
+    assert_eq!(times, vec![15.0, 30.0, 45.0], "interior refs: {times:?}");
     assert_eq!(interior[0].path, "frames/shot000-k01.jpg");
-    assert_eq!(interior[1].path, "frames/shot000-k02.jpg");
+    assert_eq!(interior[2].path, "frames/shot000-k03.jpg");
     assert!(
         interior.iter().all(|k| k.native_path.is_none()),
         "interior refs carry no native variant"
