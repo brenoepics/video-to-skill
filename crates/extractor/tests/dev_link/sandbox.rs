@@ -1,6 +1,7 @@
 //! A throwaway HOME and checkout for `scripts/dev-link.sh` to act on.
 
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -121,27 +122,17 @@ impl Sandbox {
 
 pub fn write_executable(path: &Path, body: &str) {
     fs::write(path, body).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
-/// Whether this process may create a directory symlink here at all; on
-/// Windows that is a policy (Developer Mode or a privilege), not a given.
+/// Whether this process may create a directory symlink here at all: a
+/// restricted temp filesystem can refuse, and the script needs them.
 pub fn symlinks_available(dir: &Path) -> bool {
     let target = dir.join("symlink-probe-target");
     let link = dir.join("symlink-probe-link");
     fs::create_dir_all(&target).unwrap();
     let _ = fs::remove_file(&link);
-    #[cfg(unix)]
-    let made = std::os::unix::fs::symlink(&target, &link).is_ok();
-    #[cfg(windows)]
-    let made = std::os::windows::fs::symlink_dir(&target, &link).is_ok();
-    #[cfg(not(any(unix, windows)))]
-    let made = false;
-    made && fs::read_link(&link).is_ok()
+    std::os::unix::fs::symlink(&target, &link).is_ok() && fs::read_link(&link).is_ok()
 }
 
 pub fn stdout(output: &Output) -> String {

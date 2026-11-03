@@ -1,3 +1,5 @@
+#![cfg(unix)]
+
 //! `scripts/dev-link.sh`: the one command that points Claude Code at this
 //! checkout, sets the dev data dir, and opens a chat with the local build.
 //!
@@ -6,7 +8,8 @@
 //! carries a fake `target/release/vts-extract`, the script is told not to
 //! build, and `claude` is a recorder planted on PATH where a test needs
 //! one. The script is POSIX `sh`, and Git Bash's `ln -s` copies instead
-//! of linking unless MSYS is configured, so Windows skips.
+//! of linking unless MSYS is configured, so this binary is empty on
+//! Windows.
 
 // Integration-test file: everything here is test code, where unwrap is fine.
 #![allow(clippy::unwrap_used)]
@@ -23,10 +26,6 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// A sandbox, or `None` with a reason when the script cannot run here.
 fn sandbox(name: &str) -> Option<Sandbox> {
-    if cfg!(windows) {
-        eprintln!("skipped {name}: dev-link.sh is POSIX sh; Windows has no supported runner");
-        return None;
-    }
     let sandbox = Sandbox::new(name, VERSION);
     if !symlinks_available(&sandbox.home) {
         eprintln!("skipped {name}: this process may not create symlinks here");
