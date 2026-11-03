@@ -33,9 +33,20 @@ RUN set -eux; \
 # The invented CLIs. Copied with mode 0755 and owned by root, so the agent
 # user can execute them but a task's `chmod 0111` is what decides
 # readability.
-COPY --chmod=0755 tools/zep/zep   /usr/local/bin/zep
+# Mode is set HERE, not by a task's setup. Setup runs as the agent user
+# against root-owned files, so `chmod` there would simply fail; and baking
+# it in is stronger anyway, since the agent owns neither the file nor root
+# and so cannot undo it.
+#
+# 0111 = executable, NOT readable. zep and kiln are the two
+# `discoverability: poor` tools: their procedure is meant to be
+# unavailable on the box, and they are plain Python, so a readable file
+# would hand over the whole thing and void the stratum.
+COPY --chmod=0111 tools/zep/zep   /usr/local/bin/zep
+COPY --chmod=0111 tools/kiln/kiln /usr/local/bin/kiln
+# lath and prow are `discoverability: good` -- their documentation is
+# supposed to be usable, so there is nothing to hide.
 COPY --chmod=0755 tools/lath/lath /usr/local/bin/lath
-COPY --chmod=0755 tools/kiln/kiln /usr/local/bin/kiln
 COPY --chmod=0755 tools/prow/prow /usr/local/bin/prow
 
 RUN set -eux; \
@@ -50,13 +61,43 @@ RUN set -eux; \
     mkdir -p /work /opt/v2sbench-support; \
     chown agent:agent /work /opt/v2sbench-support
 
+# ---------------------------------------------------------------------
+# The agent under test runs INSIDE this container, so its CLI has to be
+# here. Choose with --build-arg AGENT=claude|codex|both|none.
+#
+# Pin the versions: the agent harness is part of what produced a result,
+# and an unpinned CLI makes a figure un-attributable. `claude --version`
+# is recorded on every trial regardless.
+ARG AGENT=claude
+ARG CLAUDE_CODE_VERSION=2.1.317
+ARG CODEX_VERSION=latest
+
+USER root
+RUN set -eux; \
+    if [ "$AGENT" != "none" ]; then \
+      apt-get update; \
+      apt-get install -y --no-install-recommends nodejs npm; \
+      rm -rf /var/lib/apt/lists/*; \
+      if [ "$AGENT" = "claude" ] || [ "$AGENT" = "both" ]; then \
+        npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"; \
+        claude --version; \
+      fi; \
+      if [ "$AGENT" = "codex" ] || [ "$AGENT" = "both" ]; then \
+        npm install -g "@openai/codex@${CODEX_VERSION}"; \
+        codex --version; \
+      fi; \
+    fi
 USER agent
+
 WORKDIR /work
 
 # Fail the build rather than the benchmark if the non-root guarantee breaks.
 RUN set -eux; \
     test "$(id -u)" != "0"; \
-    cp /usr/local/bin/zep /tmp/probe 2>/dev/null && { echo "tools are writable by the agent" >&2; exit 1; } || true; \
+    cp /usr/local/bin/zep /tmp/probe 2>/dev/null && { echo "zep is readable by the agent; the poor-discoverability stratum is void" >&2; exit 1; } || true; \
+    cp /usr/local/bin/kiln /tmp/probe 2>/dev/null && { echo "kiln is readable by the agent; the poor-discoverability stratum is void" >&2; exit 1; } || true; \
+    zep --version >/dev/null; \
+    kiln --version >/dev/null; \
     rm -f /tmp/probe
 
 CMD ["sleep", "infinity"]

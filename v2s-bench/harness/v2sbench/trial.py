@@ -29,6 +29,27 @@ from .agent.base import AgentError, AgentRun
 #: Where a skill package is installed so it is discoverable by description.
 SKILL_PARENT = ".claude/skills"
 
+#: Credential and endpoint variables forwarded from the host into the task
+#: container, if set. The agent runs *inside* the sandbox, so without these
+#: it cannot authenticate and every trial fails identically -- which looks
+#: like a benchmark result and is not one. Only these names are forwarded:
+#: a trial should not inherit the operator's whole environment.
+AGENT_ENV_PASSTHROUGH = (
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "ANTHROPIC_BASE_URL",
+    "CODEX_API_KEY",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+)
+
+
+def agent_credentials() -> dict[str, str]:
+    """Collect whichever agent credentials the host has set."""
+    import os
+
+    return {k: os.environ[k] for k in AGENT_ENV_PASSTHROUGH if os.environ.get(k)}
+
 
 @dataclass
 class TrialSpec:
@@ -87,6 +108,9 @@ def run_trial(
         with box:
             provenance.sandbox_backend = box.backend
             provenance.image_digest = box.image_digest()
+            effective = getattr(sandbox_mod, "effective_policy", None)
+            if callable(effective):
+                provenance.network_policy = effective(task.environment.network)
             _provision(box, task, root, seed=spec.seed)
             material_dir = _inject(box, task, material, adapter, spec.arm)
             run = _run_agent(adapter, spec, box, task, material, material_dir)
@@ -232,6 +256,7 @@ def _run_agent(adapter, spec, box, task, material, material_dir) -> AgentRun:
         max_turns=task.budget.max_turns,
         wall_secs=task.budget.wall_secs,
         seed=spec.seed,
+        env=agent_credentials(),
     )
 
 

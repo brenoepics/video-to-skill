@@ -31,7 +31,7 @@ knowledge_gap:
 environment:
   image: v2sbench/t2-real-cli:0.1
   workdir: /work
-  network: none
+  network: api-only
   setup:
     - "command -v openssl >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends openssl=3.0.13-0ubuntu3.16; }"
     - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"

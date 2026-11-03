@@ -30,7 +30,7 @@ knowledge_gap:
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work
-  network: none
+  network: api-only
   setup:
     - prow plan --wave 1 --unit api-gw
     - prow plan --wave 1 --unit cache

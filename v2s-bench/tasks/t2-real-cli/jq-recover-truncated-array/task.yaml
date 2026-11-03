@@ -30,7 +30,7 @@ knowledge_gap:
 environment:
   image: v2sbench/t2-real-cli:0.1
   workdir: /work
-  network: none
+  network: api-only
   setup:
     - "command -v jq >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq=1.7.1-3ubuntu0.24.04.2; }"
     - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"

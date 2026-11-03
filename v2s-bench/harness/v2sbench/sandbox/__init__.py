@@ -19,6 +19,7 @@ sandbox is chosen per run, never per arm. Backends:
 from __future__ import annotations
 
 from .base import ExecResult, Sandbox, SandboxError
+from .docker import effective_policy
 from .factory import available_backends, create
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "SandboxError",
     "available_backends",
     "create",
+    "effective_policy",
 ]

@@ -34,7 +34,7 @@ knowledge_gap:
 environment:
   image: v2sbench/t2-real-cli:0.1
   workdir: /work
-  network: none
+  network: api-only
   setup:
     - "command -v rsync >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends rsync=3.2.7-1ubuntu1.5; }"
     - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"

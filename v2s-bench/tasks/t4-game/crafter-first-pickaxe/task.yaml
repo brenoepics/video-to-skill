@@ -40,7 +40,7 @@ knowledge_gap:
 environment:
   image: v2sbench/t4-game-crafter:0.1
   workdir: /work
-  network: none
+  network: api-only
   seedable: true
   setup:
     - install -m 0755 v2s-game "$V2SBENCH_BIN"/v2s-game && rm -f v2s-game

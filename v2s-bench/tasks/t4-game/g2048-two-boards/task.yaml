@@ -38,7 +38,7 @@ knowledge_gap:
 environment:
   image: python:3.13-slim
   workdir: /work
-  network: none
+  network: api-only
   seedable: true
   setup:
     - install -m 0755 v2s-game "$V2SBENCH_BIN"/v2s-game && rm -f v2s-game

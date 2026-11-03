@@ -66,7 +66,34 @@ RUN set -eux; \
       > /home/agent/.gitconfig; \
     chown agent:agent /home/agent/.gitconfig
 
+# ---------------------------------------------------------------------
+# The agent under test runs INSIDE this container, so its CLI has to be
+# here. Choose with --build-arg AGENT=claude|codex|both|none.
+#
+# Pin the versions: the agent harness is part of what produced a result,
+# and an unpinned CLI makes a figure un-attributable. `claude --version`
+# is recorded on every trial regardless.
+ARG AGENT=claude
+ARG CLAUDE_CODE_VERSION=2.1.317
+ARG CODEX_VERSION=latest
+
+USER root
+RUN set -eux; \
+    if [ "$AGENT" != "none" ]; then \
+      apt-get update; \
+      apt-get install -y --no-install-recommends nodejs npm; \
+      rm -rf /var/lib/apt/lists/*; \
+      if [ "$AGENT" = "claude" ] || [ "$AGENT" = "both" ]; then \
+        npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"; \
+        claude --version; \
+      fi; \
+      if [ "$AGENT" = "codex" ] || [ "$AGENT" = "both" ]; then \
+        npm install -g "@openai/codex@${CODEX_VERSION}"; \
+        codex --version; \
+      fi; \
+    fi
 USER agent
+
 WORKDIR /work
 
 RUN set -eux; test "$(id -u)" != "0"

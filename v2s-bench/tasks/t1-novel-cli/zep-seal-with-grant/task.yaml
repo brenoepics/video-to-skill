@@ -27,9 +27,8 @@ knowledge_gap:
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work
-  network: none
+  network: api-only
   setup:
-    - chmod 0111 "$V2SBENCH_BIN"/zep
     - zep open rc-7
     - zep put rc-7 port 8080
     - zep put rc-7 region eu-west

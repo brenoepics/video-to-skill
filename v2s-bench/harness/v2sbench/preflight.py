@@ -74,6 +74,9 @@ def run_preflight(
     _check_sandbox(report, backend)
     _check_images(report, tasks, backend)
     _check_agent(report, adapter, model)
+    _check_agent_in_image(report, tasks, backend, adapter)
+    _check_credentials(report, adapter)
+    _check_egress(report, tasks)
     _check_extractor(report)
     _check_materials(report, root, tasks, armset)
     _check_leakage(report, tasks)
@@ -251,6 +254,92 @@ def _check_extractor(report: Report) -> None:
         )
         return
     report.add("vts-extract", OK, detail)
+
+
+def _check_agent_in_image(
+    report: Report, tasks: list, backend: str, adapter: str
+) -> None:
+    """The agent runs INSIDE the container, so its CLI has to be there.
+
+    Without it every trial fails identically, which looks like a result
+    and is not one.
+    """
+    if adapter == "stub" or backend != "docker" or shutil.which("docker") is None:
+        report.add("agent in image", SKIP, "not checked for this configuration")
+        return
+    binary = ADAPTER_BINARY.get(adapter, adapter)
+    missing: list[str] = []
+    for image in sorted({t.environment.image for t in tasks}):
+        probe = subprocess.run(
+            ["docker", "run", "--rm", "--entrypoint", binary, image, "--version"],
+            capture_output=True, text=True, timeout=180,
+        )
+        if probe.returncode != 0:
+            missing.append(image)
+    if missing:
+        report.add(
+            "agent in image",
+            FAIL,
+            f"`{binary}` is not runnable in: " + ", ".join(missing),
+            f"rebuild with --build-arg AGENT={'codex' if adapter == 'codex' else 'claude'} "
+            "(or AGENT=both). The agent executes inside the task container",
+        )
+        return
+    report.add("agent in image", OK, f"`{binary}` runnable in every image")
+
+
+def _check_credentials(report: Report, adapter: str) -> None:
+    """A key on the host is forwarded into the container; without one the
+    agent cannot authenticate and every trial fails the same way."""
+    import os
+
+    from .trial import AGENT_ENV_PASSTHROUGH
+
+    wanted = (
+        ("CODEX_API_KEY", "OPENAI_API_KEY")
+        if adapter == "codex"
+        else ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+    )
+    if adapter == "stub":
+        report.add("credentials", SKIP, "the stub agent needs none")
+        return
+    present = [k for k in wanted if os.environ.get(k)]
+    if not present:
+        report.add(
+            "credentials",
+            FAIL,
+            "none of " + ", ".join(wanted) + " is set",
+            "export one; it is forwarded into the container. Only these names "
+            f"are passed through: {', '.join(AGENT_ENV_PASSTHROUGH)}",
+        )
+        return
+    report.add("credentials", OK, f"{present[0]} set and will be forwarded")
+
+
+def _check_egress(report: Report, tasks: list) -> None:
+    """`api-only` is not actually enforced yet. Say so."""
+    policies = sorted({t.environment.network for t in tasks})
+    if policies == ["none"]:
+        report.add(
+            "egress",
+            FAIL,
+            "every task declares `network: none`",
+            "the agent runs inside the container and cannot reach its model "
+            "endpoint with no network. Use `network: api-only`",
+        )
+        return
+    if "api-only" in policies:
+        report.add(
+            "egress",
+            WARN,
+            "`api-only` is implemented as ordinary bridge networking",
+            "egress is NOT restricted to the model endpoint, so an agent could "
+            "in principle look things up. Harmless on tier 1, whose tools were "
+            "invented here and cannot be looked up; a real confound on tiers 2 "
+            "and 4. Trials record `bridge-unrestricted`",
+        )
+        return
+    report.add("egress", OK, f"policies in use: {', '.join(policies)}")
 
 
 def _check_materials(

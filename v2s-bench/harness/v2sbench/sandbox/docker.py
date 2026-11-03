@@ -55,7 +55,7 @@ class DockerSandbox:
         argv = [
             self.docker, "run", "--rm", "--detach",
             "--name", self.name,
-            "--network", self.network,
+            "--network", _docker_network(self.network),
             "--workdir", self.workdir,
             # The agent is untrusted with respect to the host: a benchmark
             # that runs model-authored commands is running arbitrary code.
@@ -194,6 +194,34 @@ class DockerSandbox:
                 "the docker CLI is present but no daemon is reachable "
                 f"({proc.stderr.strip().splitlines()[-1] if proc.stderr.strip() else 'no detail'})"
             )
+
+
+#: How a declared policy maps onto docker's `--network`.
+#:
+#: `api-only` is the policy a real run needs: the agent must reach its
+#: model endpoint while the task must not be solvable by fetching from the
+#: open internet. Docker alone cannot express that -- an allowlist needs a
+#: proxy -- so `api-only` currently gets ordinary bridge networking and the
+#: trial records `bridge-unrestricted`. The gap is real and is reported by
+#: preflight rather than implied away: on tier 1 it is close to harmless,
+#: because the tools were invented for this benchmark and there is nothing
+#: about them to find, but on tiers 2 and 4 an agent could look things up.
+NETWORK_POLICY = {
+    "none": "none",
+    "api-only": "bridge",
+    "bridge": "bridge",
+}
+
+
+def _docker_network(policy: str) -> str:
+    return NETWORK_POLICY.get(policy, policy)
+
+
+def effective_policy(policy: str) -> str:
+    """What actually happened, for the record."""
+    if policy == "api-only":
+        return "bridge-unrestricted"
+    return policy
 
 
 def _text(raw: object) -> str:

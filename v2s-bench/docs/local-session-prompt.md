@@ -19,7 +19,10 @@ Clone it, then read these three files before doing anything else:
   - docs/cost.md              <- what this should cost
 
 THE SHAPE OF THE RUN
-  - Agent under test: GPT-6.1 via the Codex CLI (`codex exec`).
+  - Agent under test: <<<PICK ONE>>>
+      Claude:  --agent claude-code --model <CLAUDE-MODEL-ID>   (ANTHROPIC_API_KEY)
+      GPT-6.1: --agent codex       --model <GPT-6.1-MODEL-ID>  (CODEX_API_KEY)
+    Use the same choice in every command below.
   - Materials (the skills themselves) are built with Claude, not GPT. Those
     are two different roles on purpose: "v2s makes a good skill" and "the
     skill helps this agent" are separate claims, and cross-model transfer
@@ -45,9 +48,19 @@ them in order and stop at the first thing that looks wrong.
      target/release/vts-extract automatically and records its version, git
      commit and dirty state on every trial.
 
-  2. Build the two images (from the v2s-bench root):
-       docker build -t v2sbench/t1-novel-cli:0.1 -f env/t1-novel-cli/Dockerfile .
-       docker build -t v2sbench/t2-real-cli:0.1  -f env/t2-real-cli/Dockerfile .
+  2. Build the images, WITH the agent CLI baked in. The agent runs INSIDE
+     the task container, so its CLI has to be in the image. Pick the arg to
+     match the agent you chose (claude | codex | both):
+       docker build --build-arg AGENT=claude \
+         -t v2sbench/t1-novel-cli:0.1 -f env/t1-novel-cli/Dockerfile .
+       docker build --build-arg AGENT=claude \
+         -t v2sbench/t2-real-cli:0.1  -f env/t2-real-cli/Dockerfile .
+
+  2b. Export the key for whichever agent you chose. The harness forwards
+      only these names into the container:
+        ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL,
+        CODEX_API_KEY, OPENAI_API_KEY, OPENAI_BASE_URL
+        export ANTHROPIC_API_KEY=sk-ant-...
 
   3. Preflight. It is free and checks everything:
        cd harness
@@ -94,6 +107,8 @@ extractor, so these have never actually run:
   - no trial has ever run under the Docker backend
   - THE CODEX ADAPTER HAS NEVER BEEN RUN AGAINST THE REAL BINARY. It was
     written from OpenAI's published interface. That is why step 6 exists.
+    (The Claude adapter WAS validated against genuine CLI output, so it is
+    the safer of the two if you have a choice.)
 Stages 2, 4 and 6 are where a first run is most likely to break. All are
 cheap to retry and none are destructive.
 
@@ -112,6 +127,18 @@ TRAPS THAT HAVE ALREADY BITTEN — do not reintroduce these
   - `leakage_forbidden` entries must name the GRADER's vocabulary only.
     An entry naming part of the procedure refuses every honest skill and
     silently deletes treatment cells. `validate --blind` enforces this.
+  - Tasks use `network: api-only`, which is currently ordinary bridge
+    networking: egress is NOT restricted to the model endpoint. On tier 1
+    that is close to harmless, since the tools were invented for this
+    benchmark and there is nothing to look up. Preflight warns about it and
+    trials record `bridge-unrestricted`. Do not "fix" this by switching
+    tasks back to `network: none` -- the agent would then be unable to
+    reach its model at all.
+  - The two poor-discoverability tools (zep, kiln) are installed mode 0111:
+    executable but not readable. That is what keeps their procedure off the
+    box. It is set in the Dockerfile, not by a task, because setup runs as
+    the agent user and cannot chmod a root-owned file. If you ever see a
+    task try to chmod a tool, that is a regression.
 
 HOW I WANT YOU TO WORK
   - Do not fabricate or estimate any result. If something fails, say so
