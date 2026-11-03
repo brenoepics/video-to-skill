@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use vts_extract::bundle::{Segment, Transcript};
-use vts_extract::compile::compile;
+use vts_extract::compile::{compile, SCHEMA_VERSION};
 use vts_extract::eval::gold::{load_gold_set, GoldVideo};
 use vts_extract::eval::metrics::normalize;
 use vts_extract::eval::recipe::Screen;
@@ -109,6 +109,11 @@ fn every_gold_procedure_compiles_as_a_valid_ir() {
     let empty_bundle = dir.join("bundle");
     fs::create_dir_all(&empty_bundle).unwrap();
     for video in load_gold_set(&gold_dir()).unwrap() {
+        assert_eq!(
+            video.procedure.schema_version, SCHEMA_VERSION,
+            "{}: gold IRs are written at the current schema",
+            video.id
+        );
         compile(&video.procedure, &empty_bundle, &dir.join(&video.id))
             .unwrap_or_else(|e| panic!("{}: {e:#}", video.id));
     }
@@ -130,6 +135,10 @@ fn perfect_extraction(video: &GoldVideo) -> (Timeline, Transcript) {
             motion_density: None,
             keyframe: None,
             interior_keyframes: vec![],
+            skip: None,
+            changed_region: None,
+            cursor_presence: None,
+            cursor: None,
             speech: vec![],
         })
         .collect();
@@ -152,6 +161,9 @@ fn perfect_extraction(video: &GoldVideo) -> (Timeline, Transcript) {
         schema_version: 1,
         duration_secs: video.recipe.duration_secs,
         language: Some("en".into()),
+        transcript_source: None,
+        chapters: vec![],
+        skips: vec![],
         notes: vec![],
         segments,
     };

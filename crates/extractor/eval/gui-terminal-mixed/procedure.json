@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "gui-terminal-mixed",
   "title": "Install the editor's command line tool",
   "description": "Use when installing an editor's shell command from its command palette and checking it from a terminal.",

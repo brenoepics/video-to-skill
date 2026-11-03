@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "term-npm-project",
   "title": "Set up a Node project",
   "description": "Use when bootstrapping a Node.js project: npm init, install a dependency, run the tests.",

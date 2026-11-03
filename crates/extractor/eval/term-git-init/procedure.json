@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "term-git-init",
   "title": "Initialise a Git repository",
   "description": "Use when starting a new project under Git: create the directory, enter it, run git init, check git status.",

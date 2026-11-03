@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "gui-preferences",
   "title": "Switch the editor to a dark theme",
   "description": "Use when changing an editor's theme through its Preferences dialog and handling the restart prompt.",

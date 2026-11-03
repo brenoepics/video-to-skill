@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 
 use super::metrics::{backtick_commands, Span};
 use super::recipe::Recipe;
-use crate::compile::ProcedureIr;
+use crate::compile::{ProcedureIr, SCHEMA_VERSION};
 
 pub const RECIPE_FILE: &str = "recipe.json";
 pub const PROCEDURE_FILE: &str = "procedure.json";
@@ -84,8 +84,8 @@ pub fn load_gold_video(dir: &Path) -> Result<GoldVideo> {
 
 fn cross_check(recipe: &Recipe, ir: &ProcedureIr) -> Result<Vec<GoldStep>> {
     let id = &recipe.id;
-    if ir.schema_version != 1 {
-        bail!("gold {id}: procedure.json must be IR schema 1");
+    if ir.schema_version != SCHEMA_VERSION {
+        bail!("gold {id}: procedure.json must be IR schema {SCHEMA_VERSION}");
     }
     if ir.skill_name != *id {
         bail!(

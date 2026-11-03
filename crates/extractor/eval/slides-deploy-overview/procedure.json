@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "slides-deploy-overview",
   "title": "Deploying the app",
   "description": "Use when deploying the app: build the image, push it to the registry, roll the deployment.",

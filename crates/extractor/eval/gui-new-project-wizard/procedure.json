@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "gui-new-project-wizard",
   "title": "Create a project with the wizard",
   "description": "Use when creating a project through a three-page New Project wizard: name it, pick a template, review and create.",

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "term-git-commit-flow",
   "title": "Stage, commit and inspect history",
   "description": "Use when recording a first commit: git add, git commit, git log, git status.",

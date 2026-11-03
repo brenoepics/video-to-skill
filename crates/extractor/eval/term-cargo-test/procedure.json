@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "term-cargo-test",
   "title": "Create a Rust crate and run its tests",
   "description": "Use when scaffolding a Rust binary crate with cargo and running cargo test for the first time.",

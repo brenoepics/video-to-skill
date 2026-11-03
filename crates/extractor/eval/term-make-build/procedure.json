@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "skill_name": "term-make-build",
   "title": "Build a C program with make",
   "description": "Use when compiling and running a small C project with make, then cleaning the build outputs.",
