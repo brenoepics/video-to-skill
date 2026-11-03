@@ -2,15 +2,20 @@
 //! video. `manifest.json` is the root document; later pipeline stages add
 //! their artifacts beside it and record them in the manifest's track slots.
 
+mod captions;
 mod ingest;
 mod ingest_url;
+mod platform;
 mod probe_media;
 mod transcript;
 
+pub use captions::{extract_caption_track, load_captions, CaptionCues};
 pub use ingest::{ingest, IngestReport};
 pub use ingest_url::{ingest_any, DownloadedVideo, VideoDownloader, YtdlpDownloader};
+pub use platform::{primary_language, CaptionTrack, Chapter, PlatformPriors, SkipRange};
 pub use transcript::{
-    load_transcript, save_transcript, Segment, Transcript, Word, TRANSCRIPT_FILE,
+    load_transcript, load_transcript_source, save_transcript, save_transcript_from, Segment,
+    Transcript, TranscriptSource, Word, TRANSCRIPT_FILE,
 };
 
 use std::fs;
@@ -28,6 +33,9 @@ pub struct Manifest {
     pub schema_version: u32,
     pub source: SourceInfo,
     pub media: MediaInfo,
+    /// What the platform offered beside the media; URL ingest fills it in.
+    #[serde(default)]
+    pub platform: PlatformPriors,
     /// Artifacts other stages have produced, as bundle-relative paths.
     #[serde(default)]
     pub tracks: Tracks,
@@ -111,6 +119,7 @@ mod tests {
                 has_audio: true,
                 language: None,
             },
+            platform: PlatformPriors::default(),
             tracks: Tracks::default(),
             notes: vec!["a note".into()],
         };

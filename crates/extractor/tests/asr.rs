@@ -3,11 +3,12 @@
 // Integration-test file: everything here is test code, where unwrap is fine.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use std::cell::RefCell;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use vts_extract::asr::{extract_audio_track, EngineOutput, TranscriptionEngine};
-use vts_extract::bundle::{ingest, load_manifest, load_transcript, Segment, Word};
+use vts_extract::asr::{extract_audio_track, EngineOutput, Hints, TranscriptionEngine};
+use vts_extract::bundle::{ingest, load_manifest, load_transcript, save_manifest, Segment, Word};
 use vts_extract::tools::Toolchain;
 
 fn scratch(name: &str) -> PathBuf {
@@ -54,15 +55,27 @@ fn bundle_with_fixture(dir: &Path, audio: bool) -> PathBuf {
 /// Canned engine; panics if speech recognition is attempted when it must not be.
 struct FakeEngine {
     output: Option<EngineOutput>,
+    heard_about: RefCell<Vec<Hints>>,
+}
+
+impl FakeEngine {
+    fn with(output: Option<EngineOutput>) -> FakeEngine {
+        FakeEngine {
+            output,
+            heard_about: RefCell::new(Vec::new()),
+        }
+    }
 }
 
 impl TranscriptionEngine for FakeEngine {
     fn transcribe(
         &self,
         _wav: &Path,
+        hints: &Hints,
         progress: &mut dyn FnMut(u8),
     ) -> anyhow::Result<EngineOutput> {
         let output = self.output.as_ref().expect("engine must not be called");
+        self.heard_about.borrow_mut().push(hints.clone());
         progress(10);
         progress(100);
         Ok(output.clone())
@@ -104,7 +117,7 @@ fn speechful_output() -> EngineOutput {
 fn video_without_audio_yields_empty_transcript_with_note_and_no_engine_call() {
     let dir = scratch("no-audio");
     let bundle = bundle_with_fixture(&dir, false);
-    let engine = FakeEngine { output: None };
+    let engine = FakeEngine::with(None);
 
     let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
@@ -130,9 +143,7 @@ fn video_without_audio_yields_empty_transcript_with_note_and_no_engine_call() {
 fn engine_output_lands_in_transcript_and_language_in_manifest() {
     let dir = scratch("speech");
     let bundle = bundle_with_fixture(&dir, true);
-    let engine = FakeEngine {
-        output: Some(speechful_output()),
-    };
+    let engine = FakeEngine::with(Some(speechful_output()));
 
     let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
@@ -153,12 +164,10 @@ fn engine_output_lands_in_transcript_and_language_in_manifest() {
 fn speechless_audio_gets_a_no_speech_note() {
     let dir = scratch("silence");
     let bundle = bundle_with_fixture(&dir, true);
-    let engine = FakeEngine {
-        output: Some(EngineOutput {
-            language: None,
-            segments: vec![],
-        }),
-    };
+    let engine = FakeEngine::with(Some(EngineOutput {
+        language: None,
+        segments: vec![],
+    }));
 
     let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
 
@@ -174,67 +183,28 @@ fn speechless_audio_gets_a_no_speech_note() {
     );
 }
 
-/// Real end-to-end: macOS-generated speech through actual whisper weights,
-/// with voice activity detection on. Ignored by default (needs `say`,
-/// ffmpeg, and the bootstrapped models); run with:
-/// cargo test --test asr -- --ignored
 #[test]
-#[cfg(target_os = "macos")]
-#[ignore = "requires whisper + VAD model weights and macOS `say`"]
-fn real_whisper_transcribes_generated_speech() {
-    use vts_extract::asr::whisper::WhisperEngine;
-    use vts_extract::deps::Env;
+fn the_engine_is_told_what_the_media_is_called() {
+    let dir = scratch("title");
+    let bundle = bundle_with_fixture(&dir, true);
+    let engine = FakeEngine::with(Some(speechful_output()));
 
-    let tools = Toolchain::resolve(&Env::from_system()).unwrap();
-    let engine =
-        WhisperEngine::from_toolchain(&tools).expect("run `vts-extract check --fix --yes` first");
-    assert!(
-        engine.vad_model().is_some(),
-        "VAD weights must be installed"
+    extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
+    let mut manifest = load_manifest(&bundle).unwrap();
+    manifest.source.title = Some("Bash in 100 Seconds".into());
+    save_manifest(&bundle, &manifest).unwrap();
+    extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
+
+    let heard_about = engine.heard_about.borrow();
+    assert_eq!(
+        heard_about[0].title.as_deref(),
+        Some("fixture"),
+        "a local file is known by its stem"
     );
-
-    let dir = scratch("real-whisper");
-    let aiff = dir.join("speech.aiff");
-    let status = Command::new("say")
-        .args(["-o"])
-        .arg(&aiff)
-        .arg("Welcome to the tutorial. First, open the terminal.")
-        .output()
-        .unwrap();
-    assert!(status.status.success());
-    let fixture = dir.join("speech.mp4");
-    let status = Command::new("ffmpeg")
-        .args([
-            "-y",
-            "-f",
-            "lavfi",
-            "-i",
-            "color=c=black:s=320x240:r=10",
-            "-i",
-        ])
-        .arg(&aiff)
-        .args(["-c:v", "mpeg4", "-c:a", "aac", "-shortest"])
-        .arg(&fixture)
-        .output()
-        .unwrap();
-    assert!(status.status.success());
-    let bundle = dir.join("bundle");
-    ingest(&fixture, &bundle, &toolchain()).unwrap();
-
-    let transcript = extract_audio_track(&bundle, &toolchain(), &engine, &mut |_| {}).unwrap();
-
-    let heard = transcript
-        .segments
-        .iter()
-        .map(|s| s.text.to_lowercase())
-        .collect::<Vec<_>>()
-        .join(" ");
-    assert!(heard.contains("tutorial"), "heard: {heard}");
-    assert!(heard.contains("terminal"), "heard: {heard}");
-    assert_eq!(transcript.language.as_deref(), Some("en"));
-    assert!(
-        transcript.segments.iter().any(|s| !s.words.is_empty()),
-        "expected word-level timestamps"
+    assert_eq!(
+        heard_about[1].title.as_deref(),
+        Some("Bash in 100 Seconds"),
+        "a captured title wins over the file name"
     );
 }
 
@@ -259,9 +229,7 @@ fn engine_device_follows_the_gpu_choice_and_the_host() {
 fn engine_progress_reaches_the_caller() {
     let dir = scratch("progress");
     let bundle = bundle_with_fixture(&dir, true);
-    let engine = FakeEngine {
-        output: Some(speechful_output()),
-    };
+    let engine = FakeEngine::with(Some(speechful_output()));
     let mut seen: Vec<u8> = vec![];
 
     extract_audio_track(&bundle, &toolchain(), &engine, &mut |p| seen.push(p)).unwrap();

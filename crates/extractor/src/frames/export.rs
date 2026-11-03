@@ -1,5 +1,5 @@
-//! Keyframe export: agent-readable JPEGs (bounded width) plus
-//! native-resolution stills at shot boundaries.
+//! Keyframe export: agent-readable JPEGs (bounded width), native-
+//! resolution stills, and native-resolution crops of one rectangle.
 //!
 //! One ffmpeg process exports one frame; a single export is dominated by
 //! process startup plus the decode from the preceding keyframe, so
@@ -20,13 +20,32 @@ use crate::tools::Toolchain;
 /// contend for memory bandwidth and the batch gets slower, not faster.
 const MAX_WORKERS: usize = 8;
 
-/// One frame to export: the moment, where it goes, and its width bound
-/// (`None` keeps native size).
+/// A rectangle of the native frame, in pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CropRect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// What an export keeps of the frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Output {
+    /// The whole frame, width-bounded (aspect preserved, never upscaled).
+    Bounded { max_width: u32 },
+    /// The whole frame at native size.
+    Native,
+    /// One rectangle of the frame at native size.
+    Crop(CropRect),
+}
+
+/// One frame to export: the moment, where it goes, and what to keep.
 #[derive(Debug, Clone)]
 pub struct FrameRequest {
     pub timestamp_secs: f64,
     pub dest: PathBuf,
-    pub max_width: Option<u32>,
+    pub output: Output,
 }
 
 impl FrameRequest {
@@ -36,7 +55,7 @@ impl FrameRequest {
         FrameRequest {
             timestamp_secs,
             dest,
-            max_width: Some(max_width),
+            output: Output::Bounded { max_width },
         }
     }
 
@@ -46,31 +65,49 @@ impl FrameRequest {
         FrameRequest {
             timestamp_secs,
             dest,
-            max_width: None,
+            output: Output::Native,
+        }
+    }
+
+    /// A native-resolution crop of `rect`.
+    #[must_use]
+    pub fn crop(timestamp_secs: f64, dest: PathBuf, rect: CropRect) -> FrameRequest {
+        FrameRequest {
+            timestamp_secs,
+            dest,
+            output: Output::Crop(rect),
+        }
+    }
+
+    /// The ffmpeg video filter that produces this output, if any.
+    fn filter(&self) -> Option<String> {
+        match self.output {
+            Output::Bounded { max_width } => Some(format!("scale='min({max_width},iw)':-2")),
+            Output::Native => None,
+            Output::Crop(CropRect {
+                x,
+                y,
+                width,
+                height,
+            }) => Some(format!("crop={width}:{height}:{x}:{y}")),
         }
     }
 }
 
-/// Export one frame at `timestamp` to `dest`. `max_width` bounds the
-/// output (aspect preserved, never upscaled); `None` keeps native size.
-pub fn export_frame(
-    tools: &Toolchain,
-    media: &Path,
-    timestamp_secs: f64,
-    dest: &Path,
-    max_width: Option<u32>,
-) -> Result<()> {
+/// Export one frame as the request describes.
+pub fn export_frame(tools: &Toolchain, media: &Path, request: &FrameRequest) -> Result<()> {
+    let timestamp_secs = request.timestamp_secs;
     let mut cmd = std::process::Command::new(&tools.ffmpeg);
     cmd.args(["-y", "-v", "error", "-ss", &format!("{timestamp_secs:.3}")])
         .arg("-i")
         .arg(media)
         .args(["-frames:v", "1"]);
-    if let Some(width) = max_width {
-        cmd.args(["-vf", &format!("scale='min({width},iw)':-2")]);
+    if let Some(filter) = request.filter() {
+        cmd.args(["-vf", &filter]);
     }
     // -q:v 3: high-quality JPEG, ~100-300 KB at 1024px — the documented
     // per-frame size budget for agent consumption.
-    cmd.args(["-q:v", "3"]).arg(dest);
+    cmd.args(["-q:v", "3"]).arg(&request.dest);
     let output = cmd.output().context("running ffmpeg frame export")?;
     if !output.status.success() {
         bail!(
@@ -96,14 +133,7 @@ pub fn export_frames(tools: &Toolchain, media: &Path, requests: &[FrameRequest])
                 let Some(request) = requests.get(index) else {
                     break;
                 };
-                let result = export_frame(
-                    tools,
-                    media,
-                    request.timestamp_secs,
-                    &request.dest,
-                    request.max_width,
-                );
-                if let Err(err) = result {
+                if let Err(err) = export_frame(tools, media, request) {
                     failures
                         .lock()
                         .unwrap_or_else(PoisonError::into_inner)
