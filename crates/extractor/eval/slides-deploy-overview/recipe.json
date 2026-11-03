@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "id": "slides-deploy-overview",
+  "title": "Deploying the app",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 40.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "slide": {
+        "title": "Deploying the app",
+        "bullets": [
+          "build",
+          "push",
+          "release"
+        ],
+        "footer": "1 / 4"
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-build-image",
+      "slide": {
+        "title": "1. Build the image",
+        "bullets": [
+          "docker build",
+          "tag it 1.2"
+        ],
+        "footer": "2 / 4"
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "02-push-image",
+      "slide": {
+        "title": "2. Push to the registry",
+        "bullets": [
+          "docker push",
+          "requires docker login"
+        ],
+        "footer": "3 / 4"
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "03-release",
+      "slide": {
+        "title": "3. Release",
+        "bullets": [
+          "kubectl rollout restart",
+          "watch the pods come up"
+        ],
+        "footer": "4 / 4"
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "This deck walks through the three deployment steps."
+    },
+    {
+      "t": 6.5,
+      "text": "Step one: build the image with docker build."
+    },
+    {
+      "t": 16.5,
+      "text": "Step two: docker push uploads it to the registry."
+    },
+    {
+      "t": 26.5,
+      "text": "Step three: kubectl rollout restart deploys the new image."
+    }
+  ]
+}

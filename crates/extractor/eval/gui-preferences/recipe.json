@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "id": "gui-preferences",
+  "title": "Switch the editor to a dark theme",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 34.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "desktop": {
+        "status": "Theme: Light"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-open-preferences",
+      "dialog": {
+        "title": "Preferences",
+        "rows": [
+          "Theme:      Light",
+          "Font size:  14",
+          "Autosave:   On"
+        ],
+        "buttons": [
+          "Cancel",
+          "OK"
+        ],
+        "status": "Theme: Light"
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-choose-dark-theme",
+      "dialog": {
+        "title": "Preferences",
+        "rows": [
+          "Theme:      Dark",
+          "Font size:  14",
+          "Autosave:   On"
+        ],
+        "buttons": [
+          "Cancel",
+          "OK"
+        ],
+        "status": "Theme: Light"
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-apply",
+      "desktop": {
+        "status": "Theme: Dark"
+      }
+    },
+    {
+      "t": 24.0,
+      "step": "04-defer-restart",
+      "dialog": {
+        "title": "Restart required",
+        "rows": [
+          "Restart now to apply the theme?"
+        ],
+        "buttons": [
+          "Later",
+          "Restart now"
+        ],
+        "status": "Theme: Dark"
+      }
+    },
+    {
+      "t": 29.0,
+      "step": "04-defer-restart",
+      "desktop": {
+        "status": "Theme: Dark (pending restart)"
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Let's switch the editor to a dark theme."
+    },
+    {
+      "t": 4.5,
+      "text": "Open Preferences from the Edit menu."
+    },
+    {
+      "t": 10.5,
+      "text": "Set Theme to Dark."
+    },
+    {
+      "t": 16.5,
+      "text": "Click OK to apply it; the status bar now shows the dark theme."
+    },
+    {
+      "t": 24.5,
+      "text": "Choose Later; the theme applies on the next launch."
+    }
+  ]
+}

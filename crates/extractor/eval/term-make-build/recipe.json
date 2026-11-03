@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "id": "term-make-build",
+  "title": "Build a C program with make",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 42.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "calc - bash"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-build",
+      "terminal": {
+        "type": "make"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-build",
+      "terminal": {
+        "output": [
+          "cc -Wall -O2 -c main.c -o main.o",
+          "cc -Wall -O2 -c calc.c -o calc.o",
+          "cc main.o calc.o -o calc"
+        ]
+      }
+    },
+    {
+      "t": 14.0,
+      "step": "02-run",
+      "terminal": {
+        "type": "./calc 2 3"
+      }
+    },
+    {
+      "t": 17.0,
+      "step": "02-run",
+      "terminal": {
+        "output": [
+          "5"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "03-clean",
+      "terminal": {
+        "type": "make clean"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "03-clean",
+      "terminal": {
+        "output": [
+          "rm -f main.o calc.o calc"
+        ]
+      }
+    },
+    {
+      "t": 30.0,
+      "step": "03-clean",
+      "terminal": {
+        "type": "ls"
+      }
+    },
+    {
+      "t": 33.0,
+      "step": "03-clean",
+      "terminal": {
+        "output": [
+          "Makefile  calc.c  calc.h  main.c"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Build and run a small C program with make."
+    },
+    {
+      "t": 4.5,
+      "text": "Type make to compile the project."
+    },
+    {
+      "t": 14.5,
+      "text": "Run it with dot slash calc 2 3."
+    },
+    {
+      "t": 22.5,
+      "text": "make clean removes the build outputs."
+    },
+    {
+      "t": 30.5,
+      "text": "ls shows only the sources remain."
+    }
+  ]
+}

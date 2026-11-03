@@ -1,0 +1,69 @@
+{
+  "schema_version": 2,
+  "skill_name": "term-cargo-test",
+  "title": "Create a Rust crate and run its tests",
+  "description": "Use when scaffolding a Rust binary crate with cargo and running cargo test for the first time.",
+  "overview": "Opens on a slide, cuts to a terminal for cargo new, cd and cargo test, and ends on a recap slide.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-cargo-test",
+    "title": "Create a Rust crate and run its tests",
+    "duration_secs": 44.0
+  },
+  "steps": [
+    {
+      "id": "01-new-crate",
+      "goal": "Scaffold the crate",
+      "actions": "Run `cargo new hello`.",
+      "success_criteria": "Cargo reports it created the hello package.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 9.0,
+          "frame": null,
+          "quote": "cargo new hello scaffolds a binary crate"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-enter-crate",
+      "goal": "Enter the crate",
+      "actions": "Run `cd hello`.",
+      "success_criteria": "The shell is inside the hello directory.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 17.0,
+          "frame": null,
+          "quote": "Change into it with cd hello"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-run-tests",
+      "goal": "Run the tests",
+      "actions": "Run `cargo test`.",
+      "success_criteria": "Prints \"test result: ok\".",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 24.0,
+          "frame": null,
+          "quote": "cargo test compiles and runs the test suite"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

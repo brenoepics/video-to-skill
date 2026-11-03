@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "id": "gui-new-project-wizard",
+  "title": "Create a project with the wizard",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 40.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "desktop": {
+        "status": "No project open"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-name-project",
+      "dialog": {
+        "title": "New Project (1/3)",
+        "rows": [
+          "Name:      [               ]",
+          "Location:  ~/Projects"
+        ],
+        "buttons": [
+          "Cancel",
+          "Next"
+        ]
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-name-project",
+      "dialog": {
+        "title": "New Project (1/3)",
+        "rows": [
+          "Name:      [ demo-site      ]",
+          "Location:  ~/Projects"
+        ],
+        "buttons": [
+          "Cancel",
+          "Next"
+        ]
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-pick-template",
+      "dialog": {
+        "title": "New Project (2/3)",
+        "rows": [
+          "Template:",
+          "  (x) Blank",
+          "  ( ) Static site",
+          "  ( ) Blog"
+        ],
+        "buttons": [
+          "Back",
+          "Next"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "02-pick-template",
+      "dialog": {
+        "title": "New Project (2/3)",
+        "rows": [
+          "Template:",
+          "  ( ) Blank",
+          "  (x) Static site",
+          "  ( ) Blog"
+        ],
+        "buttons": [
+          "Back",
+          "Next"
+        ]
+      }
+    },
+    {
+      "t": 20.0,
+      "step": "03-create",
+      "dialog": {
+        "title": "New Project (3/3)",
+        "rows": [
+          "Summary:",
+          "  Name:      demo-site",
+          "  Template:  Static site",
+          "  Location:  ~/Projects/demo-site"
+        ],
+        "buttons": [
+          "Back",
+          "Create"
+        ]
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "03-create",
+      "desktop": {
+        "status": "Project demo-site created"
+      }
+    },
+    {
+      "t": 32.0,
+      "slide": {
+        "title": "Project created",
+        "bullets": [
+          "demo-site",
+          "Static site template"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "We'll create a project with the new project wizard."
+    },
+    {
+      "t": 4.5,
+      "text": "On the first page, name the project demo-site."
+    },
+    {
+      "t": 13.5,
+      "text": "Next, pick the Static site template."
+    },
+    {
+      "t": 20.5,
+      "text": "Review the summary and click Create."
+    },
+    {
+      "t": 32.5,
+      "text": "The project is ready to edit."
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "id": "term-cargo-test",
+  "title": "Create a Rust crate and run its tests",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 44.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "slide": {
+        "title": "Rust: your first test",
+        "bullets": [
+          "cargo new",
+          "cargo test"
+        ]
+      }
+    },
+    {
+      "t": 5.0,
+      "step": "01-new-crate",
+      "terminal": {
+        "type": "cargo new hello"
+      }
+    },
+    {
+      "t": 8.0,
+      "step": "01-new-crate",
+      "terminal": {
+        "output": [
+          "    Creating binary (application) `hello` package",
+          "note: see more `Cargo.toml` keys and their definitions"
+        ]
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-enter-crate",
+      "terminal": {
+        "type": "cd hello"
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "02-enter-crate",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 20.0,
+      "step": "03-run-tests",
+      "terminal": {
+        "type": "cargo test"
+      }
+    },
+    {
+      "t": 23.0,
+      "step": "03-run-tests",
+      "terminal": {
+        "output": [
+          "   Compiling hello v0.1.0 (/home/demo/hello)",
+          "    Finished `test` profile [unoptimized + debuginfo]",
+          "     Running unittests src/main.rs",
+          "",
+          "running 0 tests",
+          "",
+          "test result: ok. 0 passed; 0 failed; 0 ignored"
+        ]
+      }
+    },
+    {
+      "t": 32.0,
+      "slide": {
+        "title": "Recap",
+        "bullets": [
+          "cargo new hello",
+          "cd hello",
+          "cargo test"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Let's create a Rust crate and run its tests."
+    },
+    {
+      "t": 5.5,
+      "text": "First, cargo new hello scaffolds a binary crate."
+    },
+    {
+      "t": 13.5,
+      "text": "Change into it with cd hello."
+    },
+    {
+      "t": 20.5,
+      "text": "Now cargo test compiles and runs the test suite."
+    },
+    {
+      "t": 32.5,
+      "text": "That is the whole loop: create, enter, test."
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 2,
+  "skill_name": "term-long-output-scroll",
+  "title": "Read a long build log",
+  "description": "Use when a command prints more than a screen of text: let it scroll, then filter it with grep and clear the screen.",
+  "overview": "cat prints a log that scrolls past the screen, grep narrows it to the errors, clear wipes the terminal.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-long-output-scroll",
+    "title": "Read a long build log",
+    "duration_secs": 44.0
+  },
+  "steps": [
+    {
+      "id": "01-print-log",
+      "goal": "Print the build log",
+      "actions": "Run `cat build.log`.",
+      "success_criteria": "The log scrolls past; the last lines stay on screen.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 10.0,
+          "frame": null,
+          "quote": "cat build.log prints the whole log"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-filter-errors",
+      "goal": "Show only the errors",
+      "actions": "Run `grep error build.log`.",
+      "success_criteria": "Only the two error lines are printed.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 22.0,
+          "frame": null,
+          "quote": "grep error build.log shows only the failures"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-clear-screen",
+      "goal": "Clear the screen",
+      "actions": "Run `clear`.",
+      "success_criteria": "An empty terminal with a fresh prompt.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 32.0,
+          "frame": null,
+          "quote": "clear wipes the screen"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

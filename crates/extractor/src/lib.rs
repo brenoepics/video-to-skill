@@ -9,6 +9,7 @@ pub mod bundle;
 pub mod calendar;
 pub mod compile;
 pub mod deps;
+pub mod eval;
 pub mod frames;
 mod fsx;
 pub mod guardrails;

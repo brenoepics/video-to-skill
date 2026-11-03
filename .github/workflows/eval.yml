@@ -1,0 +1,64 @@
+name: Eval
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  eval:
+    name: quality eval (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # master 2026-09-06
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Install ffmpeg (gold video generation)
+        run: brew install ffmpeg
+      - name: Cache whisper weights
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: "~/Library/Application Support/video-to-skill"
+          # The pinned tools live in deps/registry.rs: a new model gets a
+          # fresh cache instead of a download on every run.
+          key: vts-tools-${{ runner.os }}-${{ hashFiles('crates/extractor/src/deps/registry.rs') }}
+          restore-keys: vts-tools-${{ runner.os }}-
+      - name: Build
+        run: cargo build --release --locked
+      - name: Bootstrap tools
+        run: ./target/release/vts-extract check --fix --yes
+      - name: Generate, extract and score the gold set
+        # Fails when a metric's 95 % lower bound drops more than --max-drop
+        # (default 0.05) below crates/extractor/eval/baseline.json; see
+        # BENCHMARK.md, "Quality evaluation".
+        run: |
+          ./target/release/vts-extract eval \
+            --baseline crates/extractor/eval/baseline.json \
+            --out eval-results.json \
+            --summary eval-summary.md
+      - name: Publish the summary
+        if: always()
+        run: |
+          if [ -f eval-summary.md ]; then
+            cat eval-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload the results artifact
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: eval-results
+          path: |
+            eval-results.json
+            eval-summary.md
+          if-no-files-found: warn
