@@ -230,12 +230,17 @@ fn a_long_low_motion_shot_gains_periodic_interior_keyframes() {
     let shot = &track.shots[0];
     let interior = &shot.interior_keyframes;
     // 60s shot at the default 15s interval: candidates at 15/30/45s.
-    // The main keyframe sits at the shot midpoint (29s), so the 30s
-    // candidate is within 1s of it and is skipped as a duplicate.
+    // The main keyframe is the state's evidence frame — the still
+    // opening screen, at 0s — so none of them duplicates it.
+    assert!(shot.keyframe.timestamp_secs.abs() < f64::EPSILON);
     let times: Vec<f64> = interior.iter().map(|k| k.timestamp_secs).collect();
-    assert_eq!(times, vec![15.0, 45.0], "interior keyframes: {times:?}");
+    assert_eq!(
+        times,
+        vec![15.0, 30.0, 45.0],
+        "interior keyframes: {times:?}"
+    );
     assert_eq!(interior[0].path, "frames/shot000-k01.jpg");
-    assert_eq!(interior[1].path, "frames/shot000-k02.jpg");
+    assert_eq!(interior[2].path, "frames/shot000-k03.jpg");
     for kf in interior {
         assert!(bundle.join(&kf.path).is_file(), "missing {}", kf.path);
         assert!(
