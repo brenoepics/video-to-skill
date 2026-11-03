@@ -110,7 +110,7 @@ Observation format (exactly this, every time):
   line 3  health=<n> food=<n> drink=<n> energy=<n>  sleeping=<yes|no>
   line 4  facing=<dir>  the tile in front of you is <material>
   line 5  inventory: <item>=<n> ...   (only non-zero items)
-  line 6  achievements <n>/22: <names>   (wrapped, blank when none)
+  line 6  achievements <n>/22: <names>, wrapped onto "... " lines
   then    the {w}x{h} view, one glyph per tile, you at the centre
   then    the legend
 """
@@ -228,14 +228,20 @@ def render(env, budget: int, status: str) -> str:
     return "\n".join(head + rows + [LEGEND])
 
 
+#: Continuation marker for the one line that can grow without bound. It is
+#: distinct from the view's two-space indent so a parser can rejoin the
+#: wrapped achievement list without ambiguity.
+CONTINUE = "... "
+
+
 def wrap(prefix: str, body: str, width: int = 66) -> list[str]:
-    out = []
+    """Wrap ``prefix + body`` at ``width``, continuations marked CONTINUE."""
+    out: list[str] = []
     line = prefix
-    pad = " " * len(prefix.rstrip().rstrip(":")) if False else "  "
     for word in body.split():
-        if len(line) + len(word) + 1 > width and line.strip() != prefix.strip():
+        if len(line) + len(word) > width and line not in (prefix, CONTINUE):
             out.append(line.rstrip())
-            line = pad + word + " "
+            line = CONTINUE + word + " "
         else:
             line += word + " "
     out.append(line.rstrip())

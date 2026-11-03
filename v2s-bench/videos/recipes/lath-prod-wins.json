@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 66.3,
+  "duration_secs": 64.0,
   "stills": [
     {
       "t": 0.0,
@@ -203,23 +203,23 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "Two layers, both setting the same thing. Which one wins surprises most people, so watch the screen."
+      "text": "Two layers, one setting. Which one wins?"
     },
     {
-      "t": 7.68,
+      "t": 4.8,
       "text": "One layer says three."
     },
     {
       "t": 9.8,
-      "text": "The other says nine. Both under the same name."
+      "text": "The other says nine, under the same name."
     },
     {
       "t": 14.8,
-      "text": "We add this one to the order, and note the position it reports."
+      "text": "This one goes into the order first. Note the position."
     },
     {
       "t": 19.8,
-      "text": "And then the other one."
+      "text": "Then the other."
     },
     {
       "t": 24.8,
@@ -227,31 +227,31 @@
     },
     {
       "t": 29.8,
-      "text": "Look at the value that survived, then look back at the order we built. That is the rule, right there on screen."
+      "text": "Look at the value that survived, then back at the order we built."
     },
     {
-      "t": 37.1,
-      "text": "So if we want the other value to come through, we take this one out of the order..."
+      "t": 34.8,
+      "text": "To get the other value, we take this one out."
     },
     {
-      "t": 42.05,
-      "text": "...and add it again, which lands it somewhere else. Watch the position it reports this time."
+      "t": 39.8,
+      "text": "And add it again. Watch the position now."
     },
     {
-      "t": 48.1,
-      "text": "Here is the order as it now stands. Read it carefully, including the heading."
+      "t": 44.8,
+      "text": "Here is the order, heading included. Read it carefully."
     },
     {
-      "t": 53.48,
-      "text": "Merge it again into a second file."
+      "t": 49.8,
+      "text": "Merge again, into a second file."
     },
     {
-      "t": 56.05,
-      "text": "A different answer this time, from the very same two layers."
+      "t": 54.8,
+      "text": "A different answer, same two layers."
     },
     {
-      "t": 60.11,
-      "text": "Same two layers, different order, different answer. Change the order, not the layers."
+      "t": 58.8,
+      "text": "Change the order, not the layers."
     }
   ],
   "notes": "Teaches first-stacked-wins precedence by merging the same two layers in both orders and showing both results."

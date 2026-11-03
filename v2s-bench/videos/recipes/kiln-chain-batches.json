@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 58.7,
+  "duration_secs": 56.0,
   "stills": [
     {
       "t": 0.0,
@@ -164,15 +164,15 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "Two firings of the same lane, where the second one records that it follows the first."
+      "text": "Two firings, the second following the first."
     },
     {
-      "t": 5.94,
+      "t": 4.8,
       "text": "Prepare the lane as usual."
     },
     {
       "t": 10.8,
-      "text": "Fire it once. Note the batch it reports, that is the value we are about to reuse."
+      "text": "Fire it once. Note the batch, we will reuse it."
     },
     {
       "t": 16.8,
@@ -180,27 +180,27 @@
     },
     {
       "t": 22.8,
-      "text": "Firing straight away gets us nowhere, because we changed the description."
+      "text": "Firing now gets us nowhere, because the description changed."
     },
     {
       "t": 28.8,
-      "text": "Prepare it again, and now it reports what it is following."
+      "text": "Prepare it again, and it reports what it follows."
     },
     {
       "t": 34.8,
-      "text": "Fire it again. New batch, and it names the one it came after."
+      "text": "Fire again. New batch, naming the one before."
     },
     {
       "t": 40.8,
-      "text": "The artifact itself says so too, right at the top."
+      "text": "The artifact says so too, right at the top."
     },
     {
       "t": 46.8,
-      "text": "And kiln is holding the chain: what it follows, and what it last made."
+      "text": "And kiln is holding the chain, both ends of it."
     },
     {
-      "t": 51.84,
-      "text": "The batch you fired goes into the description as its prior, the lane is prepared again, and then it fires."
+      "t": 50.8,
+      "text": "The batch you fired goes in the description. Prepare again, then fire."
     }
   ],
   "notes": "Teaches that descent is declared in the profile with prior-batch from the earlier firing's batch, and that the lane must be prepared again afterwards."

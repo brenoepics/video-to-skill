@@ -72,6 +72,11 @@ def parse(text):
                 (k, int(v)) for k, v in re.findall(r"(\w+)=(\d+)", line))
         if line.startswith("achievements "):
             meta["unlocked"] = set(re.findall(r"[a-z]+_[a-z_]+", line.split(":", 1)[1]))
+            collecting = True
+            continue
+        if line.startswith("... ") and meta.get("unlocked") is not None:
+            # the achievement list is the one line that can wrap
+            meta["unlocked"] |= set(re.findall(r"[a-z]+_[a-z_]+", line[4:]))
     meta["grid"] = grid
     meta.setdefault("unlocked", set())
     meta.setdefault("inventory", {})

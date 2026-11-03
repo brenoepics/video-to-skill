@@ -221,6 +221,34 @@ typed lines, 50 for output) so nothing is clipped. The generator fails
 loudly on a line that would not fit — which is why no recipe prints a
 tool's long help text.
 
+**Cue timing is part of the contract, not cosmetics.** Overlapping cues
+mix into one audio track, the speech garbles, and the ASR transcript
+degrades — and that transcript is the *only* input A2 and A6 receive, so
+sloppy timing silently handicaps the arms v2s is measured against. A
+truncated closing cue does the same thing: the summary is lost from the
+audio while staying legible on screen, which quietly favours the
+pixel-reading arms. So every cue must finish, with a gap, before the next
+one starts, and the last cue must finish inside `duration_secs`:
+
+    cd harness && python3 tools/retime_recipes.py ../videos/recipes
+
+must report `worst drift +0.00s` with no duration extension for all
+twelve. It does today. The *wrong* way to hold that invariant is to let
+the retimer push cues later, because a cue then plays over a still it was
+not written for; the right way is to keep the cues short enough to fit
+where they were placed. Narration therefore runs at **55–69% of the
+timeline** (it was 80–99%, which is what produced the overlaps), each cue
+has at least 0.2 s of slack, and the video holds its final frame for
+~7 s so the closing line is never clipped.
+
+Trimming for time must not quietly trim *content*: a thinner transcript
+handicaps A2 and A6 exactly as garbled audio does, and in the same
+direction — it flatters v2s. When the cues were shortened, every cut was
+diffed against the original and anything that carried a fact rather than
+a word was restored (what the refusal names, that the mistake is silent,
+that the file is a snapshot, that the value is carried over). Verbosity
+went; teaching points stayed.
+
 ## Saturation risk — read before including these in the primary endpoint
 
 Honest expectations, to be replaced by measured `probe_known` and pilot
@@ -284,5 +312,8 @@ explicitly:
 6. No narration cue contains a flag, a tool field name or a file name.
 7. Every `taught_at` timestamp resolves to a still in the referenced
    recipe.
+7a. `tools/retime_recipes.py` reports `+0.00s` worst drift and no
+   duration extension on all twelve, so no cue speaks over another and
+   no closing cue is clipped.
 8. The poor-discoverability tools are not world-readable in the task
    image.

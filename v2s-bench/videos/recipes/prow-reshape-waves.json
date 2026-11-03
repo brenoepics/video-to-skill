@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 49.5,
+  "duration_secs": 47.0,
   "stills": [
     {
       "t": 0.0,
@@ -159,39 +159,39 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "Plans change. The sheet on disk does not notice, which catches people out."
+      "text": "Plans change. The sheet on disk does not notice."
     },
     {
-      "t": 5.96,
+      "t": 4.8,
       "text": "Here is the sheet as the plan stands today."
     },
     {
       "t": 10.3,
-      "text": "Now this one has to go into the later wave. Planning it again just moves it; it is not added twice."
+      "text": "This one moves to the later wave, not added twice."
     },
     {
-      "t": 17.03,
-      "text": "And this one is retired, which is its own step, parking it in some far-off wave is not the same thing."
+      "t": 15.8,
+      "text": "And this one is retired, which is its own step, not a far-off wave."
     },
     {
-      "t": 23.71,
-      "text": "But look at the sheet on disk. It still describes the old shape, and nothing warned us."
+      "t": 21.3,
+      "text": "But the sheet still describes the old shape. No warning."
     },
     {
-      "t": 29.78,
-      "text": "The plan itself is right: two units now, across two waves."
+      "t": 26.8,
+      "text": "The plan itself is right: two units, two waves."
     },
     {
-      "t": 34.42,
+      "t": 32.3,
       "text": "So we render it again, locked together as before."
     },
     {
-      "t": 38.04,
-      "text": "And now the file matches the plan, with the retired unit gone from it."
+      "t": 37.8,
+      "text": "Now it matches the plan, retired unit gone."
     },
     {
-      "t": 42.62,
-      "text": "Move what moves, take out what is retired, and render again, the sheet is a snapshot, not a view."
+      "t": 41.8,
+      "text": "Then render again. The sheet is a snapshot, not a view."
     }
   ],
   "notes": "Teaches that re-planning a unit moves it, that removal is its own step, and that the rendered sheet does not follow later plan changes."

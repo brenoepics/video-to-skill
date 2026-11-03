@@ -57,7 +57,13 @@ MIN_TASKS = 2
 P_METHOD = "paired-sign-flip-permutation"
 P_ROBUSTNESS = "mcnemar-exact"
 CI_PREFIX = "cluster-bootstrap-tasks"
-DIMENSIONS = ("headroom_band", "discoverability", "tier", "video_tier")
+DIMENSIONS = (
+    "headroom_band",
+    "discoverability",
+    "feedback_bandwidth",
+    "tier",
+    "video_tier",
+)
 _ORDER: dict[str, tuple[str, ...]] = {
     "headroom_band": ("high", "medium", "low", "saturated", "unknown"),
     "discoverability": ("good", "poor", "unknown"),

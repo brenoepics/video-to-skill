@@ -62,6 +62,14 @@
         },
         "saturated": {
           "type": "boolean"
+        },
+        "feedback_bandwidth": {
+          "enum": [
+            "silent",
+            "uninformative",
+            "informative"
+          ],
+          "description": "Copied onto the record so a stratified analysis does not have to re-read the task suite, which may have moved since the trial ran."
         }
       }
     },

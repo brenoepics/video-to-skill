@@ -1,0 +1,13 @@
+Handover, duty engineer -> night desk
+=====================================
+
+The rotation note for this window is in vault.enc. It was sealed with
+AES-256 in CBC mode, with a random salt, and the key was stretched from the
+passphrase with two hundred and forty thousand rounds of PBKDF2 taken over
+SHA-512 rather than the default digest.
+
+The passphrase itself is in passphrase.txt. vault.sha256 is the digest of
+the note as it was before sealing; check what you recover against it.
+
+Do not re-seal the archive or edit it in place: the courier copy and this
+one have to stay identical.

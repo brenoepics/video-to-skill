@@ -56,8 +56,8 @@ def build_report(
 ) -> dict[str, Any]:
     results_dir = results_dir or root / "results" / "runs"
     records = record_mod.read_all(results_dir) if results_dir.exists() else []
-    suite = tasks_mod.load_suite(root, validate=False)
-    probes = _load_probes(root)
+    suite, load_problems = tasks_mod.load_suite_tolerant(root, validate=False)
+    probes, probe_detail = _load_probes(root)
 
     # Raises when mock and measured records appear together. Letting it
     # propagate is the point: a published figure must never average a
@@ -77,16 +77,18 @@ def build_report(
         "status": {
             "kind": kind,
             "headline": headline,
-            "detail": detail,
+            "detail": _with_load_problems(detail, load_problems),
             "prereg_frozen": _prereg_frozen(root),
         },
         "provenance": _provenance(root, records, suite, is_mock),
         "arms": [],
         "comparisons": [],
         "strata": [],
-        "tasks": [_task_entry(t, probes.get(t.id)) for t in suite],
+        "tasks": [_task_entry(t, probes.get(t.id), probe_detail.get(t.id)) for t in suite],
         "cells": [],
         "failure_modes": [],
+        "gates": _gates(root, suite),
+        "amendments": _amendments(root),
     }
 
     if kind == "no-results":
@@ -102,12 +104,46 @@ def build_report(
     ]
     bundle["strata"] = [
         asdict(s)
-        for dimension in ("headroom_band", "discoverability", "tier", "video_tier")
+        for dimension in (
+            "headroom_band",
+            "discoverability",
+            "feedback_bandwidth",
+            "tier",
+            "video_tier",
+        )
         for s in stats.analyse_strata(
             records, dimension, "A1", "A0", resamples=resamples, seed=seed
         )
     ]
+    for row in bundle["comparisons"]:
+        row.setdefault("scope", "full-suite")
+        # The caveat travels with the number it qualifies, so it cannot drift
+        # into prose that a later edit separates from the interval.
+        row["ci_caveat"] = CI_CAVEAT
     return bundle
+
+
+CI_CAVEAT = (
+    "Cluster bootstrap intervals under-cover in this design at around a hundred "
+    "tasks, so this interval is optimistic."
+)
+
+
+def _with_load_problems(detail: str, problems: list[str]) -> str:
+    """Surface unloadable tasks rather than letting them vanish.
+
+    A task that failed to load is absent from every figure, so saying so is
+    the difference between a suite of 19 and a suite of 22 that lost three
+    silently.
+    """
+    if not problems:
+        return detail
+    listed = "; ".join(problems[:3])
+    more = f" (and {len(problems) - 3} more)" if len(problems) > 3 else ""
+    return (
+        f"{detail} Note: {len(problems)} task(s) could not be loaded and are "
+        f"absent from every figure: {listed}{more}"
+    )
 
 
 def _status_kind(records: list[dict[str, Any]], is_mock: bool) -> str:
@@ -141,6 +177,13 @@ def _provenance(
         "trials_excluded": excluded,
         "usd_total": round(sum(costs), 4) if any(costs) else None,
         "video_tiers": sorted({r.get("video", {}).get("tier") for r in records if r.get("video")}),
+        "harness_digest": _first(provs, "harness_digest") or record_mod.harness_digest(),
+        "image_digests": sorted({p["image_digest"] for p in provs if p.get("image_digest")}),
+        "model_params": _first(provs, "model_params") or {},
+        "agent_adapters": sorted({p["agent_adapter"] for p in provs if p.get("agent_adapter")}),
+        "sandbox_backends": sorted(
+            {p["sandbox_backend"] for p in provs if p.get("sandbox_backend")}
+        ),
         "is_mock": is_mock,
     }
 
@@ -152,7 +195,10 @@ def _first(provs: list[dict[str, Any]], key: str) -> Any:
     return None
 
 
-def _task_entry(task: Any, probe: float | None) -> dict[str, Any]:
+def _task_entry(
+    task: Any, probe: float | None, detail: dict[str, Any] | None
+) -> dict[str, Any]:
+    detail = detail or {}
     return {
         "id": task.id,
         "tier": task.tier,
@@ -160,21 +206,93 @@ def _task_entry(task: Any, probe: float | None) -> dict[str, Any]:
         "goal": task.goal,
         "knowledge_gap": task.knowledge_gap.summary,
         "discoverability": task.discoverability,
+        "feedback_bandwidth": task.feedback_bandwidth,
         "probe_known": probe,
+        "probe_n": _probe_denominator(detail),
+        "probe_hits": detail.get("correct"),
         "headroom_band": task.headroom_band(probe),
         "saturated": task.saturated,
         "video_tier": task.video.tier,
         "video_license": task.license,
         "video_attribution": task.attribution,
+        "placebo_source": task.placebo_source,
     }
 
 
-def _load_probes(root: Path) -> dict[str, float]:
+def _probe_denominator(detail: dict[str, Any]) -> int | None:
+    """Probes that produced an answer. Errored probes are not a denominator."""
+    repeats, errors = detail.get("repeats"), detail.get("errors")
+    if repeats is None:
+        return None
+    return int(repeats) - int(errors or 0)
+
+
+def _load_probes(root: Path) -> tuple[dict[str, float], dict[str, dict[str, Any]]]:
     path = root / "results" / "probes.json"
     if not path.exists():
-        return {}
+        return {}, {}
     payload = json.loads(path.read_text())
-    return {k: float(v) for k, v in payload.get("probe_known", {}).items()}
+    scores = {k: float(v) for k, v in payload.get("probe_known", {}).items()}
+    return scores, payload.get("detail", {})
+
+
+#: The gates the pre-registration promises to publish beside the results.
+GATE_LABELS = {
+    "oracle": "Every task's own solution passes its checker",
+    "trivial-agent": "A null agent scores zero on every checker",
+    "leakage": "No material contains the grader's vocabulary",
+    "narration": "Narration never speaks over itself",
+    "determinism": "Hermetic videos render byte-identically",
+}
+
+
+def _gates(root: Path, suite: list[Any]) -> list[dict[str, Any]]:
+    """Report gate status from the last recorded gate run.
+
+    Reported as ``pending`` rather than omitted when no run exists: a
+    results page that silently drops its integrity gates is one a reader
+    cannot distinguish from a page whose gates failed.
+    """
+    path = root / "results" / "gates.json"
+    recorded = json.loads(path.read_text()) if path.exists() else {}
+    out: list[dict[str, Any]] = []
+    for gate_id, label in GATE_LABELS.items():
+        entry = recorded.get(gate_id) or {}
+        out.append(
+            {
+                "id": gate_id,
+                "status": entry.get("status", "pending"),
+                "detail": entry.get("detail", label),
+                "passed": entry.get("passed"),
+                "total": entry.get("total", len(suite) if gate_id != "determinism" else None),
+            }
+        )
+    return out
+
+
+def _amendments(root: Path) -> list[dict[str, Any]]:
+    """Parse the pre-registration's amendment section.
+
+    Published so a reader can see whether the frozen design was changed
+    after freezing, rather than having to diff the document themselves.
+    """
+    doc = root / "docs" / "preregistration.md"
+    if not doc.exists():
+        return []
+    text = doc.read_text()
+    marker = "## 13. Amendments"
+    if marker not in text:
+        return []
+    tail = text.split(marker, 1)[1]
+    if "_(none yet)_" in tail:
+        return []
+    out: list[dict[str, Any]] = []
+    for line in tail.splitlines():
+        line = line.strip()
+        if line.startswith("- ") and ":" in line:
+            date, _, summary = line[2:].partition(":")
+            out.append({"date": date.strip(), "summary": summary.strip(), "data_seen": None})
+    return out
 
 
 def _prereg_frozen(root: Path) -> bool:

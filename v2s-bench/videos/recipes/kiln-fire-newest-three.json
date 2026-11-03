@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 59.0,
+  "duration_secs": 56.0,
   "stills": [
     {
       "t": 0.0,
@@ -164,15 +164,15 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "This lane holds too many pieces per batch. Fixing that is two steps, not one."
+      "text": "Too many pieces per batch. Fixing that is two steps."
     },
     {
-      "t": 6.41,
-      "text": "The lane is prepared and set to take four pieces at a time. We want two."
+      "t": 4.8,
+      "text": "Prepared, and set to take four at a time. We want two."
     },
     {
-      "t": 11.68,
-      "text": "So we edit that one field in the description."
+      "t": 10.8,
+      "text": "So we edit that one field."
     },
     {
       "t": 16.8,
@@ -180,7 +180,7 @@
     },
     {
       "t": 22.8,
-      "text": "But look at the last line now. kiln is still holding what it read before our edit."
+      "text": "But look at the last line. It still holds what it read before."
     },
     {
       "t": 28.8,
@@ -188,19 +188,19 @@
     },
     {
       "t": 34.8,
-      "text": "So prepare the lane again, which is what picks the edit up."
+      "text": "So prepare it again, which picks the edit up."
     },
     {
       "t": 40.8,
-      "text": "Now it fires, and it tells us the batch it made and where the artifact went."
+      "text": "Now it fires, names the batch, and says where it went."
     },
     {
       "t": 46.8,
-      "text": "And here is which pieces it actually took. Worth checking, because it is not the half you might assume."
+      "text": "And here is what it took, which may surprise you."
     },
     {
-      "t": 53.37,
-      "text": "Change the description, prepare the lane again, then fire. In that order."
+      "t": 50.8,
+      "text": "Edit, prepare again, then fire. In that order."
     }
   ],
   "notes": "Teaches the hold-count field, that a changed description leaves the lane stale until it is prepared again, and that a batch keeps the last pieces in name order."

@@ -9,6 +9,7 @@
 results/runs/
 results/report.json
 results/probes.json
+results/gates.json
 
 # Generated arm materials. Built by `v2sbench build-materials`; a committed
 # skill would be a skill nobody can verify came out of the pipeline.

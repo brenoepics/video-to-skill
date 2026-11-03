@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 49.6,
+  "duration_secs": 50.0,
   "stills": [
     {
       "t": 0.0,
@@ -144,39 +144,39 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "A drop in the zep ledger is not finished just because you closed it. Let me show you."
+      "text": "A closed drop is not always a finished drop."
     },
     {
-      "t": 6.15,
-      "text": "We open a drop to work in, and zep hands us a nonce for it. Keep that in mind, it matters at the end."
+      "t": 4.8,
+      "text": "We open a drop, and zep hands us a nonce. It matters at the end."
     },
     {
-      "t": 13.41,
-      "text": "Stage a fact into the drop. Nothing surprising here."
+      "t": 10.8,
+      "text": "Stage a fact into it."
     },
     {
-      "t": 17.47,
+      "t": 16.8,
       "text": "Now watch what happens if we just close it."
     },
     {
       "t": 22.8,
-      "text": "It says it closed, but look at the state line, and look at the anchor. That is not a finished drop."
+      "text": "It closed, but look at the state line, and at the anchor. Not finished."
     },
     {
-      "t": 29.52,
-      "text": "The nonce is still sitting on disk next to the drop, and zep will print it again for us."
+      "t": 28.8,
+      "text": "The nonce is still on disk, and zep will print it again."
     },
     {
-      "t": 35.38,
-      "text": "So we close it again, this time passing that nonce along with it."
+      "t": 34.8,
+      "text": "So we close it again, passing that nonce along."
     },
     {
       "t": 40.8,
-      "text": "Now it is sealed and it has an anchor of its own."
+      "text": "Sealed this time, with an anchor."
     },
     {
-      "t": 44.5,
-      "text": "Sealed, with a real anchor. That is the difference, and it is easy to miss."
+      "t": 44.8,
+      "text": "That is the difference, and it is easy to miss."
     }
   ],
   "notes": "Teaches that closing a drop without its nonce leaves a provisional record, and where the nonce can be read back from."

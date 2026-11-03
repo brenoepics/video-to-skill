@@ -107,6 +107,7 @@ def cmd_validate(args) -> int:
 
     root, suite = _load(args)
     failures: list[str] = []
+    recorded: dict[str, dict] = {}
     print(f"loaded {len(suite)} tasks (schema + consistency: ok)")
 
     if args.blind:
@@ -121,6 +122,13 @@ def cmd_validate(args) -> int:
         print(f"  {checked} materials checked")
         if not checked:
             print("  (no materials built yet — run `v2sbench build-materials`)")
+        leaked = sum(1 for f in failures if "material" in f or "/A" in f)
+        recorded["leakage"] = {
+            "status": "skipped" if not checked else ("fail" if leaked else "pass"),
+            "detail": f"{checked} materials checked",
+            "passed": checked - leaked,
+            "total": checked,
+        }
 
     if args.oracle or args.trivial:
         config = RunConfig(
@@ -139,6 +147,12 @@ def cmd_validate(args) -> int:
                 print(f"  FAIL  {t} — the oracle ran and did not satisfy the checker")
             for t, detail in errored:
                 print(f"  ERROR {t} — the environment did not come up: {detail}")
+            recorded["oracle"] = {
+                "status": "pass" if not broken and not errored else "fail",
+                "detail": f"{passed}/{len(suite)} oracles satisfied their checker",
+                "passed": passed,
+                "total": len(suite),
+            }
         if args.trivial:
             print("\ntrivial-agent gate (a do-nothing agent must score zero):")
             passed = trivial_agent_gate(config, suite, suite_version=version)
@@ -146,6 +160,15 @@ def cmd_validate(args) -> int:
             print(f"  {len(passed)} task(s) passed by a null agent")
             for t in passed:
                 print(f"  FAIL {t} — this checker can be satisfied without doing the task")
+            recorded["trivial-agent"] = {
+                "status": "pass" if not passed else "fail",
+                "detail": f"{len(passed)} of {len(suite)} checkers satisfiable by a null agent",
+                "passed": len(suite) - len(passed),
+                "total": len(suite),
+            }
+
+    if recorded:
+        _record_gates(root, recorded)
 
     print()
     if failures:
@@ -153,6 +176,22 @@ def cmd_validate(args) -> int:
         return 1
     print("all requested gates passed")
     return 0
+
+
+def _record_gates(root: Path, recorded: dict[str, dict]) -> None:
+    """Persist gate outcomes so the results page can show them.
+
+    The pre-registration promises the gates are published beside the
+    results, and they are what separates a working suite from a defective
+    one. Without this they lived only in CI logs.
+    """
+    path = root / "results" / "gates.json"
+    existing = json.loads(path.read_text()) if path.exists() else {}
+    existing.update(recorded)
+    existing["_recorded_at"] = record_mod.utcnow()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(existing, indent=2, sort_keys=True) + "\n")
+    print(f"\nrecorded gate status to {path}")
 
 
 def cmd_run(args) -> int:

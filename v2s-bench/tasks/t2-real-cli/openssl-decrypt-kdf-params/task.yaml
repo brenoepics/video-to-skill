@@ -1,0 +1,79 @@
+schema_version: 1
+id: openssl-decrypt-kdf-params
+tier: t2-real-cli
+title: "Open a sealed handover note whose key derivation is not the default"
+goal: >-
+  vault.enc is a sealed handover note. passphrase.txt holds the passphrase
+  it was sealed with, HANDOVER.txt records how it was sealed, and
+  vault.sha256 is the digest of the note before it was sealed.
+
+  Recover the note to vault.txt, byte for byte as it was. vault.enc,
+  passphrase.txt, vault.sha256 and HANDOVER.txt must all be left exactly as
+  they are.
+discoverability: good
+feedback_bandwidth: uninformative   # every wrong combination fails identically with `bad decrypt` and a provider error naming a C source file, leaves a file of garbage behind, and says nothing about which parameter is wrong; only the oldest mistake of all draws a hint, and it names the wrong parameter to fix
+knowledge_gap:
+  summary: >-
+    Unsealing has to restate every key-derivation choice that sealing made,
+    because none of them are recorded in the file: the stretching function,
+    the number of rounds, and in particular the digest, which defaults to
+    something other than what was used here. Get any one of them wrong and
+    the failure is identical and contentless -- the same bad-decrypt error
+    with a provider source location, and a file of garbage written out
+    anyway -- so the error cannot be used to work out which one it was.
+  probe_question: >-
+    A file was encrypted with `openssl enc` using AES-256-CBC, a salt, and a
+    key stretched with 240000 rounds of PBKDF2 over SHA-512. Give the exact
+    command that decrypts it with the passphrase in passphrase.txt, and say
+    which of those choices openssl will get wrong if you do not restate it.
+  probe_answer_pattern: '(?is)(?=.*enc\s+-d)(?=.*-md\s+sha512)(?=.*-iter\s*240000)(?=.*(digest|-md)[\s\S]{0,200}(default|sha256|sha-256))'
+  taught_at: [23.0, 41.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v openssl >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends openssl=3.0.13-0ubuntu3.16; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' openssl)\" = 3.0.13-0ubuntu3.16"
+    - "printf 'courier-handover-2026-11\\n' > passphrase.txt"
+    - "printf 'rotation window: 02:00 to 04:00 UTC\\nstandby contact: night desk, extension 4417\\nseal key held by: the duty engineer\\nfallback: resume from the previous snapshot\\n' > .note.plain"
+    - "openssl dgst -sha256 -r .note.plain | cut -d' ' -f1 > vault.sha256"
+    - "openssl enc -aes-256-cbc -pbkdf2 -iter 240000 -md sha512 -salt -in .note.plain -out vault.enc -pass file:passphrase.txt"
+    - "rm -f .note.plain"
+    - "chmod 0600 passphrase.txt"
+budget:
+  max_turns: 25
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - note-recovered-exactly
+    - digest-matches-the-recovered-file
+    - archive-still-opens-unchanged
+    - inputs-untouched
+  key_actions:
+    - '(?mi)^\s*openssl\s+enc\b[^\n]*-d\b'
+    - '(?mi)^\s*openssl\s+enc\b[^\n]*-md\s+sha512'
+  forbidden_actions:
+    - '(?mi)(>|tee|rm|mv|sed\s+-i)\s*[^\n]*(vault\.enc|vault\.sha256|passphrase\.txt)'
+  leakage_forbidden:
+    - note-recovered-exactly
+    - digest-matches-the-recovered-file
+    - archive-still-opens-unchanged
+    - inputs-untouched
+    - extension 4417
+    - 02:00 to 04:00 UTC
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: openssl-decrypt-kdf-params
+  sha256: null
+placebo_source: openssl-sign-keeping-sans
+notes: >-
+  The video opens an archive sealed with a different round count and a
+  different digest, so the numbers on screen are wrong here and have to be
+  taken from the handover note instead.

@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 53.2,
+  "duration_secs": 52.5,
   "stills": [
     {
       "t": 0.0,
@@ -150,43 +150,43 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "lath keeps settings in layers. Staging one takes a little getting used to."
+      "text": "lath keeps settings in layers. Staging one is odd."
     },
     {
-      "t": 5.61,
-      "text": "Start a tree in this directory."
+      "t": 4.8,
+      "text": "Start a tree here."
     },
     {
       "t": 10.3,
-      "text": "Now we stage a setting into a layer. Watch the order of what I type, because it is not the one you would expect."
+      "text": "Now stage a setting. Watch the order, it is not what you expect."
     },
     {
-      "t": 17.08,
-      "text": "And lath reads it back to us the way it stored it. That is the check worth doing."
+      "t": 15.8,
+      "text": "lath reads it back the way it stored it. Worth checking."
     },
     {
-      "t": 22.22,
-      "text": "Here is the trap. Type those two the other way round and lath does not complain at all."
+      "t": 21.3,
+      "text": "Here is the trap. The other way round, no complaint."
     },
     {
-      "t": 28.07,
-      "text": "Look closely at the layer now. There is an entry in there that nobody asked for. No error, just nonsense."
+      "t": 26.8,
+      "text": "Look at the layer. An entry nobody asked for, and no error."
     },
     {
-      "t": 35.1,
-      "text": "So we take that entry out again."
+      "t": 32.3,
+      "text": "So we take that out again."
     },
     {
       "t": 37.8,
-      "text": "And stage the second setting the same way as the first."
+      "text": "And stage the second the same way."
     },
     {
       "t": 43.3,
-      "text": "Two settings, both under the names we wanted."
+      "text": "Two settings, the names we wanted."
     },
     {
-      "t": 47.0,
-      "text": "Watch the order on that line, and read the layer back afterwards. That is all there is to it."
+      "t": 47.3,
+      "text": "Watch the order, and read the layer back after."
     }
   ],
   "notes": "Teaches lath's value-before-key argument order and shows the reversed order silently staging a key named after the value."

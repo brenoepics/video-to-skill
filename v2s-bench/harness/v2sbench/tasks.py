@@ -254,6 +254,42 @@ def load_suite(root: Path, *, tiers: tuple[str, ...] = TIERS, validate: bool = T
     return tasks
 
 
+def load_suite_tolerant(
+    root: Path, *, tiers: tuple[str, ...] = TIERS, validate: bool = True
+) -> tuple[list[Task], list[str]]:
+    """Load what loads, and report what did not.
+
+    The strict loader is right for `validate` and for a run: a malformed
+    task is an integrity problem and should stop the world. It is wrong for
+    the report builder, which would otherwise crash on a single
+    half-written task and produce nothing -- and "the report failed to
+    build" tells a reader far less than "19 tasks loaded, these 3 did not,
+    here is why".
+    """
+    tasks: list[Task] = []
+    problems: list[str] = []
+    for tier in tiers:
+        tier_dir = root / "tasks" / tier
+        if not tier_dir.is_dir():
+            continue
+        for entry in sorted(tier_dir.iterdir()):
+            if not (entry.is_dir() and (entry / "task.yaml").exists()):
+                continue
+            try:
+                tasks.append(load_task(entry, root, validate=validate))
+            except (ValueError, OSError, KeyError) as exc:
+                problems.append(f"{tier}/{entry.name}: {exc}")
+    seen: dict[str, Path] = {}
+    unique: list[Task] = []
+    for task in tasks:
+        if task.id in seen:
+            problems.append(f"duplicate task id {task.id!r}: {seen[task.id]} and {task.directory}")
+            continue
+        seen[task.id] = task.directory
+        unique.append(task)
+    return unique, problems
+
+
 def suite_version(root: Path) -> str:
     """A content hash of the task suite.
 

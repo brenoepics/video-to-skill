@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 58.4,
+  "duration_secs": 56.0,
   "stills": [
     {
       "t": 0.0,
@@ -154,43 +154,43 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "Rendering a sheet is not releasing it. The release step has a name you would not guess."
+      "text": "Rendering a sheet is not releasing it."
     },
     {
-      "t": 5.69,
-      "text": "Render the sheet with the waves locked together, and hold on to the id it prints."
+      "t": 4.8,
+      "text": "Render it locked together, and keep the id it prints."
     },
     {
-      "t": 10.97,
-      "text": "The obvious word for the next step is not the word. There is no such command."
+      "t": 10.8,
+      "text": "The obvious word is not the word. No such command."
     },
     {
       "t": 16.8,
-      "text": "This is the one, and it takes that id we were given."
+      "text": "This is the one, and it takes that id."
     },
     {
       "t": 22.8,
-      "text": "And the status now names what has been released."
+      "text": "And the status names what has been released."
     },
     {
       "t": 28.8,
-      "text": "Now suppose somebody tidies the file up afterwards."
+      "text": "Now suppose somebody tidies the file afterwards."
     },
     {
       "t": 34.8,
-      "text": "Releasing it again is refused. What was released no longer matches what is on disk."
+      "text": "Releasing it again is refused. What was released no longer matches."
     },
     {
       "t": 40.8,
-      "text": "So we render it again, and it tells us the id of what is now on disk."
+      "text": "So we render it again, and it tells us the id."
     },
     {
       "t": 46.8,
-      "text": "Release that, and it goes through. Always release what is actually there."
+      "text": "Release that, and it goes through."
     },
     {
-      "t": 51.65,
-      "text": "Release the id the render printed, and if the file is touched afterwards, render it again before releasing."
+      "t": 50.8,
+      "text": "If the file is touched, render it again before releasing."
     }
   ],
   "notes": "Teaches that the release step is latch rather than release, that it takes the id the render printed, and that it refuses once the file has changed."

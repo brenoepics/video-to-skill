@@ -45,8 +45,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from v2sbench.render import load_recipe  # noqa: E402
-from v2sbench.render.narration import detect_backend, synthesise  # noqa: E402
+from v2sbench.render import load_recipe
+from v2sbench.render.narration import detect_backend, synthesise
 
 #: Silence between one cue ending and the next beginning. Enough that a
 #: listener, and an ASR model, hear two utterances rather than one.

@@ -1,0 +1,90 @@
+schema_version: 1
+id: openssl-issuing-ca-chain
+tier: t2-real-cli
+title: "Stand up an issuing CA under an existing root and put a host under it"
+goal: >-
+  root.key and root.crt are the Harbour Works root CA. issuing.key and
+  db.key are two private keys that already exist and must be used as they
+  are. Produce two certificates.
+
+  issuing.crt must certify the public key of issuing.key under the subject
+  /O=Harbour Works/CN=Harbour Works Issuing CA, must be signed by the root,
+  and must be usable to issue ordinary host certificates but not to issue
+  further certificate authorities beneath it.
+
+  db.crt must certify the public key of db.key under the subject
+  /O=Harbour Works/CN=db.internal, must be signed by the issuing CA rather
+  than by the root, and must not itself be a certificate authority.
+
+  With root.crt as the only trusted certificate and issuing.crt supplied
+  alongside as an untrusted intermediate, db.crt must verify. root.key and
+  root.crt must be left exactly as they are.
+discoverability: good
+feedback_bandwidth: informative   # a wrong chain is refused and the refusal names the defect and where it is -- `error 79 at 1 depth lookup: invalid CA certificate`, `unable to get local issuer certificate` -- so a persistent agent can converge
+knowledge_gap:
+  summary: >-
+    Signing a request does not make the result a certificate authority. A
+    certificate that is to sign other certificates has to say so in its
+    basic constraints, with the depth it is allowed, and those constraints
+    come from a configuration section handed to the signing step, not from
+    the request and not from any default. Until then the chain is refused
+    even though every signature in it is correct. The second certificate
+    must then be signed by the first, which means its issuer is the new
+    intermediate and not the root everyone trusts.
+  probe_question: >-
+    With openssl, sign an intermediate CA certificate from a root so that it
+    can issue host certificates but no further CAs, then sign a host
+    certificate with it. Give the exact commands and the extension values
+    the intermediate needs.
+  probe_answer_pattern: '(?is)(?=.*basicConstraints\s*=)(?=.*CA\s*:\s*TRUE)(?=.*pathlen\s*:?\s*=?\s*0)(?=.*(-extfile|-extensions|openssl\s+ca))'
+  taught_at: [25.0, 42.0, 58.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v openssl >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends openssl=3.0.13-0ubuntu3.16; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' openssl)\" = 3.0.13-0ubuntu3.16"
+    - "openssl genpkey -quiet -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out root.key 2>/dev/null"
+    - "openssl req -new -x509 -key root.key -sha256 -days 3650 -subj '/O=Harbour Works/CN=Harbour Works Root CA' -addext 'basicConstraints=critical,CA:TRUE' -addext 'keyUsage=critical,keyCertSign,cRLSign' -out root.crt"
+    - "openssl genpkey -quiet -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out issuing.key 2>/dev/null"
+    - "openssl genpkey -quiet -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out db.key 2>/dev/null"
+    - "chmod 0600 root.key issuing.key db.key"
+budget:
+  max_turns: 35
+  wall_secs: 900
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - issuing-cert-signed-by-the-root
+    - issuing-cert-is-a-ca-for-one-level
+    - leaf-signed-by-the-issuing-ca
+    - chain-verifies-with-only-the-root-trusted
+    - leaf-is-not-a-ca
+    - certificates-use-the-given-keys
+    - root-untouched
+  key_actions:
+    - '(?mi)^\s*openssl\s+req\b[^\n]*-new\b'
+    - '(?mi)^\s*openssl\s+(x509|ca)\b[^\n]*(-extfile|-extensions|basicConstraints)'
+    - '(?mi)^\s*openssl\s+(x509|ca)\b[^\n]*issuing\.(crt|key)'
+  forbidden_actions:
+    - '(?mi)(>|tee|rm|mv)\s*[^\n]*root\.(key|crt)'
+  leakage_forbidden:
+    - issuing-cert-is-a-ca-for-one-level
+    - leaf-signed-by-the-issuing-ca
+    - chain-verifies-with-only-the-root-trusted
+    - leaf-is-not-a-ca
+    - "pathlen:0"
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: openssl-issuing-ca-chain
+  sha256: null
+placebo_source: openssl-sign-keeping-sans
+notes: >-
+  The video builds a chain for a different organisation with a different
+  depth, so the configuration on screen has to be adapted rather than copied.

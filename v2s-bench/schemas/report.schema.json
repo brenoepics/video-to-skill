@@ -4,59 +4,213 @@
   "title": "v2s-bench report bundle",
   "description": "Everything the results website renders. Produced by `v2sbench report` from immutable run records and recomputable by `v2sbench verify-results`. The site reads this file and nothing else.",
   "type": "object",
-  "required": ["schema_version", "generated_at", "status", "provenance", "arms", "comparisons", "tasks", "cells"],
+  "required": [
+    "schema_version",
+    "generated_at",
+    "status",
+    "provenance",
+    "arms",
+    "comparisons",
+    "tasks",
+    "cells"
+  ],
   "additionalProperties": false,
   "properties": {
-    "schema_version": { "const": 1 },
-    "generated_at": { "type": "string", "format": "date-time" },
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "status": {
       "type": "object",
-      "required": ["kind", "headline"],
+      "required": [
+        "kind",
+        "headline"
+      ],
       "description": "The site must be honest when there is nothing to show. `no-results` and `mock` both render a prominent banner instead of figures.",
       "properties": {
-        "kind": { "enum": ["no-results", "mock", "pilot", "measured"] },
-        "headline": { "type": "string" },
-        "detail": { "type": "string" },
-        "prereg_frozen": { "type": "boolean" }
+        "kind": {
+          "enum": [
+            "no-results",
+            "mock",
+            "pilot",
+            "measured"
+          ]
+        },
+        "headline": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "prereg_frozen": {
+          "type": "boolean"
+        }
       }
     },
     "provenance": {
       "type": "object",
       "properties": {
-        "harness_version": { "type": "string" },
-        "suite_version": { "type": "string" },
-        "suite_commit": { "type": ["string", "null"] },
-        "prereg_commit": { "type": ["string", "null"] },
-        "models": { "type": "array", "items": { "type": "string" } },
-        "run_ids": { "type": "array", "items": { "type": "string" } },
-        "trials_total": { "type": "integer" },
-        "trials_excluded": { "type": "integer" },
-        "usd_total": { "type": ["number", "null"] },
-        "video_tiers": { "type": "array", "items": { "enum": ["hermetic", "real"] } },
-        "is_mock": { "type": "boolean" }
+        "harness_version": {
+          "type": "string"
+        },
+        "suite_version": {
+          "type": "string"
+        },
+        "suite_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prereg_commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "run_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "trials_total": {
+          "type": "integer"
+        },
+        "trials_excluded": {
+          "type": "integer"
+        },
+        "usd_total": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "video_tiers": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "hermetic",
+              "real"
+            ]
+          }
+        },
+        "is_mock": {
+          "type": "boolean"
+        },
+        "harness_digest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Content hash of the harness. Harness changes have swung the same model by tens of points on the same tasks, so a bare version string is not enough."
+        },
+        "image_digests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "model_params": {
+          "type": "object",
+          "description": "Sampling parameters. A figure is not reproducible without them."
+        },
+        "agent_adapters": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sandbox_backends": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A run including `local` trials is not valid for a published figure, and a reader must be able to see that."
+        }
       }
     },
     "arms": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "n", "successes", "rate"],
+        "required": [
+          "id",
+          "name",
+          "n",
+          "successes",
+          "rate"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "isolates": { "type": "string" },
-          "description": { "type": "string" },
-          "n": { "type": "integer" },
-          "successes": { "type": "integer" },
-          "rate": { "type": "number" },
-          "wilson_lo": { "type": "number" },
-          "wilson_hi": { "type": "number" },
-          "error_rate": { "type": "number" },
-          "mean_usd": { "type": ["number", "null"] },
-          "mean_turns": { "type": ["number", "null"] },
-          "mean_wall_secs": { "type": ["number", "null"] },
-          "policy_violation_rate": { "type": ["number", "null"] },
-          "key_action_hit_rate": { "type": ["number", "null"] }
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isolates": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "n": {
+            "type": "integer"
+          },
+          "successes": {
+            "type": "integer"
+          },
+          "rate": {
+            "type": "number"
+          },
+          "wilson_lo": {
+            "type": "number"
+          },
+          "wilson_hi": {
+            "type": "number"
+          },
+          "error_rate": {
+            "type": "number"
+          },
+          "mean_usd": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean_turns": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean_wall_secs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "policy_violation_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "key_action_hit_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
         }
       }
     },
@@ -65,25 +219,168 @@
       "description": "One entry per pre-registered hypothesis, in the order declared in arms.py. Verdicts are computed, never written by hand.",
       "items": {
         "type": "object",
-        "required": ["hypothesis", "treatment", "reference", "verdict"],
+        "required": [
+          "hypothesis",
+          "treatment",
+          "reference",
+          "verdict"
+        ],
         "properties": {
-          "hypothesis": { "type": "string" },
-          "claim": { "type": "string" },
-          "fails_if": { "type": "string" },
-          "treatment": { "type": "string" },
-          "reference": { "type": "string" },
-          "n_pairs": { "type": "integer" },
-          "n_tasks": { "type": "integer" },
-          "diff": { "type": ["number", "null"], "description": "Paired difference in success rate, treatment minus reference." },
-          "ci_lo": { "type": ["number", "null"] },
-          "ci_hi": { "type": ["number", "null"] },
-          "ci_method": { "type": "string" },
-          "discordant_b": { "type": ["integer", "null"], "description": "Pairs where treatment succeeded and reference failed." },
-          "discordant_c": { "type": ["integer", "null"] },
-          "p_value": { "type": ["number", "null"] },
-          "p_adjusted": { "type": ["number", "null"] },
-          "p_method": { "type": "string" },
-          "verdict": { "enum": ["supported", "not-supported", "inconclusive", "insufficient-data"] }
+          "hypothesis": {
+            "type": "string"
+          },
+          "claim": {
+            "type": "string"
+          },
+          "fails_if": {
+            "type": "string"
+          },
+          "treatment": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "n_pairs": {
+            "type": "integer"
+          },
+          "n_tasks": {
+            "type": "integer"
+          },
+          "diff": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Paired difference in success rate, treatment minus reference."
+          },
+          "ci_lo": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ci_hi": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ci_method": {
+            "type": "string"
+          },
+          "discordant_b": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Pairs where treatment succeeded and reference failed."
+          },
+          "discordant_c": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "p_value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p_adjusted": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p_method": {
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "supported",
+              "not-supported",
+              "inconclusive",
+              "insufficient-data"
+            ]
+          },
+          "scope": {
+            "enum": [
+              "full-suite",
+              "probe-filtered",
+              "tier",
+              "video-tier"
+            ],
+            "default": "full-suite",
+            "description": "Which rows the contrast was computed over. Required because the pre-registration reports the primary endpoint TWICE -- full suite first, then the probe-filtered subset -- and two entries both labelled H1 would otherwise be indistinguishable."
+          },
+          "scope_detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The specific tier or video tier when `scope` names one."
+          },
+          "normalized_gain": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "(p_treat - p_ref)/(1 - p_ref). Keeps a ceiling effect from reading as a weak result."
+          },
+          "treatment_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reference_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "p_robustness": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The McNemar robustness check, reported alongside the primary permutation p, never instead of it."
+          },
+          "p_robustness_method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ci_caveat": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A caveat that must be rendered NEXT TO this interval rather than in prose elsewhere -- e.g. that cluster bootstrap intervals under-cover at around a hundred tasks, so the interval is optimistic. Carried in the bundle so it cannot drift away from the number it qualifies."
+          },
+          "icc": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "effective_trials": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "1/(1+(K-1)*ICC): what correlated trials are actually worth."
+          },
+          "declared_min_pairs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The declared-not-derived threshold below which the verdict is insufficient-data."
+          }
         }
       }
     },
@@ -93,14 +390,62 @@
       "items": {
         "type": "object",
         "properties": {
-          "dimension": { "enum": ["headroom_band", "discoverability", "tier", "video_tier"] },
-          "value": { "type": "string" },
-          "treatment": { "type": "string" },
-          "reference": { "type": "string" },
-          "n_pairs": { "type": "integer" },
-          "diff": { "type": ["number", "null"] },
-          "ci_lo": { "type": ["number", "null"] },
-          "ci_hi": { "type": ["number", "null"] }
+          "dimension": {
+            "enum": [
+              "headroom_band",
+              "discoverability",
+              "feedback_bandwidth",
+              "baseline_trajectory_length",
+              "tier",
+              "video_tier"
+            ],
+            "description": "`feedback_bandwidth` and `baseline_trajectory_length` were missing. The second is how H2a (knowledge gap) is separated from H2b (procedural anchoring), so without it the site can pose the mechanism question but not show its evidence."
+          },
+          "value": {
+            "type": "string"
+          },
+          "treatment": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "n_pairs": {
+            "type": "integer"
+          },
+          "diff": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ci_lo": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ci_hi": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "n_tasks": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "verdict": {
+            "enum": [
+              "supported",
+              "not-supported",
+              "inconclusive",
+              "insufficient-data"
+            ],
+            "description": "Published rather than left for the reader to derive from the bounds. A pre-registered commitment is decided on a stratum's interval, and the site should not be in the inference business."
+          }
         }
       }
     },
@@ -109,20 +454,87 @@
       "description": "Per-task drill-down. Every task is listed even when it has no trials.",
       "items": {
         "type": "object",
-        "required": ["id", "tier", "title"],
+        "required": [
+          "id",
+          "tier",
+          "title"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "tier": { "type": "string" },
-          "title": { "type": "string" },
-          "goal": { "type": "string" },
-          "knowledge_gap": { "type": "string" },
-          "discoverability": { "type": "string" },
-          "probe_known": { "type": ["number", "null"], "description": "Fraction of cold probes the model answered correctly. The task's measured headroom." },
-          "headroom_band": { "type": "string" },
-          "saturated": { "type": "boolean" },
-          "video_tier": { "type": "string" },
-          "video_license": { "type": ["string", "null"] },
-          "video_attribution": { "type": ["string", "null"] }
+          "id": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "goal": {
+            "type": "string"
+          },
+          "knowledge_gap": {
+            "type": "string"
+          },
+          "discoverability": {
+            "type": "string"
+          },
+          "probe_known": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Fraction of cold probes the model answered correctly. The task's measured headroom."
+          },
+          "headroom_band": {
+            "type": "string"
+          },
+          "saturated": {
+            "type": "boolean"
+          },
+          "video_tier": {
+            "type": "string"
+          },
+          "video_license": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "video_attribution": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "feedback_bandwidth": {
+            "enum": [
+              "silent",
+              "uninformative",
+              "informative"
+            ],
+            "description": "Declared in task.yaml and stratified on by the pre-registration. It was missing here, which meant the moderator the design hinges on could be declared, measured and then not rendered."
+          },
+          "probe_n": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "How many cold probes were asked. Without it `probe_known` is the one rate in the bundle that cannot carry an interval -- and the saturation argument rests on it."
+          },
+          "probe_hits": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "How many of those probes were correct."
+          },
+          "placebo_source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The video the placebo arm (A5) was built from, so a reader can see what the control actually contained."
+          }
         }
       }
     },
@@ -131,20 +543,61 @@
       "description": "The task x arm grid: one cell per combination actually run.",
       "items": {
         "type": "object",
-        "required": ["task", "arm", "n", "successes"],
+        "required": [
+          "task",
+          "arm",
+          "n",
+          "successes"
+        ],
         "properties": {
-          "task": { "type": "string" },
-          "arm": { "type": "string" },
-          "n": { "type": "integer" },
-          "successes": { "type": "integer" },
-          "errors": { "type": "integer" },
-          "rate": { "type": "number" },
-          "wilson_lo": { "type": "number" },
-          "wilson_hi": { "type": "number" },
-          "mean_turns": { "type": ["number", "null"] },
-          "mean_usd": { "type": ["number", "null"] },
-          "key_action_hit_rate": { "type": ["number", "null"] },
-          "skill_cited_rate": { "type": ["number", "null"] }
+          "task": {
+            "type": "string"
+          },
+          "arm": {
+            "type": "string"
+          },
+          "n": {
+            "type": "integer"
+          },
+          "successes": {
+            "type": "integer"
+          },
+          "errors": {
+            "type": "integer"
+          },
+          "rate": {
+            "type": "number"
+          },
+          "wilson_lo": {
+            "type": "number"
+          },
+          "wilson_hi": {
+            "type": "number"
+          },
+          "mean_turns": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "mean_usd": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "key_action_hit_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "skill_cited_rate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
         }
       }
     },
@@ -154,12 +607,91 @@
       "items": {
         "type": "object",
         "properties": {
-          "label": { "type": "string" },
-          "arm": { "type": "string" },
-          "count": { "type": "integer" },
-          "example_trial": { "type": "string" },
-          "judge": { "type": ["string", "null"] },
-          "judge_kappa": { "type": ["number", "null"] }
+          "label": {
+            "type": "string"
+          },
+          "arm": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "example_trial": {
+            "type": "string"
+          },
+          "judge": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "judge_kappa": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "description": "The integrity gates. The pre-registration promises these are published with the results, and they are what separate a working suite from a defective one -- but the bundle had nowhere to put them, so the results page could not show them.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "pending",
+              "skipped"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "passed": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "amendments": {
+      "type": "array",
+      "description": "Dated amendments to the frozen pre-registration. A reader cannot otherwise tell whether any exist.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "data_seen": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether any data had been seen when this amendment was made."
+          }
         }
       }
     }

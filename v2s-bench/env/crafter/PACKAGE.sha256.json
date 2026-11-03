@@ -1,0 +1,13 @@
+{
+  "files": {
+    "constants.py": "b4a7314c3a30171557350284e2baf6ef80d71157395f01cf745d71a98aff09eb",
+    "data.yaml": "41ec28a266e74d7f98e0b7381ff5f11ed491c2a6cf39a460eda8bbd751b8630f",
+    "engine.py": "6ba8e03e7e141b730378a286e3f3cc2778f88f785bd60992b36cfce142789936",
+    "env.py": "a728d30479c4c0b2a3fe39505169af4a861e114132bde76d6c05d235da0171b6",
+    "objects.py": "415aa49964639f3ae6b03372d588476fcfc4cafd6fd8b04a2d19b0fd6752b161",
+    "worldgen.py": "135599bea2a2f05c5e83be19a73cab7e0fe79ec15bdb72123671d44d351e1cfa"
+  },
+  "note": "sha256 of Crafter's rule-bearing files, as installed from env/crafter/requirements.txt. The checker verifies these before it replays a journal: the replay is only evidence if the rules it replays under are the pinned ones. Regenerate with env/crafter/freeze_package.py when the pin changes.",
+  "package": "crafter==1.8.3",
+  "schema_version": 1
+}

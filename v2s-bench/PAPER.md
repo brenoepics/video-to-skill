@@ -235,17 +235,49 @@ _Empty by design. Nothing has been run._
 
 ### 6.1 Integrity gates
 
+Verified on the tier-1 suite (12 tasks) as of 2026-11-03. These are
+statements about the apparatus, not results.
+
 | Gate | Status |
 |---|---|
-| Oracle passes on every task | pending |
-| Null agent scores zero on every checker | pending |
-| No material contains grader vocabulary | pending |
-| Hermetic videos render byte-identically | pending |
+| Oracle passes on every task | **12/12** |
+| Null agent scores zero on every checker | **0 tasks passed** |
+| Checker absent from the workspace while the agent runs | **asserted by test** |
+| Narration never speaks over itself | **13/13 recipes** |
+| Hermetic videos render byte-identically (same machine, same TTS) | **verified** |
+| Every declared arm can be recorded and validated | **asserted by test** |
+| Published figures recompute from raw records | **verified** |
+| No material contains grader vocabulary | pending materials |
+
+The end-to-end chain has been exercised on the real suite with the stub
+agent: 24 trials, a report correctly refusing to describe itself as a
+measurement, and `verify-results` reproducing every figure.
 
 ### 6.2 Headroom
 
-_Pending `v2sbench probe`: per-task cold probe score, band, and the
-saturation list._
+_Pending a full `v2sbench probe` sweep: per-task cold probe score, band,
+and the saturation list._
+
+One result from a two-task smoke test is worth recording now, because it
+limits what the probe can do. Both tasks scored `probe_known = 0.00`
+(0/3) — including the one we expect to be *easiest*, whose tool documents
+its own trap in `--help`.
+
+That is not a surprise, it is arithmetic: tier 1's tools were invented for
+this benchmark, so no model can know their flags, and `probe_known` is
+**≈0 by construction across the whole tier**. Two consequences:
+
+1. The saturation exclusion rule (§5.4) can never fire in tier 1, and the
+   headroom banding there is degenerate — every task is "high headroom".
+2. What actually predicts tier-1 difficulty is `discoverability`: whether
+   the procedure can be recovered from on-box documentation. That is a
+   different axis from prior knowledge, and in tier 1 it is the only one
+   that varies.
+
+The probe earns its place in tiers 2–4, where the tools are real and the
+model's knowledge is genuinely partial. Reporting a probe score of 0 for
+every tier-1 task as though it were a measured finding would be
+misleading; it is a property of the design.
 
 ### 6.3 Primary and ablation contrasts
 

@@ -101,6 +101,7 @@ def build(
             "tier": task.tier,
             "suite_version": provenance.suite_version or "unknown",
             "discoverability": task.discoverability,
+            "feedback_bandwidth": task.feedback_bandwidth,
             "headroom_band": task.headroom_band(probe_known),
             "saturated": task.saturated,
         },

@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 45.2,
+  "duration_secs": 44.0,
   "stills": [
     {
       "t": 0.0,
@@ -147,35 +147,35 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "A rollout sheet can promise two completely different things, and both of them render cleanly."
+      "text": "One sheet can promise two very different things."
     },
     {
-      "t": 6.43,
-      "text": "Three units here, spread over two waves."
+      "t": 4.8,
+      "text": "Three units here, over two waves."
     },
     {
       "t": 10.8,
-      "text": "Render the sheet the obvious way. It is happy, and it gives us an id for what it made."
+      "text": "Render it the obvious way. It is happy, and gives us an id."
     },
     {
       "t": 16.8,
-      "text": "But read the gate lines. Nothing is waiting for anything, this sheet sequences nothing at all."
+      "text": "But read the gate lines. Nothing waits for anything, nothing is sequenced."
     },
     {
-      "t": 23.15,
-      "text": "Render it again, this time asking for the waves to be locked together. Different id already."
+      "t": 22.8,
+      "text": "Render again, asking for the waves to be locked together. Different id already."
     },
     {
-      "t": 29.25,
-      "text": "Now the first wave starts and the second one waits for it. That is the sheet we wanted."
+      "t": 28.8,
+      "text": "Now the first wave starts and the second waits for it."
     },
     {
-      "t": 35.25,
-      "text": "Two renderings on record, and nothing released yet."
+      "t": 34.8,
+      "text": "Two renderings, nothing released."
     },
     {
-      "t": 38.83,
-      "text": "Without that switch the waves only look ordered. With it, each one waits for the one before."
+      "t": 38.8,
+      "text": "Without that switch the order is for show. With it, each wave waits."
     }
   ],
   "notes": "Teaches that rendering only sequences the waves when the interlock switch is passed, and shows the parallel gates it writes otherwise."

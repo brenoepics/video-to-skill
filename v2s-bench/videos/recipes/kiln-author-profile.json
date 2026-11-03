@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 51.6,
+  "duration_secs": 50.0,
   "stills": [
     {
       "t": 0.0,
@@ -134,39 +134,39 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "kiln will not do anything until you have described the lane. The description lives in a particular file."
+      "text": "kiln does nothing until the lane is described, in a file."
     },
     {
-      "t": 7.27,
-      "text": "Ask it to prepare a lane with nothing set up and it tells us exactly which file it went looking for."
+      "t": 4.8,
+      "text": "Ask it with nothing set up and it names the file it wants."
     },
     {
-      "t": 13.9,
+      "t": 10.8,
       "text": "So we write that file. First the lane's name."
     },
     {
-      "t": 17.56,
+      "t": 16.8,
       "text": "Then which files make up a batch."
     },
     {
       "t": 22.8,
-      "text": "And how many of them one batch holds."
+      "text": "And how many one batch holds."
     },
     {
       "t": 28.8,
-      "text": "Worth reading back, because those three field names are the whole thing and nothing else will do."
+      "text": "Read it back. Those three field names are the whole thing, nothing else."
     },
     {
       "t": 34.8,
-      "text": "Now prepare the lane. It tells us what it found and how many pieces matched."
+      "text": "Now prepare the lane. It says what it found and how many matched."
     },
     {
       "t": 40.8,
-      "text": "And we can look at what kiln is holding. Prepared, not fired."
+      "text": "What kiln holds. Prepared, not fired."
     },
     {
-      "t": 45.58,
-      "text": "Three settings in that file, then prepare the lane, and kiln knows what it is working with."
+      "t": 44.8,
+      "text": "Three settings, then prepare it, and kiln knows its lane."
     }
   ],
   "notes": "Teaches the profile's filename and its three field names, which kiln's own help never mentions, and the name of the preparation step."

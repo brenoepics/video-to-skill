@@ -1,0 +1,83 @@
+schema_version: 1
+id: openssl-sign-keeping-sans
+tier: t2-real-cli
+title: "Issue a certificate that actually carries what the request asked for"
+goal: >-
+  api.csr is a certificate request for the internal host api.internal,
+  generated with its own key. ca.key and ca.crt are the Harbour Works CA's
+  private key and certificate.
+
+  Issue api.crt: a certificate for the public key in that request, signed by
+  that CA, valid for about a year. It must present the subject alternative
+  names, the key usage and the extended key usage that the request asked
+  for -- a certificate that verifies against the CA and presents no subject
+  alternative name at all is not acceptable, because the clients that will
+  use it do not look at the common name. ca.key, ca.crt and api.csr must be
+  left exactly as they are.
+discoverability: good
+feedback_bandwidth: silent   # signing without asking for the request's extensions exits 0, prints the usual confirmation, and yields a certificate that verifies against the CA and carries no extensions at all
+knowledge_gap:
+  summary: >-
+    What a certificate request asks for is a request: when the request is
+    turned into a certificate, those extensions are dropped unless the
+    signing step is explicitly told to take them over, or given them again
+    from a configuration section. Nothing warns about it. The certificate
+    that comes out has the right subject, the right public key and a valid
+    CA signature, and is rejected by every client that checks names the
+    modern way, because it has no subject alternative name.
+  probe_question: >-
+    Using openssl, sign api.csr with ca.crt and ca.key so that the resulting
+    certificate still carries the subject alternative names the request
+    asked for. Give the exact command, and say what happens to those
+    extensions if you leave that part out.
+  probe_answer_pattern: '(?is)(-copy_extensions\s+copy(all)?|-extfile)[\s\S]{0,400}(drop|lost|discard|ignor|not\s+(be\s+)?(copied|carried|included)|disappear|omitted|silently)'
+  taught_at: [28.0, 46.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v openssl >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends openssl=3.0.13-0ubuntu3.16; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' openssl)\" = 3.0.13-0ubuntu3.16"
+    - "openssl genpkey -quiet -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out ca.key 2>/dev/null"
+    - "openssl req -new -x509 -key ca.key -sha256 -days 3650 -subj '/C=GB/O=Harbour Works/CN=Harbour Works Root CA' -addext 'basicConstraints=critical,CA:TRUE' -addext 'keyUsage=critical,keyCertSign,cRLSign' -out ca.crt"
+    - "openssl genpkey -quiet -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out api.key 2>/dev/null"
+    - "openssl req -new -key api.key -sha256 -subj '/C=GB/O=Harbour Works/CN=api.internal' -addext 'subjectAltName=DNS:api.internal,DNS:api.svc.internal' -addext 'keyUsage=critical,digitalSignature,keyEncipherment' -addext 'extendedKeyUsage=serverAuth' -out api.csr"
+    - "chmod 0600 ca.key api.key"
+budget:
+  max_turns: 25
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - certificate-verifies-against-the-ca
+    - subject-alternative-names-carried
+    - key-usage-and-purpose-carried
+    - public-key-is-the-requested-one
+    - issued-not-self-signed
+    - validity-is-about-a-year
+    - ca-and-request-untouched
+  key_actions:
+    - '(?mi)^\s*openssl\s+x509\b[^\n]*(-copy_extensions|-extfile)'
+    - '(?mi)^\s*openssl\s+(x509|ca)\b[^\n]*-(CA|cert)\b'
+  forbidden_actions:
+    - '(?mi)(>|tee|rm|mv)\s*[^\n]*(ca\.(key|crt)|api\.csr)'
+  leakage_forbidden:
+    - subject-alternative-names-carried
+    - key-usage-and-purpose-carried
+    - public-key-is-the-requested-one
+    - -copy_extensions
+    - api.svc.internal
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: openssl-sign-keeping-sans
+  sha256: null
+placebo_source: openssl-issuing-ca-chain
+notes: >-
+  The video issues a certificate for a different host from a different CA,
+  so the names on screen are wrong here; only the signing step transfers.

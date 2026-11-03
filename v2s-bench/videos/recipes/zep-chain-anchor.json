@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 51.5,
+  "duration_secs": 50.0,
   "stills": [
     {
       "t": 0.0,
@@ -143,39 +143,39 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "Drops can be chained, so one records that it follows another. That link is set up earlier than you might expect."
+      "text": "Drops can be chained. The link is set up early."
     },
     {
-      "t": 7.75,
-      "text": "We already have one sealed drop here, and the ledger shows what it ended up with."
+      "t": 4.8,
+      "text": "One sealed drop here, and what it ended up with."
     },
     {
-      "t": 12.88,
-      "text": "This is where we read the value the next drop has to point at."
+      "t": 10.8,
+      "text": "This is the value the next drop has to point at."
     },
     {
-      "t": 17.04,
-      "text": "When we create the next drop, we say up front which one it follows, carrying that value over."
+      "t": 16.8,
+      "text": "So as we create it, we say what it follows, carrying that value over."
     },
     {
-      "t": 23.52,
-      "text": "Then it is an ordinary drop. Stage what belongs in it."
+      "t": 22.8,
+      "text": "Then it is an ordinary drop."
     },
     {
       "t": 28.8,
-      "text": "Close it with its own nonce, each drop has its own, not the parent's."
+      "text": "Close it with its own nonce, not the parent's."
     },
     {
       "t": 34.8,
-      "text": "And there is the parent line, pointing back at the drop we came from."
+      "text": "And there is the parent line, pointing back where we came from."
     },
     {
       "t": 40.8,
-      "text": "And you cannot invent the value: zep only accepts one it has actually sealed."
+      "text": "And you cannot invent the value."
     },
     {
-      "t": 46.35,
-      "text": "The link is declared when the drop is created, and only a real anchor will do."
+      "t": 44.8,
+      "text": "Declared when the drop is created, and only a real one will do."
     }
   ],
   "notes": "Teaches that the parent is declared at creation from the parent's anchor, and that zep validates the anchor."

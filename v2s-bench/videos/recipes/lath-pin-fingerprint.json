@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 52.7,
+  "duration_secs": 50.0,
   "stills": [
     {
       "t": 0.0,
@@ -140,39 +140,39 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "Every merge prints a fingerprint. Here is how you carry one forward into the next merge."
+      "text": "A merge prints a fingerprint. We carry one forward."
     },
     {
-      "t": 6.54,
-      "text": "Two layers, already in the order we want them."
+      "t": 4.8,
+      "text": "Two layers, already in the order we want."
     },
     {
       "t": 10.8,
-      "text": "Merge them, and look at the middle line. That fingerprint is the thing we want to keep."
+      "text": "Merge them. Look at the middle line, that is what we keep."
     },
     {
       "t": 16.8,
-      "text": "So we stage it into a layer of its own, in the usual order for this tool. Watch what I type."
+      "text": "We stage it into a layer of its own. Watch the order."
     },
     {
-      "t": 22.86,
-      "text": "There it is, stored under a name of our choosing."
+      "t": 22.8,
+      "text": "There it is, under a name of our choosing."
     },
     {
       "t": 28.8,
-      "text": "A layer that is not in the order contributes nothing at all, so we add it."
+      "text": "A layer outside the order contributes nothing, so we add it."
     },
     {
       "t": 34.8,
-      "text": "And merge again. Notice this merge reports a different fingerprint from the first one."
+      "text": "Merge again. Notice this one reports a different fingerprint."
     },
     {
       "t": 40.8,
-      "text": "The file carries the earlier fingerprint, which is the one we pinned, not this merge's own."
+      "text": "The file carries the earlier one, not this one's."
     },
     {
-      "t": 46.45,
-      "text": "Carry what the first merge printed into a layer of its own, add it to the order, and merge again."
+      "t": 44.8,
+      "text": "Carry what the first merge printed, add it, and merge again."
     }
   ],
   "notes": "Teaches that the fingerprint is only available from the merge output, that it is carried as a value, and that the second merge has a different fingerprint."
