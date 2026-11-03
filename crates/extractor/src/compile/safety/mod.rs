@@ -167,6 +167,7 @@ mod tests {
             artifacts: vec![],
             gaps: vec![],
             history: vec![],
+            task_graph: crate::compile::TaskGraph::default(),
         }
     }
 

@@ -68,6 +68,7 @@ fn valid_ir() -> ProcedureIr {
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     }
 }
 
