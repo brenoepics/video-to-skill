@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 50.5,
+  "duration_secs": 53.2,
   "stills": [
     {
       "t": 0.0,
@@ -158,23 +158,23 @@
       "text": "Here is the whole life of a drop: create it, fill it, close it. The order is not optional."
     },
     {
-      "t": 4.8,
+      "t": 7.09,
       "text": "The facts we have to record are sitting in a file, one per line, a name and then its value."
     },
     {
-      "t": 10.3,
+      "t": 13.28,
       "text": "If we go straight at it, zep stops us. There is nothing to stage into yet."
     },
     {
-      "t": 15.8,
+      "t": 18.71,
       "text": "So we create the drop first, and again zep gives us the nonce for it."
     },
     {
-      "t": 21.3,
+      "t": 23.56,
       "text": "Now the facts go in, one at a time, name first and then the value."
     },
     {
-      "t": 26.8,
+      "t": 28.67,
       "text": "Same again for the second one."
     },
     {
@@ -186,11 +186,11 @@
       "text": "Try to add anything now and zep refuses. That is why everything has to go in before you close it."
     },
     {
-      "t": 43.3,
+      "t": 44.28,
       "text": "Sealed, anchored, both facts in it."
     },
     {
-      "t": 47.0,
+      "t": 47.37,
       "text": "Create, fill, then close with the nonce. Once it is sealed, it is sealed."
     }
   ],

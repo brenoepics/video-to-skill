@@ -184,6 +184,17 @@ const bandRank: Record<string, number> = {
                   </tbody>
                 </table>
                 </MockShield>
+                {
+                  TIERS.map(
+                    (tier, i) =>
+                      countFor(tier.id) === 0 && (
+                        <p class={`tier-empty tier-empty--t${i + 1}`}>
+                          No {tier.label} tasks are in the suite yet. The frozen target for
+                          this tier is {tier.targetN}.
+                        </p>
+                      ),
+                  )
+                }
               </div>
           </fieldset>
 
@@ -193,7 +204,10 @@ const bandRank: Record<string, number> = {
               cold probes the model answered correctly, with no tools and no skill. The
               bundle carries the fraction but not the number of probes behind it, so no
               interval can be computed for it here. It is a point estimate and is marked
-              as one.
+              as one. The raw probe answers are kept in <code>results/probes.json</code>,
+              so a reader who disagrees with a probe&rsquo;s answer pattern can re-score
+              it. Probe scores are per model: a probe taken against one model says
+              nothing about another.
             </li>
             <li>
               A <code>saturated</code> task is excluded from the primary endpoint by the
@@ -261,6 +275,12 @@ const bandRank: Record<string, number> = {
 </script>
 
 <style>
+  .tier-empty {
+    display: none;
+    margin: 0.9rem 0 0;
+    color: var(--text-secondary);
+  }
+
 @media (min-width: 761px) {
     .task-table th[scope='row'] {
       width: 34%;

@@ -98,6 +98,40 @@ export const WHAT_IS_NEW: string[] = [
   'A discovery-gap measurement (A7): whether a skill is even triggered.',
 ];
 
+/**
+ * The interesting disagreement in the literature is *why* skills help. The
+ * strata are what separates the two accounts, which is why they are the part
+ * of the results page that matters most.
+ */
+export const MECHANISMS: Array<{ id: string; name: string; claim: string; predicts: string }> = [
+  {
+    id: 'H2a',
+    name: 'Knowledge-gap account',
+    claim:
+      'Skills supply facts the model lacks, so the effect concentrates where the cold probe score is low.',
+    predicts:
+      'This is the account v2s\u2019s own design implies: read the exact command off the pixels, because the model does not know it.',
+  },
+  {
+    id: 'H2b',
+    name: 'Procedural-anchoring account',
+    claim:
+      'Skills stabilise execution on long, noisy trajectories, largely independently of whether the model knew the facts.',
+    predicts:
+      'Published work puts anchoring at 65.7% of cases and knowledge injection at 4.5%, which predicts the knowledge-gap account will largely fail.',
+  },
+];
+
+export const MECHANISM_TEST = [
+  'The two are separated by stratifying the A1 \u2212 A0 effect on two axes measured in advance: the cold probe score, and trajectory length and noise in the baseline arm. The knowledge-gap account predicts the effect loads on the first; the anchoring account on the second. Secondary endpoints distinguish them further \u2014 anchoring should show up as fewer turns, higher first_try and lower variance even where success is unchanged.',
+  'Reported as per-stratum effects with intervals, not as an interaction test. With three or four bands of a handful of tasks each, an interaction statistic has no power worth quoting, and quoting one anyway would dress a coin flip as an inference.',
+  'This matters for the project, not just the write-up. If anchoring wins, the headline feature is less "we read the exact command off the pixels" and more "we hand the agent a stable procedure", and the roadmap implied by that is different.',
+];
+
+/** Section 4.3 of the paper: why H8's gap is a floor, not an estimate. */
+export const DISCOVERY_CAVEAT =
+  'Retrieval precision is known to collapse as the installed skill pool grows, and these trials install one skill \u2014 the best possible case for ambient discovery. So A1 is an upper bound on real-world discovery, where a user has dozens of installed skills, and the A7 \u2212 A1 gap should be read as a floor on the real gap.';
+
 export const BASELINE_RULES: Array<{ title: string; body: string }> = [
   {
     title: 'Same tools',
@@ -140,6 +174,14 @@ export const INTEGRITY_GATES: Array<{ title: string; body: string }> = [
     body: 'Hermetic videos render byte-identically; the task suite and harness are content-hashed.',
   },
 ];
+
+/**
+ * Honest gap: the gates are published with the results, but the report
+ * bundle this site reads has no field for their outcomes, so the site cannot
+ * show them. Said here rather than quietly omitted.
+ */
+export const GATES_NOT_IN_BUNDLE =
+  'Gate outcomes are published with each run. The report bundle this site renders has no field for them, so they are not shown on the results page \u2014 a gap in the data contract, not a gap in the gates.';
 
 export const ADMISSION_CRITERIA: Array<{ title: string; body: string }> = [
   {
@@ -419,6 +461,7 @@ export const NOT_USEFUL_COMMITMENTS: string[] = [
   'If H1 holds but H3 and H6 both fail, we report that v2s’s advantage is not distinguishable from transcript summarisation, and that this benchmark does not support the pixel-reading claim in the project README.',
   'If H4 fails, we report that execution verification, as implemented, does not measurably change downstream task success — even though it is one of the project’s headline features.',
   'If the effect appears only where probe_known is low and feedback_bandwidth is low, we report that as the finding: v2s pays off for unfamiliar, silently-failing tools and not in general. A published null with that framing already exists, and the most believable version of this study may look like it.',
+  'If the anchoring account beats the knowledge-gap account, the project\u2019s stated rationale for reading pixels is not the reason its skills help.',
 ];
 
 export const VERDICT_RULES: Array<{ verdict: string; rule: string }> = [

@@ -60,36 +60,40 @@ GOLDEN = 0x9E3779B97F4A7C15
 HELP = """\
 v2s-game {game} -- protocol {protocol}
 
-  state                 print the board and status
-  move DIR [DIR ...]    play one or more moves, in order
-  new                   move on to the next board (refused while playing)
-  help                  this text
+  state                print the board and status
+  move DIR [DIR ...]   play one or more moves, in order
+  new                  next board (refused while one is playing)
+  help                 this text
 
 DIR is one of: up down left right.  Nothing else is accepted.
 
 Rules, in full:
-  - 4x4 grid. Each move slides every tile as far as it can go in DIR.
-  - Two equal tiles that collide merge into their sum, once per move,
-    resolved from the far edge inwards. Score increases by the sum.
-  - A move that would leave the board unchanged is REJECTED: it is not
-    counted against the move budget and spawns nothing. Probing a
-    direction therefore costs nothing but a line of output.
-  - After every accepted move one tile appears in a uniformly chosen
-    empty cell: a 2 with probability 0.9, a 4 with probability 0.1.
-  - status=won as soon as a tile reaches the goal; the board then ends.
-    status=lost when no direction changes the board.
-    status=exhausted when the move budget runs out.
-  - A run is a fixed sequence of boards, each with its own seed, fixed by
-    the environment before you started. You cannot choose or change a
-    seed, boards are played in order, and `new` is refused while the
-    current board is still playing. There is no way to retry a board.
+  - {size}x{size} grid. A move slides every tile as far as it can
+    go in DIR.
+  - Two equal tiles that collide merge into their sum, once
+    per move, resolved from the far edge inwards. The score
+    rises by the sum.
+  - A move that would leave the board unchanged is REJECTED.
+    It does not count against the move budget and spawns
+    nothing, so probing a direction is free.
+  - After every accepted move one tile appears in a uniformly
+    chosen empty cell: a 2 with probability 0.9, else a 4.
+  - status=won as soon as a tile reaches the goal, and the
+    board then ends. status=lost when no direction changes the
+    board. status=exhausted when the budget runs out.
+  - A run is a fixed sequence of boards, each with its own
+    seed, fixed by the environment before you started. You
+    cannot choose or change a seed, boards are played in
+    order, `new` is refused while a board is still playing,
+    and there is no way to retry a board.
 
 Observation format (exactly this, every time):
   line 1  V2S-GAME {game} protocol={protocol}
-  line 2  board=<i> of <n>  seed=<s>  move=<k>/<budget>  status=<st>
+  line 2  board=<i> of <n>  seed=<s>  move=<k>/<b>  status=<st>
   line 3  score=<n>  max_tile=<n>  goal=<n>
-  then    a {size}x{size} grid, cells right-aligned in width 5, empty cells blank
-  last    row-major: comma-separated cells, '.' for empty
+  then    a {size}x{size} grid, cells right-aligned in width 5,
+          empty cells blank
+  last    row-major: the cells comma-separated, '.' for empty
 """
 
 
@@ -426,7 +430,9 @@ def main(argv):
     verb = VERBS.get(argv[0])
     if verb is None:
         return usage("unknown verb %r; try `help`" % (argv[0],))
-    if verb is not cmd_init and not store.config.exists():
+    if verb not in (cmd_init, cmd_help) and not store.config.exists():
+        # `help` always answers: the protocol is documentation, and an arm
+        # that cannot read the documentation is not a fair baseline.
         return refuse("no game provisioned in %s" % (store.dir,))
     try:
         return verb(store, argv[1:])

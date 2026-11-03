@@ -64,6 +64,13 @@ runs.
 
 ## Quality evaluation
 
+> [!NOTE]
+> This section measures whether the pipeline read the video **correctly** —
+> an intrinsic score against a gold set. Whether the resulting skill makes
+> an agent **better at a task** is a different question, and it is measured
+> separately by [v2s-bench](v2s-bench/), which is pre-registered and has no
+> results yet. Scoring well here does not imply the second.
+
 `vts-extract eval` measures extraction *quality*, which the speed suite
 above cannot see. It generates a **synthetic gold set** of short tutorial
 videos (terminal sessions with typed commands and streamed output, a

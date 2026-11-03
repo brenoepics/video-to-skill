@@ -1,0 +1,77 @@
+schema_version: 1
+id: git-graft-legacy-history
+tier: t2-real-cli
+title: "Join a repository's history onto the legacy history it was imported from"
+goal: >-
+  This repository's main branch starts with a vendor import: its first
+  commit has no parent. The history that came before that import is in the
+  repository too, on a branch called legacy, with no connection to main.
+
+  Make the two read as one line of history: walking main's log must continue
+  past the vendor import into the legacy commits, oldest last. Nothing may be
+  rewritten to achieve it -- every commit object that exists now must still
+  exist exactly as it is, with the parents it actually records, main and
+  legacy must still name the same commits they name now, and the working
+  tree must be left clean and checked out on main.
+discoverability: good
+feedback_bandwidth: silent   # the procedure most reach for instead rewrites the commits and reports nothing wrong: the log looks exactly as asked while every identity below the join has changed
+knowledge_gap:
+  summary: >-
+    Git can be told to substitute one object for another when it walks
+    history, which makes a commit appear to have parents it does not record.
+    That is what joins an import onto its prior history without touching a
+    single existing object. Rebasing or filtering produces a log that looks
+    identical and silently replaces every commit from the join upwards with a
+    new one, which is the thing this task forbids and nothing complains about.
+  probe_question: >-
+    A git repository's first commit is a vendor import with no parent, and the
+    history preceding it sits on an unrelated branch. Make git's log walk from
+    the import into that older history without rewriting or creating any
+    commit. Give the exact command.
+  probe_answer_pattern: '(?i)git\s+replace\s+(-g\b|--graft\b)|git\s+replace[\s\S]{0,40}--graft'
+  taught_at: [26.0, 44.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v git >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends git=1:2.43.0-1ubuntu7.4; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' git)\" = 1:2.43.0-1ubuntu7.4"
+    - "export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_AUTHOR_NAME=Harbour GIT_AUTHOR_EMAIL=dev@example.invalid GIT_COMMITTER_NAME=Harbour GIT_COMMITTER_EMAIL=dev@example.invalid && G='git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid' && $G init -q -b legacy . && printf 'the first pass at the loader\\n' > NOTES.md && printf 'alpha\\n' > alpha.txt && git add -A && GIT_AUTHOR_DATE=2025-06-01T00:00:00Z GIT_COMMITTER_DATE=2025-06-01T00:00:00Z $G commit -qm 'initial import' && printf 'beta\\n' > beta.txt && git add -A && GIT_AUTHOR_DATE=2025-07-01T00:00:00Z GIT_COMMITTER_DATE=2025-07-01T00:00:00Z $G commit -qm 'first round of fixes' && $G checkout -q --orphan main && git rm -rq --cached . && rm -f NOTES.md alpha.txt beta.txt && printf 'harbour-api, vendored\\n' > README.md && printf 'port = 8080\\n' > config.ini && git add -A && GIT_AUTHOR_DATE=2026-01-01T00:00:00Z GIT_COMMITTER_DATE=2026-01-01T00:00:00Z $G commit -qm 'import the vendor drop' && printf 'loader = on\\n' >> config.ini && git add -A && GIT_AUTHOR_DATE=2026-01-05T00:00:00Z GIT_COMMITTER_DATE=2026-01-05T00:00:00Z $G commit -qm 'wire up the loader' && printf 'retries = 5\\n' >> config.ini && git add -A && GIT_AUTHOR_DATE=2026-01-09T00:00:00Z GIT_COMMITTER_DATE=2026-01-09T00:00:00Z $G commit -qm 'fix the retry ceiling'"
+budget:
+  max_turns: 30
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - apparent-history-is-one-line
+    - legacy-reachable-from-main
+    - no-commit-was-rewritten
+    - refs-still-name-the-same-commits
+    - worktree-clean-on-main
+  key_actions:
+    - '(?mi)^\s*git\s+replace\b[^\n]*(--graft|-g)\b'
+  forbidden_actions:
+    - '(?mi)^\s*git\s+(rebase|filter-branch|commit-tree)\b'
+    - '(?mi)^\s*git\s+filter-repo\b'
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.git'
+  leakage_forbidden:
+    - apparent-history-is-one-line
+    - legacy-reachable-from-main
+    - no-commit-was-rewritten
+    - refs-still-name-the-same-commits
+    - refs/replace
+    - import the vendor drop
+    - first round of fixes
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: git-graft-legacy-history
+  sha256: null
+notes: >-
+  The video joins a different pair of histories, with different branch names
+  and different commit subjects, so only the mechanism transfers.

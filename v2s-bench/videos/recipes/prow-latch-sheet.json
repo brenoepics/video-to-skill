@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 54.0,
+  "duration_secs": 58.4,
   "stills": [
     {
       "t": 0.0,
@@ -157,11 +157,11 @@
       "text": "Rendering a sheet is not releasing it. The release step has a name you would not guess."
     },
     {
-      "t": 4.8,
+      "t": 5.69,
       "text": "Render the sheet with the waves locked together, and hold on to the id it prints."
     },
     {
-      "t": 10.8,
+      "t": 10.97,
       "text": "The obvious word for the next step is not the word. There is no such command."
     },
     {
@@ -189,7 +189,7 @@
       "text": "Release that, and it goes through. Always release what is actually there."
     },
     {
-      "t": 50.5,
+      "t": 51.65,
       "text": "Release the id the render printed, and if the file is touched afterwards, render it again before releasing."
     }
   ],

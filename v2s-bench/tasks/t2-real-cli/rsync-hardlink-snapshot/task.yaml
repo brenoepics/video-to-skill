@@ -1,0 +1,81 @@
+schema_version: 1
+id: rsync-hardlink-snapshot
+tier: t2-real-cli
+title: "Take a second snapshot that costs nothing for the files that did not change"
+goal: >-
+  snapshots/2026-11-01 is a complete snapshot of source/ as it was
+  yesterday. source/ has moved on since. Produce snapshots/2026-11-02, a
+  complete snapshot of source/ as it stands now.
+
+  Every file whose contents are the same as in yesterday's snapshot must
+  cost no additional disk space: the two snapshots must hold one and the
+  same stored file, not two copies of identical bytes. The file whose
+  contents changed must read as the new contents in the new snapshot and
+  still read as the old contents in the old one. A file that is no longer in
+  source/ must not appear in the new snapshot. source/ and
+  snapshots/2026-11-01 must be left exactly as they are.
+discoverability: poor
+feedback_bandwidth: silent   # a plain copy produces a snapshot that is correct in every visible respect and silently costs a second copy of every byte; nothing reports the difference
+knowledge_gap:
+  summary: >-
+    rsync can be pointed at a previous snapshot to compare against, and for
+    any file it finds unchanged there it makes the new entry a second name
+    for the same stored file instead of transferring it. The directory it is
+    pointed at is resolved relative to the destination it is writing, not to
+    where the command is run, so the obvious path is quietly wrong and
+    produces a complete, correct-looking snapshot with nothing shared.
+  probe_question: >-
+    With rsync, write snapshots/2026-11-02 from source/ so that files
+    unchanged since snapshots/2026-11-01 are hard links to the copies in
+    that earlier snapshot rather than new copies. Give the exact command,
+    and say what the path you pass for the earlier snapshot is relative to.
+  probe_answer_pattern: '(?is)(?=.*--link-dest)(?=.*(\.\./2026-11-01|relative to the dest|relative to the target|destination director))'
+  taught_at: [27.0, 45.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v rsync >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends rsync=3.2.7-1ubuntu1.5; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' rsync)\" = 3.2.7-1ubuntu1.5"
+    - "mkdir -p source/sub snapshots"
+    - "printf 'alpha\\n' > source/alpha.txt && printf 'beta v1\\n' > source/beta.txt && printf 'nested\\n' > source/sub/nested.txt && printf 'retired\\n' > source/retired.txt"
+    - "touch -d 2026-11-01T09:00:00Z source/alpha.txt source/beta.txt source/sub/nested.txt source/retired.txt"
+    - "cp -a source snapshots/2026-11-01"
+    - "printf 'beta v2, with the courier note appended\\n' > source/beta.txt && printf 'gamma\\n' > source/gamma.txt && rm -f source/retired.txt"
+    - "touch -d 2026-11-02T09:00:00Z source/beta.txt source/gamma.txt"
+budget:
+  max_turns: 25
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - new-snapshot-matches-the-source
+    - unchanged-files-are-one-stored-file
+    - changed-file-is-its-own-copy
+    - dropped-file-absent
+    - source-and-old-snapshot-untouched
+  key_actions:
+    - '(?mi)^\s*rsync\b[^\n]*--link-dest'
+  forbidden_actions:
+    - '(?mi)^\s*(rm|mv)\b[^\n]*snapshots/2026-11-01'
+    - '(?mi)^\s*(rm|mv|sed\s+-i)\b[^\n]*source/'
+  leakage_forbidden:
+    - unchanged-files-are-one-stored-file
+    - changed-file-is-its-own-copy
+    - source-and-old-snapshot-untouched
+    - --link-dest
+    - beta v2, with the courier note appended
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: rsync-hardlink-snapshot
+  sha256: null
+placebo_source: rsync-mirror-protect-excluded
+notes: >-
+  The video takes a snapshot of a differently named tree on different dates,
+  so the paths on screen do not transfer; the relative resolution rule does.

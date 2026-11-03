@@ -1,0 +1,84 @@
+schema_version: 1
+id: git-rescue-dangling-commit
+tier: t2-real-cli
+title: "Put a branch back on a commit that no longer has one"
+goal: >-
+  Work on a retry ceiling was committed in this repository on a branch that
+  has since been deleted, so nothing points at that commit any more and it
+  appears on no branch and in no log of where HEAD has been. The commit
+  object itself has not been removed.
+
+  Create a branch called rescue pointing at that exact commit -- the commit
+  that was originally made, not a new commit reproducing its contents. The
+  commit's own identity, its author and committer records and its parent must
+  be exactly what they were. main must still point where it points now, and
+  the working tree must be left clean with main checked out.
+discoverability: good
+feedback_bandwidth: informative   # every wrong name is refused precisely -- `fatal: not a valid object name`, `unknown revision or path not in the working tree` -- and the integrity check names the dangling commit outright
+knowledge_gap:
+  summary: >-
+    A commit whose branch was deleted is still in the object store, but it is
+    not in the log of where HEAD has been either, because it was never
+    checked out -- so the usual recovery route turns up nothing and the
+    commit has to be found by auditing the object store for objects nothing
+    points at. Reproducing the work as a fresh commit looks identical in the
+    log and is a different commit, with a different identity and a different
+    committer record.
+  probe_question: >-
+    A git commit is unreachable: its branch was deleted and it was never
+    checked out, so it does not appear in the log of where HEAD has been.
+    Find it and put a branch back on it. Give the exact commands.
+  probe_answer_pattern: '(?is)git\s+fsck[\s\S]{0,200}(git\s+branch|git\s+update-ref)|(--lost-found|--unreachable|--dangling)[\s\S]{0,200}git\s+branch'
+  taught_at: [25.0, 43.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v git >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends git=1:2.43.0-1ubuntu7.4; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' git)\" = 1:2.43.0-1ubuntu7.4"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git init -q -b main ."
+    - "printf 'parser scaffold\\n' > parser.md && git add -A"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-06-01T00:00:00Z GIT_COMMITTER_DATE=2026-06-01T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qm 'scaffold the parser'"
+    - "printf 'tokeniser notes\\n' > tokeniser.md && git add -A"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-06-02T00:00:00Z GIT_COMMITTER_DATE=2026-06-02T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qm 'add the tokeniser'"
+    - "printf 'retries stop at five, then the caller sees the error\\n' > retry.md && git add retry.md"
+    - "GIT_CONFIG_GLOBAL=/dev/null git branch spike $(GIT_AUTHOR_DATE=2026-06-04T00:00:00Z GIT_COMMITTER_DATE=2026-06-04T00:00:00Z GIT_AUTHOR_NAME=Harbour GIT_AUTHOR_EMAIL=dev@example.invalid GIT_COMMITTER_NAME=Harbour GIT_COMMITTER_EMAIL=dev@example.invalid GIT_CONFIG_GLOBAL=/dev/null git commit-tree $(git write-tree) -p main -m 'add the retry ceiling')"
+    - "GIT_CONFIG_GLOBAL=/dev/null git branch -D spike >/dev/null && git reset -q --hard main && rm -f retry.md"
+budget:
+  max_turns: 25
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - rescue-branch-exists
+    - rescue-is-the-original-commit
+    - rescued-content-is-intact
+    - main-unmoved-and-clean
+  key_actions:
+    - '(?mi)^\s*git\s+fsck\b|--lost-found|--unreachable|--dangling'
+    - '(?mi)^\s*git\s+(branch|update-ref)\b[^\n]*rescue'
+  forbidden_actions:
+    - '(?mi)^\s*git\s+(gc|prune)\b'
+    - '(?mi)^\s*git\s+commit\b'
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.git'
+  leakage_forbidden:
+    - rescue-is-the-original-commit
+    - rescued-content-is-intact
+    - main-unmoved-and-clean
+    - "2026-06-04T00:00:00"
+    - retries stop at five
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: git-rescue-dangling-commit
+  sha256: null
+placebo_source: git-bisect-first-bad
+notes: >-
+  The video rescues a commit in a different repository under a different
+  branch name, so the hash on screen is useless; only the audit-then-point
+  procedure transfers.

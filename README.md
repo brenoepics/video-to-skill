@@ -144,6 +144,21 @@ _Nothing else takes an arbitrary pre-existing video and emits a portable, execut
 
 ## Benchmarks
 
+Three measurements, answering different questions. It is worth keeping them apart, because passing the first two says nothing about the third:
+
+| | Question | Where |
+|---|---|---|
+| `vts-extract bench` | How fast is extraction? | [BENCHMARK.md](BENCHMARK.md) |
+| `vts-extract eval` | Did the pipeline read the video **correctly**? | [BENCHMARK.md](BENCHMARK.md#quality-evaluation) |
+| **v2s-bench** | Does the resulting skill make an agent **better at anything**? | [v2s-bench/](v2s-bench/) |
+
+The first two are intrinsic: speed, and fidelity against a gold set. The third is extrinsic, and it is the one that tests the claim this README makes. A pipeline can score well on extraction and still change no outcome — because the model already knew the procedure, because the environment corrects the agent anyway, or because the skill is written in a form an agent does not act on.
+
+> [!NOTE]
+> **v2s-bench has no results yet.** The suite, harness, statistics and site are built and tested; no trials have been run. It is [pre-registered](v2s-bench/docs/preregistration.md) — hypotheses, task set, exclusion rule and statistical test fixed in advance, including [what would make us say v2s is not useful](v2s-bench/PAPER.md#7-what-would-change-our-minds). Nothing in this repository claims a downstream benefit yet.
+
+### Speed
+
 Measured by `vts-extract bench` on a GitHub-hosted macOS runner and committed automatically by CI. Runners are VMs with only a paravirtual GPU, so whisper deliberately stays on the CPU there; Apple Silicon with real Metal runs substantially faster.
 
 <!-- bench-summary:start -->

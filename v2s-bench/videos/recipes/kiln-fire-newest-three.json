@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 54.0,
+  "duration_secs": 59.0,
   "stills": [
     {
       "t": 0.0,
@@ -167,11 +167,11 @@
       "text": "This lane holds too many pieces per batch. Fixing that is two steps, not one."
     },
     {
-      "t": 4.8,
+      "t": 6.41,
       "text": "The lane is prepared and set to take four pieces at a time. We want two."
     },
     {
-      "t": 10.8,
+      "t": 11.68,
       "text": "So we edit that one field in the description."
     },
     {
@@ -199,7 +199,7 @@
       "text": "And here is which pieces it actually took. Worth checking, because it is not the half you might assume."
     },
     {
-      "t": 50.5,
+      "t": 53.37,
       "text": "Change the description, prepare the lane again, then fire. In that order."
     }
   ],

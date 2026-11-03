@@ -26,7 +26,7 @@ const auditChecks = [
   },
   {
     title: 'Do the arithmetic yourself',
-    body: 'v2sbench verify-results recomputes every published figure from the immutable run records. Separately, this site recomputes each Wilson interval from the published successes and n at build time and marks any row where its own result disagrees with the bundle, so a mismatch shows up on the page rather than in a log.',
+    body: 'verify-results recomputes every published figure from the immutable run records and prints every disagreement; silence means the arithmetic checks out. The statistics are kept to the standard library for exactly this reason: an audit that first requires installing a scientific stack is one nobody performs. Separately, this site recomputes each Wilson interval from the published successes and n at build time and marks any row where its own result disagrees with the bundle, so a mismatch shows up on the page rather than in a log.',
   },
   {
     title: 'Did the suite change under the figure?',
@@ -59,8 +59,8 @@ const auditChecks = [
         This benchmark is run by the authors of the tool it grades. That is a reason to
         check the numbers rather than read them, so the whole chain is designed to be
         re-run by a stranger: the suite is in the repository, the trial records are
-        immutable and published, and <code>v2sbench verify-results</code> recomputes every
-        figure on this site from those records.
+        immutable and published, and the harness&rsquo;s <code>verify-results</code>
+        command recomputes every figure on this site from those records.
       </p>
     </div>
 
@@ -73,10 +73,16 @@ const auditChecks = [
         <li>
           <strong>Trials.</strong> One immutable JSON record per (task, arm, seed),
           validating against <a href={recordSchemaUrl}>run-record.schema.json</a>. Records
-          are append-only: a correction is a new record, never an edit.
+          are append-only: a correction is a new record, never an edit. Three conventions
+          matter when reading them: <code>status: error</code> is infrastructure breakage
+          and is excluded from the endpoint with its rate published per arm, never counted
+          as a task failure; <code>status: refused</code> means the material failed the
+          leakage gate and was deliberately not scored; and <code>is_mock: true</code>
+          marks stub-agent and gate records, which the report builder refuses to aggregate
+          with real ones.
         </li>
         <li>
-          <strong>Aggregation.</strong> <code>v2sbench report</code> reduces the records
+          <strong>Aggregation.</strong> <code>report</code> reduces the records
           to one bundle validating against <a href={schemaUrl}>report.schema.json</a>.
           Verdicts are computed here, from the pre-registered failure conditions in
           <a href={armsUrl}>arms.py</a>, never written by hand.
@@ -88,8 +94,8 @@ const auditChecks = [
           {isoDate(bundle.generated_at)}, carrying {int(p.trials_total ?? 0)} trials.
         </li>
         <li>
-          <strong>Audit.</strong> <code>v2sbench verify-results</code> recomputes the
-          bundle from the records and fails on any disagreement. The bundle this page was
+          <strong>Audit.</strong> <code>verify-results</code> recomputes the bundle from
+          the records and prints every disagreement. The bundle this page was
           built from is served at <a href={href('/report.json')}>report.json</a>, so you
           can diff it against your own run.
         </li>
@@ -110,34 +116,32 @@ const auditChecks = [
       <pre><code>{`git clone ${REPO_URL}
 cd video-to-skill/${REPO_BENCH_PATH}
 
-# the harness, and nothing else
-python -m pip install ./harness
+cd harness
+python3 -m pip install -e .        # pyyaml and jsonschema; no scientific stack
 
-# integrity gates first: a suite that fails these is not measuring anything
-v2sbench validate --blind          # no arm material contains checker or oracle strings
-v2sbench gates                     # oracle must pass, trivial agent must score 0
+# integrity gates first: a suite that fails these measures nothing
+python3 -m v2sbench.cli validate --blind   # no material carries checker or oracle strings
+python3 -m v2sbench.cli gates              # oracle must pass, trivial agent must score 0
 
-# hermetic videos are rendered, never committed
-v2sbench render
+# hermetic videos are rendered at run time, never committed
+python3 -m v2sbench.cli render
 
 # headroom before outcomes: probe each task's knowledge gap cold
-v2sbench probe
+python3 -m v2sbench.cli probe
 
-# the headline comparison over the whole suite
-v2sbench run --armset core
+# the headline comparison, then the ablations
+python3 -m v2sbench.cli run --armset core
+python3 -m v2sbench.cli run --armset ablation
 
-# the comparisons that distinguish v2s from a transcript summariser
-v2sbench run --armset ablation
-
-# aggregate the immutable records into one bundle, then check it
-v2sbench report --out results/report.json
-v2sbench verify-results results/report.json`}</code></pre>
+# aggregate the immutable records into one bundle, then audit it
+python3 -m v2sbench.cli report --out ../results/report.json
+python3 -m v2sbench.cli verify-results`}</code></pre>
       <p class="note">
-        Those are the suite&rsquo;s documented entry points; run
-        <code>v2sbench --help</code> in your checkout for what that version implements.
-        The harness is v0.1 and still being built, and every figure on this site carries
-        the <code>harness_version</code> that produced it, so a figure can never be
-        silently attributed to a different one.
+        Those are the entry points the repository documents; run
+        <code>python3 -m v2sbench.cli --help</code> in your checkout for what that
+        version implements. The harness is v0.1 and still being built, and every figure
+        on this site carries the <code>harness_version</code> that produced it, so a
+        figure can never be silently attributed to a different one.
       </p>
       <p>
         Arm sets are named in <a href={armsUrl}>arms.py</a> and can also be given as a
@@ -242,6 +246,11 @@ V2S_BENCH_BASE=/        V2S_BENCH_ORIGIN=https://bench.v2s.dev pnpm build`}</cod
         <li><a href={wilsonUrl}>stats/wilson.py</a> &mdash; the interval convention, shared with the parent project.</li>
         <li><a href={repoBench}>v2s-bench/</a> &mdash; the suite, the harness, the pre-registration and this site.</li>
         <li><a href={href('/report.json')}>report.json</a> &mdash; the bundle this build rendered.</li>
+        <li>
+          <code>results/</code> &mdash; the raw records, the probe answers and the bundle.
+          They are git-ignored by default so a local run does not dirty the tree; a
+          published run is committed deliberately by the workflow that produced it.
+        </li>
       </ul>
       <p class="note">
         Independent replication is invited. If you run this suite and get a different

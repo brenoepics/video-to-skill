@@ -1,0 +1,127 @@
+schema_version: 1
+id: g2048-two-boards
+tier: t4-game
+title: "Clear two provisioned 2048 boards, each to a 256 tile"
+goal: >-
+  A two-board run of 2048 is already in progress in this directory, played
+  through the `v2s-game` command. Finish it. When you stop, every board in
+  the run must have ended holding a tile of at least 256. The boards are
+  played in order and each one ends when it is lost, when its move budget
+  runs out, or when it reaches the goal tile; you move on to the next board
+  with `new`. A board cannot be restarted and the run cannot be
+  re-provisioned, so the moves you spend are spent. `v2s-game help` states
+  the interface, the observation format and the rules in full.
+discoverability: poor
+feedback_bandwidth: silent
+knowledge_gap:
+  summary: >-
+    2048 is decided by a positional discipline, not by picking good
+    individual moves. The procedure is: anchor the largest tile in one
+    corner, keep the row holding it ordered so that it descends away from
+    that corner, build the rest of the board in a snake that continues
+    from it, and refuse the one direction that lifts tiles off the anchor
+    row until no other direction changes the board at all. Playing the
+    locally best merge instead, or cycling the four directions, floods the
+    board and stalls between 128 and 256 -- which is below this task's
+    threshold on most boards. Nothing in the environment says so: a bad
+    move returns a perfectly plausible board, and the loss arrives two
+    hundred moves later.
+  probe_question: >-
+    You are playing 2048 one move at a time, with no undo. What positional
+    discipline separates a policy that reliably reaches 512 from one that
+    stalls around 128? State the invariant you keep about the largest tile
+    and about the row that holds it, and name which of the four directions
+    you must refuse to play for as long as any other direction still
+    changes the board.
+  probe_answer_pattern: '(?i)(?=[\s\S]*corner)(?=[\s\S]*(monoton|descend|snake|ordered|sorted))(?=[\s\S]*(never|avoid|refus|forbid|only when forced|last resort)[\s\S]{0,80}\b(up|down|left|right)\b)'
+  taught_at: [27.0, 55.0, 72.0]
+environment:
+  image: python:3.11-slim
+  workdir: /work
+  network: none
+  seedable: true
+  setup:
+    - install -m 0755 v2s-game /usr/local/bin/v2s-game && rm -f v2s-game
+    - V2S_GAME_PROVISION=1 v2s-game init --seeds 20481,20482 --goal 1024 --budget 500 >/dev/null
+budget:
+  max_turns: 50
+  wall_secs: 1200
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - journal-present
+    - boards-as-provisioned
+    - moves-are-legal
+    - journal-is-consistent
+    - run-not-restarted
+    - every-board-reaches-target
+  key_actions:
+    - '(?mi)^\s*v2s-game\s+help\b'
+    - '(?mi)^\s*v2s-game\s+move\b[^\n]*\b(down|left)\b'
+    - '(?mi)^\s*v2s-game\s+new\b'
+  forbidden_actions:
+    - '(?mi)^\s*rm\b[^\n]*\.v2s-game\b'
+    - '(?mi)v2s-game\s+init\b'
+    - '(?mi)(>|>>|tee)\s*[^\n]*\.v2s-game/'
+    - '(?mi)^\s*(python3?|perl|sed\s+-i)\b[^\n]*journal\.jsonl'
+  score:
+    metric: >-
+      Sum of the final score across the two provisioned boards, recomputed
+      by the checker from its own replay of the journal. Secondary
+      endpoint: the binary endpoint is the 256 milestone on every board.
+    milestones:
+      - board-1-tile-256
+      - board-1-tile-512
+      - board-1-tile-1024
+      - board-2-tile-256
+      - board-2-tile-512
+      - board-2-tile-1024
+      - every-board-tile-256
+      - every-board-tile-512
+  leakage_forbidden:
+    - check.py
+    - play.py
+    - journal-present
+    - boards-as-provisioned
+    - moves-are-legal
+    - journal-is-consistent
+    - run-not-restarted
+    - every-board-reaches-target
+    - "20481"
+    - "20482"
+    - 9E3779B9
+    - splitmix
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: g2048-two-boards
+  sha256: null
+license: >-
+  Our own implementation (MIT, as the rest of this repository). The 2048
+  rules are reimplemented from the published description; no third-party
+  code, ROM or asset is vendored or fetched, so this rung carries no
+  licensing condition at all.
+notes: >-
+  Expected success bands, measured before any model was run by
+  `env/2048/calibrate.py bands` (40 trials of two boards, 500-move budget,
+  seeds 4000-4079): a direction-cycling policy clears both boards 23% of
+  the time, locally-greedy merging 28%, fixed down>left>right>up priority
+  30%, corner awareness alone 50%, the full taught discipline 75%, and the
+  oracle's two-ply version 95%. So the no-skill arm is expected between
+  25% and 55% -- `calibrate.py pinned` shows that on these two particular
+  boards the corner-only and fixed-priority policies do clear 256, so this
+  pair is on the easy side of the distribution and the baseline should be
+  read nearer the top of that range. Floor and ceiling are both avoided at
+  this threshold and at no other: at 512-on-every-board every naive policy
+  scores 0-3%, and at 128 everything passes. The seeds were fixed before
+  the sweep and were not re-chosen on the basis of it. Known bypass,
+  declared: the engine is readable and the tile stream is a seeded
+  SplitMix64, so an agent that mirrors it can search instead of playing a
+  strategy; in a single-uid container that cannot be prevented (see
+  env/2048/PROTOCOL.md), it is recorded as a non-required assertion, and it
+  is this rung's chief threat to validity. The game seed pair is pinned in
+  `setup` for every trial because the harness does not interpolate the
+  trial seed into setup commands; see docs/game-tier.md.

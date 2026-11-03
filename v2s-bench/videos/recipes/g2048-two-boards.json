@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "id": "g2048-two-boards",
+  "title": "Clearing a 2048 board with corner discipline",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 96.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "step": "01-overview",
+      "slide": {
+        "heading": "2048 through v2s-game",
+        "bullets": [
+          "one board, seed 716",
+          "the grid arrives as text, 4 by 4",
+          "the whole game is one discipline"
+        ]
+      }
+    },
+    {
+      "t": 8.0,
+      "step": "02-the-interface",
+      "terminal": {
+        "type": "v2s-game help"
+      }
+    },
+    {
+      "t": 11.0,
+      "step": "02-the-interface",
+      "terminal": {
+        "output": [
+          "v2s-game 2048 -- protocol 1",
+          "",
+          "  state                print the board and status",
+          "  move DIR [DIR ...]   play one or more moves, in order",
+          "  new                  next board (refused while one is playing)",
+          "  help                 this text",
+          "",
+          "DIR is one of: up down left right.  Nothing else is accepted."
+        ]
+      }
+    },
+    {
+      "t": 14.0,
+      "step": "02-the-interface",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "  - A move that would leave the board unchanged is REJECTED.",
+          "    It does not count against the move budget and spawns",
+          "    nothing, so probing a direction is free."
+        ]
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-the-opening",
+      "terminal": {
+        "type": "v2s-game state"
+      }
+    },
+    {
+      "t": 21.0,
+      "step": "03-the-opening",
+      "terminal": {
+        "output": [
+          "V2S-GAME 2048 protocol=1",
+          "board=1 of 1  seed=716  move=0/500  status=playing",
+          "score=0  max_tile=2  goal=1024",
+          "+-----+-----+-----+-----+",
+          "|     |     |     |     |",
+          "+-----+-----+-----+-----+",
+          "|     |    2|     |     |",
+          "+-----+-----+-----+-----+",
+          "|    2|     |     |     |",
+          "+-----+-----+-----+-----+",
+          "|     |     |     |     |",
+          "+-----+-----+-----+-----+",
+          "row-major: .,.,.,.,.,2,.,.,2,.,.,.,.,.,.,."
+        ]
+      }
+    },
+    {
+      "t": 27.0,
+      "step": "04-the-discipline",
+      "slide": {
+        "heading": "The discipline",
+        "bullets": [
+          "anchor: largest tile in the bottom-left corner",
+          "keep the bottom row descending, left to right",
+          "play down, left and right only",
+          "up: only when all three are rejected"
+        ]
+      }
+    },
+    {
+      "t": 42.0,
+      "step": "05-anchor-the-corner",
+      "terminal": {
+        "type": "v2s-game move down left right left"
+      }
+    },
+    {
+      "t": 45.0,
+      "step": "05-anchor-the-corner",
+      "terminal": {
+        "output": [
+          "move 1 down: ok  gained=0  spawn=r2c1=2",
+          "move 2 left: ok  gained=4  spawn=r0c2=2",
+          "move 3 right: ok  gained=0  spawn=r1c0=2",
+          "move 4 left: ok  gained=0  spawn=r2c1=2",
+          "V2S-GAME 2048 protocol=1",
+          "board=1 of 1  seed=716  move=4/500  status=playing",
+          "score=4  max_tile=4  goal=1024",
+          "+-----+-----+-----+-----+",
+          "|    2|     |     |     |",
+          "+-----+-----+-----+-----+",
+          "|    2|     |     |     |",
+          "+-----+-----+-----+-----+",
+          "|    2|    2|     |     |",
+          "+-----+-----+-----+-----+",
+          "|    4|     |     |     |",
+          "+-----+-----+-----+-----+",
+          "row-major: 2,.,.,.,2,.,.,.,2,2,.,.,4,.,.,."
+        ]
+      }
+    },
+    {
+      "t": 52.0,
+      "step": "06-keep-the-row-in-order",
+      "terminal": {
+        "type": "v2s-game move down down right left"
+      }
+    },
+    {
+      "t": 55.0,
+      "step": "06-keep-the-row-in-order",
+      "terminal": {
+        "output": [
+          "move 5 down: ok  gained=4  spawn=r1c2=2",
+          "move 6 down: ok  gained=8  spawn=r1c0=2",
+          "move 7 right: ok  gained=4  spawn=r2c0=2",
+          "move 8 left: ok  gained=4  spawn=r2c3=4",
+          "V2S-GAME 2048 protocol=1",
+          "board=1 of 1  seed=716  move=8/500  status=playing",
+          "score=24  max_tile=8  goal=1024",
+          "+-----+-----+-----+-----+",
+          "|     |     |     |     |",
+          "+-----+-----+-----+-----+",
+          "|    2|     |     |     |",
+          "+-----+-----+-----+-----+",
+          "|    4|     |     |    4|",
+          "+-----+-----+-----+-----+",
+          "|    8|    4|     |     |",
+          "+-----+-----+-----+-----+",
+          "row-major: .,.,.,.,2,.,.,.,4,.,.,4,8,4,.,."
+        ]
+      }
+    },
+    {
+      "t": 63.0,
+      "step": "07-much-later",
+      "terminal": {
+        "lines": [
+          "$ # 130 more moves, same three directions",
+          "$ "
+        ],
+        "type": "v2s-game state"
+      }
+    },
+    {
+      "t": 66.0,
+      "step": "07-much-later",
+      "terminal": {
+        "output": [
+          "V2S-GAME 2048 protocol=1",
+          "board=1 of 1  seed=716  move=138/500  status=playing",
+          "score=1852  max_tile=256  goal=1024",
+          "+-----+-----+-----+-----+",
+          "|     |     |    2|     |",
+          "+-----+-----+-----+-----+",
+          "|    4|    2|     |     |",
+          "+-----+-----+-----+-----+",
+          "|    4|   16|    4|     |",
+          "+-----+-----+-----+-----+",
+          "|  256|   16|     |     |",
+          "+-----+-----+-----+-----+",
+          "row-major: .,.,2,.,4,2,.,.,4,16,4,.,256,16,.,."
+        ]
+      }
+    },
+    {
+      "t": 72.0,
+      "step": "08-what-the-fourth-direction-costs",
+      "terminal": {
+        "type": "v2s-game move up"
+      }
+    },
+    {
+      "t": 75.0,
+      "step": "08-what-the-fourth-direction-costs",
+      "terminal": {
+        "output": [
+          "move 139 up: ok  gained=40  spawn=r3c3=2",
+          "V2S-GAME 2048 protocol=1",
+          "board=1 of 1  seed=716  move=139/500  status=playing",
+          "score=1892  max_tile=256  goal=1024",
+          "+-----+-----+-----+-----+",
+          "|    8|    2|    2|     |",
+          "+-----+-----+-----+-----+",
+          "|  256|   32|    4|     |",
+          "+-----+-----+-----+-----+",
+          "|     |     |     |     |",
+          "+-----+-----+-----+-----+",
+          "|     |     |     |    2|",
+          "+-----+-----+-----+-----+",
+          "row-major: 8,2,2,.,256,32,4,.,.,.,.,.,.,.,.,2"
+        ]
+      }
+    },
+    {
+      "t": 84.0,
+      "step": "09-if-it-is-ever-forced",
+      "slide": {
+        "heading": "If the fourth direction is ever forced",
+        "bullets": [
+          "probe the other three first: a rejected move is free",
+          "play it only when all three are rejected",
+          "then re-anchor before anything else"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 1.0,
+      "text": "Right, 2048 in a terminal. Same game you already know, just printed out as text."
+    },
+    {
+      "t": 9.0,
+      "text": "First thing I always do is ask the thing what it even takes."
+    },
+    {
+      "t": 14.0,
+      "text": "Nothing clever. A handful of words, and it tells you off if a move wouldn't do anything."
+    },
+    {
+      "t": 20.5,
+      "text": "Let's have a look at what we've been dealt."
+    },
+    {
+      "t": 28.0,
+      "text": "Okay, so here's the whole trick, and it's a discipline rather than a clever move: you pick yourself a corner, you keep your biggest tile wedged into it, and you keep the row it sits in tidy so nothing can slip in behind it."
+    },
+    {
+      "t": 42.5,
+      "text": "Which in practice means you're pushing the same couple of ways over and over, and there's one direction you simply don't take."
+    },
+    {
+      "t": 50.5,
+      "text": "See how it all collects down into that corner."
+    },
+    {
+      "t": 56.0,
+      "text": "Keep going. Boring is the point."
+    },
+    {
+      "t": 59.0,
+      "text": "If that row stays tidy, things merge along it instead of scattering everywhere."
+    },
+    {
+      "t": 64.22,
+      "text": "I'll skip us ahead a bit here. It's the same few keys the whole way."
+    },
+    {
+      "t": 69.07,
+      "text": "And there's our big one, sat exactly where we left it."
+    },
+    {
+      "t": 73.5,
+      "text": "Now watch what happens if I get impatient and go the other way."
+    },
+    {
+      "t": 78.0,
+      "text": "Gone. Lifted clean off, bottom's empty, and you'll be unpicking that for the next fifty moves."
+    },
+    {
+      "t": 85.0,
+      "text": "If you genuinely are stuck, try the others first, costs you nothing, and then put it straight back."
+    }
+  ],
+  "notes": "Hermetic. Every terminal screen is verbatim stdout from the frozen interface (env/2048/v2s_game_2048.py) played on seed 716 -- a board the task does not provision, so the procedure has to be carried across boards rather than replayed. Narration is deliberately vague where the pixels are exact (docs/preregistration.md 7.2): it says there is a corner, a tidy row and a direction to avoid, and never which corner, which ordering or which direction. Those appear only on screen, so the transcript-only and raw-transcript arms are a fair representation of what narration alone carries."
+}

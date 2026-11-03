@@ -1,0 +1,99 @@
+schema_version: 1
+id: git-bisect-first-bad
+tier: t2-real-cli
+title: "Name the commit that first broke a checked-in regression test"
+goal: >-
+  Branch main holds nine commits of a small shell helper, ratio.sh, and a
+  verdict script, check-ratio.sh, that judges whichever revision is checked
+  out. At main's tip the verdict is a failure; at the oldest commit it is a
+  pass. Somewhere between, one commit broke it.
+
+  Write that commit's full forty-character hash, on one line and with
+  nothing else in the file, to first-bad.txt.
+
+  Two cautions. Some revisions in between cannot be judged at all, and
+  check-ratio.sh reports that case distinctly instead of passing or failing;
+  a revision that cannot be judged is not the answer. And when you stop, the
+  repository must be as you found it: main checked out, no operation in
+  progress, the working tree clean, and the nine commits and their contents
+  unchanged -- you are asked to identify the commit, not to fix it.
+discoverability: good
+feedback_bandwidth: informative   # every wrong move is refused by name: `You need to start by "git bisect start"`, `Bad rev input`, and a status that says which bisect is in progress
+knowledge_gap:
+  summary: >-
+    Git will drive the search itself from a verdict script, but only once it
+    has been given the two ends -- and the end it wants first is the broken
+    one, which is the reverse of how the task reads. The verdict script's
+    contract has a third outcome besides pass and fail that means "skip this
+    revision", and a search that treats it as a failure lands on the wrong
+    commit. Finally the search leaves the repository parked on a detached
+    revision, and it has to be told to let go.
+  probe_question: >-
+    Have git itself find the first commit on main where ./check-ratio.sh
+    starts failing, with check-ratio.sh driving the search, and leave the
+    repository back on main afterwards. Give every command in order, and say
+    what exit status the script must use for a revision it cannot judge.
+  probe_answer_pattern: '(?is)(?=.*bisect\s+start)(?=.*bisect\s+run)(?=.*bisect\s+reset)(?=.*\b125\b)'
+  taught_at: [22.0, 37.0, 55.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v git >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends git=1:2.43.0-1ubuntu7.4; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' git)\" = 1:2.43.0-1ubuntu7.4"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null git init -q -b main ."
+    - "chmod +x ratio.sh check-ratio.sh && git add -A"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-01T00:00:00Z GIT_COMMITTER_DATE=2026-05-01T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qm 'add the ratio helper'"
+    - "printf '# Euclid, repeatedly taking the remainder.\\n' >> ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-02T00:00:00Z GIT_COMMITTER_DATE=2026-05-02T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'note the algorithm'"
+    - "printf '# output is printed as A:B\\n' >> ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-03T00:00:00Z GIT_COMMITTER_DATE=2026-05-03T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'describe the output format'"
+    - "printf '# arguments are positive integers\\n' >> ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-04T00:00:00Z GIT_COMMITTER_DATE=2026-05-04T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'document the argument types'"
+    - "printf 'case $a in\\n' >> ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-05T00:00:00Z GIT_COMMITTER_DATE=2026-05-05T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'start on the input guard'"
+    - "sed -i '$d' ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-06T00:00:00Z GIT_COMMITTER_DATE=2026-05-06T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'drop the half-written input guard'"
+    - "sed -i '7,11d' ratio.sh && sed -i '6a g=$(( a < b ? a : b ))' ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-07T00:00:00Z GIT_COMMITTER_DATE=2026-05-07T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'simplify the common-factor step'"
+    - "printf '# usage: ratio.sh A B\\n' >> ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-08T00:00:00Z GIT_COMMITTER_DATE=2026-05-08T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'mention the usage line'"
+    - "printf '# see also the background note on reducing fractions\\n' >> ratio.sh"
+    - "GIT_CONFIG_GLOBAL=/dev/null GIT_AUTHOR_DATE=2026-05-09T00:00:00Z GIT_COMMITTER_DATE=2026-05-09T00:00:00Z git -c commit.gpgsign=false -c user.name=Harbour -c user.email=dev@example.invalid commit -qam 'point at the background note'"
+budget:
+  max_turns: 35
+  wall_secs: 900
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - answer-is-a-commit
+    - answer-is-the-first-bad-commit
+    - no-operation-in-progress
+    - history-and-tree-untouched
+  key_actions:
+    - '(?mi)^\s*git\s+bisect\s+start\b'
+    - '(?mi)^\s*git\s+bisect\s+run\b'
+    - '(?mi)^\s*git\s+bisect\s+reset\b'
+  forbidden_actions:
+    - '(?mi)^\s*git\s+(rebase|filter-branch|commit|reset\s+--hard)\b'
+    - '(?mi)^\s*rm\s+-rf?\b[^\n]*\.git'
+  leakage_forbidden:
+    - answer-is-the-first-bad-commit
+    - no-operation-in-progress
+    - history-and-tree-untouched
+    - simplify the common-factor step
+    - "2:3"
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: git-bisect-first-bad
+  sha256: null
+placebo_source: git-reflog-rescue-orphan
+notes: >-
+  The video bisects a different repository whose verdict script and commit
+  subjects are unrelated, so the hash on screen is of no use here.

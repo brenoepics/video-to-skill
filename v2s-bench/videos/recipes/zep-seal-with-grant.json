@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 48.0,
+  "duration_secs": 49.6,
   "stills": [
     {
       "t": 0.0,
@@ -147,15 +147,15 @@
       "text": "A drop in the zep ledger is not finished just because you closed it. Let me show you."
     },
     {
-      "t": 4.8,
+      "t": 6.15,
       "text": "We open a drop to work in, and zep hands us a nonce for it. Keep that in mind, it matters at the end."
     },
     {
-      "t": 10.8,
+      "t": 13.41,
       "text": "Stage a fact into the drop. Nothing surprising here."
     },
     {
-      "t": 16.8,
+      "t": 17.47,
       "text": "Now watch what happens if we just close it."
     },
     {
@@ -163,11 +163,11 @@
       "text": "It says it closed, but look at the state line, and look at the anchor. That is not a finished drop."
     },
     {
-      "t": 28.8,
+      "t": 29.52,
       "text": "The nonce is still sitting on disk next to the drop, and zep will print it again for us."
     },
     {
-      "t": 34.8,
+      "t": 35.38,
       "text": "So we close it again, this time passing that nonce along with it."
     },
     {

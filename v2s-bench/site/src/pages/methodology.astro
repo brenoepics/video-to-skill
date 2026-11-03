@@ -10,11 +10,15 @@ import {
   BASELINE_RULES,
   BLINDING_RULES,
   COST_IS_A_RESULT,
+  DISCOVERY_CAVEAT,
   EXCLUSION_RULE,
+  GATES_NOT_IN_BUNDLE,
   HEADROOM_BANDS,
   INTEGRITY_GATES,
   JUDGE_POLICY,
   MDE_TABLE,
+  MECHANISMS,
+  MECHANISM_TEST,
   MOCK_RULE,
   NARRATION_RULE,
   NOT_USEFUL_COMMITMENTS,
@@ -224,6 +228,8 @@ const toc = [
         </tbody>
       </table>
 
+      <p class="note">{DISCOVERY_CAVEAT}</p>
+
       <h3>Arm sets</h3>
       <dl class="defs">
         {
@@ -401,6 +407,26 @@ const toc = [
         <code>low</code>, and we test it.
       </p>
 
+      <h3>Two mechanisms, opposite predictions</h3>
+      <p>
+        The interesting disagreement in the literature is <em>why</em> skills help, and
+        the strata are what separates the two accounts.
+      </p>
+      <dl class="defs">
+        {
+          MECHANISMS.map((m) => (
+            <div>
+              <dt>
+                {m.id} &middot; {m.name}
+              </dt>
+              <dd>{m.claim}</dd>
+              <dd class="note">{m.predicts}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      {MECHANISM_TEST.map((para) => <p>{para}</p>)}
+
       <h3>Exclusion is declared on the probe, never on the outcome</h3>
       {EXCLUSION_RULE.map((para) => <p>{para}</p>)}
     </section>
@@ -418,6 +444,7 @@ const toc = [
           ))
         }
       </dl>
+      <p class="note">{GATES_NOT_IN_BUNDLE}</p>
     </section>
 
     <section aria-labelledby="materials">
@@ -566,9 +593,9 @@ const toc = [
       <p>{RECORD_FIELDS}</p>
       <p>{PINNING}</p>
       <p>
-        <code>v2sbench verify-results</code> recomputes every published figure from the
-        raw records, so a reader can audit the arithmetic rather than trusting it. How to
-        run it is on <a href={href('/reproduce')}>reproduce</a>.
+        The harness&rsquo;s <code>verify-results</code> command recomputes every published
+        figure from the raw records, so a reader can audit the arithmetic rather than
+        trusting it. How to run it is on <a href={href('/reproduce')}>reproduce</a>.
       </p>
     </section>
 

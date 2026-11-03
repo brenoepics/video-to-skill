@@ -56,10 +56,15 @@ const taskedCells = cells.length;
         One question, asked so it can fail: does an agent holding a v2s-generated skill
         complete real tasks more often than the same agent with a good prompt and no
         skill &mdash; and which component of v2s is responsible? The design was frozen
-        before any trial ran. Every number on this page is generated from one report
-        bundle; the <a href={href('/methodology')}>methodology</a> explains what each
-        comparison isolates, and <a href={href('/reproduce')}>reproduce</a> explains how
-        to recompute all of it yourself.
+        before any trial ran.{' '}
+        {
+          gate.showFigures
+            ? 'Every number on this page is generated from one report bundle; nothing about the outcome is written by hand.'
+            : 'No measurement exists yet. When one does, every number on this page will come from one report bundle; nothing about the outcome is written by hand.'
+        }{' '}
+        The <a href={href('/methodology')}>methodology</a> explains what each comparison
+        isolates, and <a href={href('/reproduce')}>reproduce</a> explains how to recompute
+        all of it yourself.
       </p>
     </div>
 
@@ -142,7 +147,13 @@ const taskedCells = cells.length;
         emptyTitle="No effect sizes yet."
         emptyBody="No paired trials have been recorded, so there is nothing to place on an axis. The comparisons themselves are fixed and are listed in the table above."
       >
-        <ForestPlot comparisons={comparisons} />
+        {
+          comparisons.length > 0 ? (
+            <ForestPlot comparisons={comparisons} />
+          ) : (
+            <p class="plot-none">The bundle declares no comparisons.</p>
+          )
+        }
         <ComparisonDetails slot="alt" comparisons={comparisons} />
       </Figure>
     </section>

@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 42.0,
+  "duration_secs": 45.2,
   "stills": [
     {
       "t": 0.0,
@@ -150,7 +150,7 @@
       "text": "A rollout sheet can promise two completely different things, and both of them render cleanly."
     },
     {
-      "t": 4.8,
+      "t": 6.43,
       "text": "Three units here, spread over two waves."
     },
     {
@@ -162,19 +162,19 @@
       "text": "But read the gate lines. Nothing is waiting for anything, this sheet sequences nothing at all."
     },
     {
-      "t": 22.8,
+      "t": 23.15,
       "text": "Render it again, this time asking for the waves to be locked together. Different id already."
     },
     {
-      "t": 28.8,
+      "t": 29.25,
       "text": "Now the first wave starts and the second one waits for it. That is the sheet we wanted."
     },
     {
-      "t": 34.8,
+      "t": 35.25,
       "text": "Two renderings on record, and nothing released yet."
     },
     {
-      "t": 38.5,
+      "t": 38.83,
       "text": "Without that switch the waves only look ordered. With it, each one waits for the one before."
     }
   ],

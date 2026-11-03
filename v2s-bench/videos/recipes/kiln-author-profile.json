@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 48.0,
+  "duration_secs": 51.6,
   "stills": [
     {
       "t": 0.0,
@@ -137,15 +137,15 @@
       "text": "kiln will not do anything until you have described the lane. The description lives in a particular file."
     },
     {
-      "t": 4.8,
+      "t": 7.27,
       "text": "Ask it to prepare a lane with nothing set up and it tells us exactly which file it went looking for."
     },
     {
-      "t": 10.8,
+      "t": 13.9,
       "text": "So we write that file. First the lane's name."
     },
     {
-      "t": 16.8,
+      "t": 17.56,
       "text": "Then which files make up a batch."
     },
     {
@@ -165,7 +165,7 @@
       "text": "And we can look at what kiln is holding. Prepared, not fired."
     },
     {
-      "t": 44.5,
+      "t": 45.58,
       "text": "Three settings in that file, then prepare the lane, and kiln knows what it is working with."
     }
   ],

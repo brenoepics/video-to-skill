@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 50.5,
+  "duration_secs": 53.2,
   "stills": [
     {
       "t": 0.0,
@@ -153,7 +153,7 @@
       "text": "lath keeps settings in layers. Staging one takes a little getting used to."
     },
     {
-      "t": 4.8,
+      "t": 5.61,
       "text": "Start a tree in this directory."
     },
     {
@@ -161,19 +161,19 @@
       "text": "Now we stage a setting into a layer. Watch the order of what I type, because it is not the one you would expect."
     },
     {
-      "t": 15.8,
+      "t": 17.08,
       "text": "And lath reads it back to us the way it stored it. That is the check worth doing."
     },
     {
-      "t": 21.3,
+      "t": 22.22,
       "text": "Here is the trap. Type those two the other way round and lath does not complain at all."
     },
     {
-      "t": 26.8,
+      "t": 28.07,
       "text": "Look closely at the layer now. There is an entry in there that nobody asked for. No error, just nonsense."
     },
     {
-      "t": 32.3,
+      "t": 35.1,
       "text": "So we take that entry out again."
     },
     {

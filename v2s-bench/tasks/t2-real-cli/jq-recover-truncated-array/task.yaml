@@ -1,0 +1,72 @@
+schema_version: 1
+id: jq-recover-truncated-array
+tier: t2-real-cli
+title: "Recover the complete records from a JSON array that was cut off mid-write"
+goal: >-
+  events.json was being written when the writer was killed, so the file is a
+  JSON array that stops partway through its last record. Recover the records
+  that are complete into recovered.jsonl: one record per line, compact, in
+  the order they appear in the file, with no trailing blank line.
+
+  The record the file stops inside is not complete and must not appear, and
+  nothing may be filled in to finish it. events.json itself must be left
+  exactly as it is, damage and all.
+discoverability: poor
+feedback_bandwidth: informative   # the naive read is refused with `parse error: Unfinished string at EOF at line 61`, which names the file, the line and the defect, so a persistent agent can converge
+knowledge_gap:
+  summary: >-
+    jq's ordinary parser reads the whole value before emitting anything, so
+    on a truncated array it exits 5 and prints nothing at all -- the eight
+    intact records are not partially recoverable that way. jq's streaming
+    parser emits path/value events as it goes, and the complete top-level
+    elements can be reassembled from those events, which keeps everything
+    that was parsed before the damage.
+  probe_question: >-
+    A JSON file holding a large top-level array was truncated mid-record.
+    Using jq, print every complete element of that array as compact JSON,
+    one per line, without repairing the file. Give the exact invocation.
+  probe_answer_pattern: '(?i)--stream[\s\S]{0,200}fromstream[\s\S]{0,60}truncate_stream|truncate_stream[\s\S]{0,120}--stream'
+  taught_at: [19.0, 38.0, 52.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v jq >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends jq=1.7.1-3ubuntu0.24.04.2; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' jq)\" = 1.7.1-3ubuntu0.24.04.2"
+budget:
+  max_turns: 25
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - recovered-is-jsonl
+    - all-complete-records-present
+    - nothing-invented
+    - damaged-file-left-damaged
+  key_actions:
+    - '(?mi)^\s*jq\b[^\n]*--stream'
+    - '(?mi)truncate_stream|fromstream'
+  forbidden_actions:
+    - '(?mi)(>|tee|sed\s+-i|truncate)\s*[^\n]*events\.json'
+  leakage_forbidden:
+    - recovered-is-jsonl
+    - all-complete-records-present
+    - nothing-invented
+    - damaged-file-left-damaged
+    - second pass over the qu
+    - handed to the courier
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: jq-recover-truncated-array
+  sha256: null
+placebo_source: jq-deep-merge-layers
+notes: >-
+  The video recovers a truncated array of a different shape (build rows with
+  an id and a duration) and ends on a different kind of damage, so the record
+  fields on screen are of no use here.

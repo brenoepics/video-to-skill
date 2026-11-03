@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 62.0,
+  "duration_secs": 66.3,
   "stills": [
     {
       "t": 0.0,
@@ -206,7 +206,7 @@
       "text": "Two layers, both setting the same thing. Which one wins surprises most people, so watch the screen."
     },
     {
-      "t": 4.8,
+      "t": 7.68,
       "text": "One layer says three."
     },
     {
@@ -230,27 +230,27 @@
       "text": "Look at the value that survived, then look back at the order we built. That is the rule, right there on screen."
     },
     {
-      "t": 34.8,
+      "t": 37.1,
       "text": "So if we want the other value to come through, we take this one out of the order..."
     },
     {
-      "t": 39.8,
+      "t": 42.05,
       "text": "...and add it again, which lands it somewhere else. Watch the position it reports this time."
     },
     {
-      "t": 44.8,
+      "t": 48.1,
       "text": "Here is the order as it now stands. Read it carefully, including the heading."
     },
     {
-      "t": 49.8,
+      "t": 53.48,
       "text": "Merge it again into a second file."
     },
     {
-      "t": 54.8,
+      "t": 56.05,
       "text": "A different answer this time, from the very same two layers."
     },
     {
-      "t": 58.5,
+      "t": 60.11,
       "text": "Same two layers, different order, different answer. Change the order, not the layers."
     }
   ],

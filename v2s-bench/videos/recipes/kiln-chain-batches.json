@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 54.0,
+  "duration_secs": 58.7,
   "stills": [
     {
       "t": 0.0,
@@ -167,7 +167,7 @@
       "text": "Two firings of the same lane, where the second one records that it follows the first."
     },
     {
-      "t": 4.8,
+      "t": 5.94,
       "text": "Prepare the lane as usual."
     },
     {
@@ -199,7 +199,7 @@
       "text": "And kiln is holding the chain: what it follows, and what it last made."
     },
     {
-      "t": 50.5,
+      "t": 51.84,
       "text": "The batch you fired goes into the description as its prior, the lane is prepared again, and then it fires."
     }
   ],

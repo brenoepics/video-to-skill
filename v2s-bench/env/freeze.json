@@ -1,7 +1,7 @@
 {
   "frozen": {
     "env/2048/PROTOCOL.md": "18ce4a66356f71b20aed36d6d9952a1fa7bf567cb4355a5ed57d1779810014bb",
-    "env/2048/v2s_game_2048.py": "4d901e7a779279bdd2d89d2378e78b49aca12456c9ca338d8a5f405b2c753fda"
+    "env/2048/v2s_game_2048.py": "02d4609213ca0f3bd1e01d0f1c86b7ea31ed8d0b8eaa149b5f52dd15d9fac068"
   },
   "mirrors": {
     "tasks/t4-game/g2048-two-boards/files/v2s-game": "env/2048/v2s_game_2048.py"

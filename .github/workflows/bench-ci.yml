@@ -64,6 +64,20 @@ jobs:
         working-directory: v2s-bench/harness
         run: uv run --with pyyaml --with jsonschema python -m v2sbench.cli validate --blind
 
+      - name: Install a TTS backend
+        # Needed to measure how long each narration cue actually takes to
+        # speak. Guessing that is what produced the overlaps this guards.
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq espeak-ng
+
+      - name: Narration must not speak over itself
+        # Overlapping cues garble the audio, which degrades the ASR
+        # transcript -- the only input the transcript-only (A2) and
+        # raw-transcript (A6) arms receive. Sloppy cue timing therefore
+        # handicaps precisely the arms v2s is compared against, making the
+        # pipeline look better by making its control worse.
+        working-directory: v2s-bench/harness
+        run: uv run --with jsonschema python tools/retime_recipes.py ../videos/recipes --check
+
   site:
     name: results site
     runs-on: ubuntu-24.04

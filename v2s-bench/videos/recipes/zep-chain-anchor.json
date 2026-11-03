@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 48.0,
+  "duration_secs": 51.5,
   "stills": [
     {
       "t": 0.0,
@@ -146,19 +146,19 @@
       "text": "Drops can be chained, so one records that it follows another. That link is set up earlier than you might expect."
     },
     {
-      "t": 4.8,
+      "t": 7.75,
       "text": "We already have one sealed drop here, and the ledger shows what it ended up with."
     },
     {
-      "t": 10.8,
+      "t": 12.88,
       "text": "This is where we read the value the next drop has to point at."
     },
     {
-      "t": 16.8,
+      "t": 17.04,
       "text": "When we create the next drop, we say up front which one it follows, carrying that value over."
     },
     {
-      "t": 22.8,
+      "t": 23.52,
       "text": "Then it is an ordinary drop. Stage what belongs in it."
     },
     {
@@ -174,7 +174,7 @@
       "text": "And you cannot invent the value: zep only accepts one it has actually sealed."
     },
     {
-      "t": 44.5,
+      "t": 46.35,
       "text": "The link is declared when the drop is created, and only a real anchor will do."
     }
   ],

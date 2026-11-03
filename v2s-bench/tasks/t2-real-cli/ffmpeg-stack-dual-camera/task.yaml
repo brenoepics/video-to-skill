@@ -1,0 +1,79 @@
+schema_version: 1
+id: ffmpeg-stack-dual-camera
+tier: t2-real-cli
+title: "Build a side-by-side review cut from two camera files"
+goal: >-
+  The work directory holds two recordings of the same take, cam-left.mp4 and
+  cam-right.mp4, both 320x240 at 25 fps, each with its own sound. Produce
+  review.mp4.
+
+  review.mp4 must show the two pictures beside each other at their original
+  size -- cam-left's picture occupying the left half of a 640x240 frame and
+  cam-right's the right half -- must carry exactly one sound track and that
+  track must be the sound from cam-right, and must run only as long as the
+  shorter of the two recordings. The two source files must be left exactly
+  as they are.
+discoverability: good
+feedback_bandwidth: silent   # the unconnected-output refusal names its own fix, but once the graph is wired the remaining two requirements fail without a word: the wrong sound track and the longer running time both produce a file that plays
+knowledge_gap:
+  summary: >-
+    Giving a filter graph's output a label takes stream selection out of
+    ffmpeg's hands: nothing is written unless that label is mapped, and from
+    then on no stream is chosen automatically, so the sound has to be mapped
+    out of the second input explicitly or the result is silent. Mapping it
+    is not enough either -- the stacked picture outlives the shorter input,
+    so the output has to be told to end with the stream that ends first.
+  probe_question: >-
+    With ffmpeg, two 320x240 clips of different lengths are to be put side by
+    side into one 640x240 file that carries only the second clip's audio and
+    stops when the shorter clip stops. Give the exact command line.
+  probe_answer_pattern: '(?is)(?=.*hstack)(?=.*-map\s*"?\[)(?=.*-map\s*"?1:a)(?=.*-shortest)'
+  taught_at: [21.0, 33.0, 49.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v ffmpeg >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends ffmpeg=7:6.1.1-3ubuntu5; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' ffmpeg)\" = 7:6.1.1-3ubuntu5"
+    - ffmpeg -nostdin -v error -y -f lavfi -i "color=c=0xCC2222:s=320x240:r=25:d=4" -f lavfi -i "sine=frequency=300:sample_rate=48000:duration=4" -map 0:v -map 1:a -c:v libx264 -pix_fmt yuv420p -c:a aac cam-left.mp4
+    - ffmpeg -nostdin -v error -y -f lavfi -i "color=c=0x22AA22:s=320x240:r=25:d=3" -f lavfi -i "sine=frequency=1200:sample_rate=48000:duration=3" -map 0:v -map 1:a -c:v libx264 -pix_fmt yuv420p -c:a aac cam-right.mp4
+budget:
+  max_turns: 30
+  wall_secs: 900
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - review-geometry
+    - cameras-on-the-right-sides
+    - one-track-and-it-is-cam-right
+    - ends-with-the-shorter-input
+    - sources-untouched
+  key_actions:
+    - '(?mi)^\s*ffmpeg\b[^\n]*-filter_complex[^\n]*hstack'
+    - '(?mi)^\s*ffmpeg\b[^\n]*-map[^\n]*1:a'
+    - '(?mi)^\s*ffmpeg\b[^\n]*-shortest'
+  forbidden_actions:
+    - '(?mi)(>|tee|mv|rm)\s*[^\n]*cam-(left|right)\.mp4'
+  leakage_forbidden:
+    - review-geometry
+    - cameras-on-the-right-sides
+    - one-track-and-it-is-cam-right
+    - ends-with-the-shorter-input
+    - sources-untouched
+    - "1200"
+    - "0xCC2222"
+    - "0x22AA22"
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: ffmpeg-stack-dual-camera
+  sha256: null
+notes: >-
+  The video stacks a pair of screen captures of a different size and keeps
+  the first input's audio, so the literal command on screen is wrong for
+  this task in both the geometry and the stream it keeps.

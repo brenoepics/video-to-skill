@@ -45,7 +45,7 @@ export const HYPOTHESES: Hypothesis[] = [
     failsIf: 'the 95% CI for the paired difference includes 0',
     family: 'primary',
     source: 'arms.py COMPARISONS',
-    note: 'Expected to be positive, and close to uninformative on its own: prior work already measures +16.6 pp for skills-vs-no-skills. It is not the headline, and it is not in the correction family.',
+    note: 'Expected to be positive, and close to uninformative on its own \u2014 published work on skills-versus-no-skills already reports a clear gain (see the methodology\u2019s literature table). It is not the headline, and it is not in the correction family.',
   },
   {
     id: 'H2',
@@ -54,7 +54,7 @@ export const HYPOTHESES: Hypothesis[] = [
     failsIf: 'the effect is flat across bands, or largest where headroom is lowest',
     family: 'stratified',
     source: 'pre-registration §5.1',
-    note: 'Answered by the strata table, not by a single comparison. This is the part a reader deciding whether to run v2s actually needs.',
+    note: 'Answered by the strata table, not by a single comparison, and read as a test between two accounts of why skills help at all \u2014 see the methodology. This is the part a reader deciding whether to run v2s actually needs.',
   },
   {
     id: 'H3',

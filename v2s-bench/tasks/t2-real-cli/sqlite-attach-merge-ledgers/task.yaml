@@ -1,0 +1,80 @@
+schema_version: 1
+id: sqlite-attach-merge-ledgers
+tier: t2-real-cli
+title: "Fold one SQLite ledger into another without losing the existing rows"
+goal: >-
+  ledger.db and incoming.db are two SQLite databases holding an entries
+  table of the same shape. Fold incoming.db into ledger.db.
+
+  When you stop, ledger.db's entries table must hold one row for every id
+  that appears in either database. Where an id appears in both, the row that
+  was already in ledger.db must be the one that survives, unchanged in every
+  column. No id may be renumbered and none may appear twice. ledger.db must
+  still pass its own integrity check, and incoming.db must be left exactly
+  as it is.
+discoverability: poor
+feedback_bandwidth: informative   # the first wrong attempt is refused by name -- `no such table: inc.entries` without the attach, `UNIQUE constraint failed: entries.id` with a plain insert -- so a persistent agent can converge
+knowledge_gap:
+  summary: >-
+    A SQLite connection can only see one database file unless a second one
+    is attached to it under a name, and the attach has to happen in the same
+    session as the statement that reads across it -- a separate invocation
+    loses it. Then the id collisions have to be resolved in the direction the
+    task wants: the insert has to be told to keep the row that is already
+    there, because the conflict resolution that first comes to mind replaces
+    it instead, and that replacement is never reported.
+  probe_question: >-
+    Using the sqlite3 command-line tool, copy every row of the entries table
+    of second.db into the entries table of first.db, keeping first.db's own
+    row wherever the primary key already exists there. Give the exact
+    invocation, including anything that has to be set up first.
+  probe_answer_pattern: '(?is)(?=.*attach)(?=.*insert\s+or\s+ignore)'
+  taught_at: [23.0, 40.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v sqlite3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends sqlite3=3.45.1-1ubuntu2.8; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' sqlite3)\" = 3.45.1-1ubuntu2.8"
+    - "sqlite3 ledger.db \"CREATE TABLE entries(id INTEGER PRIMARY KEY, ts TEXT NOT NULL, amount INTEGER NOT NULL, note TEXT); INSERT INTO entries VALUES (1,'2026-03-01',1500,'opening float'),(2,'2026-03-02',-240,'courier'),(5,'2026-03-05',7731,'grant drawdown');\""
+    - "sqlite3 incoming.db \"CREATE TABLE entries(id INTEGER PRIMARY KEY, ts TEXT NOT NULL, amount INTEGER NOT NULL, note TEXT); INSERT INTO entries VALUES (2,'2026-03-02',-999,'courier RESTATED'),(3,'2026-03-03',410,'parts'),(4,'2026-03-04',-60,'postage'),(5,'2026-03-05',1,'bogus restatement');\""
+budget:
+  max_turns: 25
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - ledger-readable
+    - every-id-present
+    - existing-rows-survived
+    - new-rows-copied-faithfully
+    - ledger-integrity-ok
+    - incoming-untouched
+  key_actions:
+    - '(?mi)attach\s+(database\s+)?.?incoming\.db'
+    - '(?mi)insert\s+or\s+ignore'
+  forbidden_actions:
+    - '(?mi)(>|tee|rm|mv)\s*[^\n]*incoming\.db'
+    - '(?mi)drop\s+table'
+  leakage_forbidden:
+    - ledger-readable
+    - every-id-present
+    - existing-rows-survived
+    - new-rows-copied-faithfully
+    - incoming-untouched
+    - grant drawdown
+    - bogus restatement
+    - courier RESTATED
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: sqlite-attach-merge-ledgers
+  sha256: null
+notes: >-
+  The video folds a readings table between two differently named databases,
+  so the table and file names on screen do not match this task.

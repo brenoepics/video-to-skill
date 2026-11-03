@@ -524,6 +524,8 @@ main {
 .verdict__glyph {
   font-family: var(--mono);
   font-weight: 700;
+  font-size: 1.08em;
+  line-height: 1;
 }
 
 .verdict--supported,
@@ -896,6 +898,13 @@ main {
   outline-offset: 2px;
 }
 
+#f-t1:checked ~ .tier-scope .tier-empty--t1,
+#f-t2:checked ~ .tier-scope .tier-empty--t2,
+#f-t3:checked ~ .tier-scope .tier-empty--t3,
+#f-t4:checked ~ .tier-scope .tier-empty--t4 {
+  display: block;
+}
+
 #f-t1:checked ~ .tier-scope [data-tier]:not([data-tier='t1-novel-cli']),
 #f-t2:checked ~ .tier-scope [data-tier]:not([data-tier='t2-real-cli']),
 #f-t3:checked ~ .tier-scope [data-tier]:not([data-tier='t3-gui']),
@@ -974,20 +983,24 @@ main {
     border-bottom: 1px solid var(--grid);
   }
 
+  /* The label runs inline with its value. Laying the two out as grid or flex
+     columns would make every inline node in the cell -- a footnote marker, a
+     sub-line -- its own column item, which reads as a collision; and stacking
+     the label above doubles the height of an eight-row table. */
   .dt--stack td[data-label] {
-    display: grid;
-    grid-template-columns: minmax(8ch, 38%) 1fr;
-    gap: 0.6rem;
-    align-items: baseline;
+    display: block;
+    padding: 0.16rem 0;
   }
 
   .dt--stack td[data-label]::before {
-    content: attr(data-label);
+    content: attr(data-label) ': ';
     color: var(--text-secondary);
-    font-size: 0.82rem;
-    line-height: 1.5;
-    min-width: 0;
+    font-size: 0.86em;
     overflow-wrap: anywhere;
+  }
+
+  .dt--stack td[data-label] .sub {
+    margin-left: 0.1rem;
   }
 
   .dt--stack td.num,

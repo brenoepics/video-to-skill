@@ -5,7 +5,7 @@
   "width": 1280,
   "height": 720,
   "fps": 10,
-  "duration_secs": 48.0,
+  "duration_secs": 52.7,
   "stills": [
     {
       "t": 0.0,
@@ -143,7 +143,7 @@
       "text": "Every merge prints a fingerprint. Here is how you carry one forward into the next merge."
     },
     {
-      "t": 4.8,
+      "t": 6.54,
       "text": "Two layers, already in the order we want them."
     },
     {
@@ -155,7 +155,7 @@
       "text": "So we stage it into a layer of its own, in the usual order for this tool. Watch what I type."
     },
     {
-      "t": 22.8,
+      "t": 22.86,
       "text": "There it is, stored under a name of our choosing."
     },
     {
@@ -171,7 +171,7 @@
       "text": "The file carries the earlier fingerprint, which is the one we pinned, not this merge's own."
     },
     {
-      "t": 44.5,
+      "t": 46.45,
       "text": "Carry what the first merge printed into a layer of its own, add it to the order, and merge again."
     }
   ],
