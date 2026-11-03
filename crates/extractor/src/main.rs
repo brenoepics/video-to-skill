@@ -113,6 +113,33 @@ enum Command {
         #[arg(long, value_name = "REPO_ROOT")]
         write_docs: Option<String>,
     },
+    /// Score extraction quality on the synthetic gold set and write a JSON artifact
+    Eval {
+        /// Gold set directory: one <id>/ with recipe.json + procedure.json per video
+        #[arg(long, default_value = "crates/extractor/eval")]
+        gold: String,
+        /// Where to write the JSON results artifact
+        #[arg(long, default_value = "eval-results.json")]
+        out: String,
+        /// Also write the markdown summary to this file
+        #[arg(long)]
+        summary: Option<String>,
+        /// Baseline results JSON to gate against (lower confidence bounds)
+        #[arg(long)]
+        baseline: Option<String>,
+        /// Largest allowed drop of a metric's lower bound below the baseline
+        #[arg(long, default_value_t = 0.05)]
+        max_drop: f64,
+        /// Compiled packages to score agent-dependent metrics, one <id>/ per gold video
+        #[arg(long)]
+        packages: Option<String>,
+        /// Keep the generated videos and bundles in this directory
+        #[arg(long)]
+        keep: Option<String>,
+        /// Only evaluate these gold video ids, e.g. "term-git-init,gui-preferences"
+        #[arg(long, value_delimiter = ',')]
+        only: Vec<String>,
+    },
     /// Run a command under OS confinement — no network, writes confined to
     /// the workspace. Verification executes video-derived steps only in here.
     Sandbox {
@@ -168,6 +195,25 @@ fn main() -> Result<()> {
             dry_run,
         } => commands::merge::run(&skill, &ir, &bundle, &out, dry_run),
         Command::Bench { write_docs } => commands::bench::run(write_docs.as_deref()),
+        Command::Eval {
+            gold,
+            out,
+            summary,
+            baseline,
+            max_drop,
+            packages,
+            keep,
+            only,
+        } => commands::eval::run(&commands::eval::Args {
+            gold: &gold,
+            out: &out,
+            summary: summary.as_deref(),
+            baseline: baseline.as_deref(),
+            max_drop,
+            packages: packages.as_deref(),
+            keep: keep.as_deref(),
+            only: &only,
+        }),
         Command::Sandbox {
             workspace,
             print_policy,

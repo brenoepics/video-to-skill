@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::asr::{self, whisper::WhisperEngine};
 use crate::bundle;
@@ -52,7 +52,7 @@ impl BenchReport {
 }
 
 /// The hardware and OS the benchmark ran on.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Machine {
     /// CPU/SoC name, e.g. "Apple M2 Pro"; "unknown" when undetectable.
     pub chip: String,
