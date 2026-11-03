@@ -120,7 +120,7 @@ if "%~1"=="-f" (set "fmt=%~2" & shift & shift & goto loop)
 if "%~1"=="--ignore-config" (set "ignore_config=1" & shift & goto loop)
 if "%~1"=="--no-plugin-dirs" (set "no_plugin_dirs=1" & shift & goto loop)
 if "%~1"=="--no-remote-components" (set "no_remote_components=1" & shift & goto loop)
-if "%~1"=="--sponsorblock-mark" (set "sponsorblock=%~2" & shift & shift & goto loop)
+if "%~1"=="--sponsorblock-mark" (>>"%here%args.txt" echo %~2 & set "sponsorblock=%~2" & shift & shift & goto loop)
 shift
 goto loop
 :parsed
