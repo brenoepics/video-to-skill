@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "skill_name": "term-git-init",
+  "title": "Initialise a Git repository",
+  "description": "Use when starting a new project under Git: create the directory, enter it, run git init, check git status.",
+  "overview": "A terminal session that creates a project folder and turns it into a Git repository.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-git-init",
+    "title": "Initialise a Git repository",
+    "duration_secs": 36.0
+  },
+  "steps": [
+    {
+      "id": "01-create-directory",
+      "goal": "Create the project folder",
+      "actions": "Run `mkdir demo`.",
+      "success_criteria": "A new empty prompt; the folder exists.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 8.0,
+          "frame": null,
+          "quote": "run mkdir demo to create the project folder"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-enter-directory",
+      "goal": "Enter the project folder",
+      "actions": "Run `cd demo`.",
+      "success_criteria": "The shell is inside demo.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 14.0,
+          "frame": null,
+          "quote": "change into it with cd demo"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-init-repo",
+      "goal": "Initialise the repository",
+      "actions": "Run `git init`.",
+      "success_criteria": "Prints \"Initialized empty Git repository\".",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 20.0,
+          "frame": null,
+          "quote": "run git init to create the repository"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "04-check-status",
+      "goal": "Confirm the repository state",
+      "actions": "Run `git status`.",
+      "success_criteria": "Reports \"No commits yet\" and nothing to commit.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 28.0,
+          "frame": null,
+          "quote": "git status confirms the tree is clean"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

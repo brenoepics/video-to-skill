@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "id": "term-long-output-scroll",
+  "title": "Read a long build log",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 44.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {}
+    },
+    {
+      "t": 4.0,
+      "step": "01-print-log",
+      "terminal": {
+        "type": "cat build.log"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-print-log",
+      "terminal": {
+        "output": [
+          "[00:01] configure: checking compiler",
+          "[00:02] configure: checking headers",
+          "[00:03] configure: done",
+          "[00:04] cc -c src/main.c",
+          "[00:05] cc -c src/parse.c",
+          "[00:06] cc -c src/emit.c"
+        ]
+      }
+    },
+    {
+      "t": 7.5,
+      "step": "01-print-log",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "[00:07] cc -c src/util.c",
+          "[00:08] cc -c src/io.c",
+          "[00:09] cc -c src/net.c",
+          "[00:10] cc -c src/fs.c",
+          "[00:11] cc -c src/log.c"
+        ]
+      }
+    },
+    {
+      "t": 8.0,
+      "step": "01-print-log",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "[00:12] cc -c src/args.c",
+          "[00:13] cc -c src/cfg.c",
+          "[00:14] cc -c src/ui.c",
+          "[00:15] error: missing header foo.h",
+          "[00:16] error: 1 error generated"
+        ]
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-print-log",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "[00:17] make: *** [all] Error 1",
+          "[00:18] linking skipped",
+          "[00:19] tests skipped",
+          "[00:20] total time 15s",
+          "[00:21] exit status 2"
+        ]
+      }
+    },
+    {
+      "t": 9.0,
+      "step": "01-print-log",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "[00:22] see build.log for details",
+          "[00:23] end of log",
+          "[00:24] ",
+          "[00:25] done"
+        ]
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "02-filter-errors",
+      "terminal": {
+        "type": "grep error build.log"
+      }
+    },
+    {
+      "t": 21.0,
+      "step": "02-filter-errors",
+      "terminal": {
+        "output": [
+          "[00:15] error: missing header foo.h",
+          "[00:16] error: 1 error generated"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "03-clear-screen",
+      "terminal": {
+        "type": "clear"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "03-clear-screen",
+      "terminal": {
+        "lines": [
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 36.0,
+      "slide": {
+        "title": "Tip",
+        "bullets": [
+          "pipe long output into less"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Some commands print more than a screen of text."
+    },
+    {
+      "t": 4.5,
+      "text": "cat build.log prints the whole log; it scrolls past."
+    },
+    {
+      "t": 18.5,
+      "text": "grep error build.log shows only the failures."
+    },
+    {
+      "t": 28.5,
+      "text": "clear wipes the screen."
+    },
+    {
+      "t": 36.5,
+      "text": "Tip: pipe long output into less."
+    }
+  ]
+}

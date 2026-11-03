@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "skill_name": "gui-preferences",
+  "title": "Switch the editor to a dark theme",
+  "description": "Use when changing an editor's theme through its Preferences dialog and handling the restart prompt.",
+  "overview": "A GUI-only sequence: open Preferences, pick Dark, confirm, and defer the restart.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://gui-preferences",
+    "title": "Switch the editor to a dark theme",
+    "duration_secs": 34.0
+  },
+  "steps": [
+    {
+      "id": "01-open-preferences",
+      "goal": "Open the Preferences dialog",
+      "actions": "Choose Edit > Preferences.",
+      "success_criteria": "The Preferences dialog shows Theme, Font size and Autosave.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 5.0,
+          "frame": null,
+          "quote": "Open Preferences from the Edit menu"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-choose-dark-theme",
+      "goal": "Select the dark theme",
+      "actions": "Set the Theme field to Dark.",
+      "success_criteria": "The Theme row reads Dark.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 11.0,
+          "frame": null,
+          "quote": "Set Theme to Dark"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-apply",
+      "goal": "Apply the change",
+      "actions": "Click OK.",
+      "success_criteria": "The dialog closes and the status bar reads Theme: Dark.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 17.0,
+          "frame": null,
+          "quote": "Click OK to apply it"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "04-defer-restart",
+      "goal": "Defer the restart",
+      "actions": "In the Restart required prompt, click Later.",
+      "success_criteria": "The status bar notes the pending restart.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 30.0,
+          "frame": null,
+          "quote": "Choose Later; the theme applies on the next launch"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

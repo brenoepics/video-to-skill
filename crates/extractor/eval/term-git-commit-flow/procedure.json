@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "skill_name": "term-git-commit-flow",
+  "title": "Stage, commit and inspect history",
+  "description": "Use when recording a first commit: git add, git commit, git log, git status.",
+  "overview": "Starts with an untracked README, stages it, commits, shows the log, confirms a clean tree.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-git-commit-flow",
+    "title": "Stage, commit and inspect history",
+    "duration_secs": 44.0
+  },
+  "steps": [
+    {
+      "id": "01-stage-file",
+      "goal": "Stage the file",
+      "actions": "Run `git add README.md`.",
+      "success_criteria": "A fresh prompt; the file is staged.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 8.0,
+          "frame": null,
+          "quote": "Stage it with git add README.md"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-commit",
+      "goal": "Record the commit",
+      "actions": "Run `git commit -m \"Add readme\"`.",
+      "success_criteria": "Reports the root commit and 1 file changed.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 16.0,
+          "frame": null,
+          "quote": "Commit with git commit"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-inspect-history",
+      "goal": "Inspect the history",
+      "actions": "Run `git log`.",
+      "success_criteria": "Shows the Add readme commit at HEAD.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 26.0,
+          "frame": null,
+          "quote": "git log shows the new commit"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "04-check-status",
+      "goal": "Confirm a clean tree",
+      "actions": "Run `git status`.",
+      "success_criteria": "Prints \"nothing to commit, working tree clean\".",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 36.0,
+          "frame": null,
+          "quote": "git status is clean again"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

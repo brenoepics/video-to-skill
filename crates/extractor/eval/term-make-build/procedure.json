@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "skill_name": "term-make-build",
+  "title": "Build a C program with make",
+  "description": "Use when compiling and running a small C project with make, then cleaning the build outputs.",
+  "overview": "make compiles two objects, the binary runs, make clean removes the outputs and ls confirms it.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-make-build",
+    "title": "Build a C program with make",
+    "duration_secs": 42.0
+  },
+  "steps": [
+    {
+      "id": "01-build",
+      "goal": "Compile the project",
+      "actions": "Run `make`.",
+      "success_criteria": "Two objects compile and link into calc.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 8.0,
+          "frame": null,
+          "quote": "Type make to compile the project"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-run",
+      "goal": "Run the program",
+      "actions": "Run `./calc 2 3`.",
+      "success_criteria": "Prints 5.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 18.0,
+          "frame": null,
+          "quote": "Run it with dot slash calc 2 3"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-clean",
+      "goal": "Remove the build outputs",
+      "actions": "Run `make clean`, then `ls` to confirm.",
+      "success_criteria": "Only Makefile and the sources remain.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 34.0,
+          "frame": null,
+          "quote": "make clean removes the build outputs"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

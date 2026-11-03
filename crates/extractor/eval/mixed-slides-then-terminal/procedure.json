@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "skill_name": "mixed-slides-then-terminal",
+  "title": "Shell basics",
+  "description": "Use when teaching the first three shell commands: pwd, ls and cd.",
+  "overview": "A slide intro, a terminal demo of pwd, ls and cd, and a recap slide.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://mixed-slides-then-terminal",
+    "title": "Shell basics",
+    "duration_secs": 46.0
+  },
+  "steps": [
+    {
+      "id": "01-print-directory",
+      "goal": "Print the working directory",
+      "actions": "Run `pwd`.",
+      "success_criteria": "Prints /home/demo.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 10.0,
+          "frame": null,
+          "quote": "pwd prints the working directory"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-list-files",
+      "goal": "List the files",
+      "actions": "Run `ls`.",
+      "success_criteria": "Lists Documents, Downloads, notes.txt and projects.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 18.0,
+          "frame": null,
+          "quote": "ls lists the files in it"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-change-directory",
+      "goal": "Move into projects",
+      "actions": "Run `cd projects`, then `pwd` to confirm.",
+      "success_criteria": "pwd prints /home/demo/projects.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 32.0,
+          "frame": null,
+          "quote": "cd projects moves into the projects folder"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

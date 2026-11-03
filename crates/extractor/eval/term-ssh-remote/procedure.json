@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "skill_name": "term-ssh-remote",
+  "title": "Check a remote server over SSH",
+  "description": "Use when connecting to a server with ssh, checking uptime and hostname, and disconnecting.",
+  "overview": "Connects to a configured host, the prompt changes, two read-only checks, then exit.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-ssh-remote",
+    "title": "Check a remote server over SSH",
+    "duration_secs": 40.0
+  },
+  "steps": [
+    {
+      "id": "01-connect",
+      "goal": "Connect to the server",
+      "actions": "Run `ssh server` (a host from ~/.ssh/config).",
+      "success_criteria": "The banner appears and the prompt reads demo@server.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 8.0,
+          "frame": null,
+          "quote": "Connect with ssh server; the prompt changes"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-check-uptime",
+      "goal": "Check the uptime",
+      "actions": "Run `uptime`.",
+      "success_criteria": "Prints the uptime and load average.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 17.0,
+          "frame": null,
+          "quote": "uptime shows how long it has been running"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-check-hostname",
+      "goal": "Confirm the host",
+      "actions": "Run `hostname`.",
+      "success_criteria": "Prints server.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 26.0,
+          "frame": null,
+          "quote": "hostname confirms which machine we are on"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "04-disconnect",
+      "goal": "Close the session",
+      "actions": "Run `exit`.",
+      "success_criteria": "Prints \"Connection to server closed.\" and the local prompt returns.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 34.0,
+          "frame": null,
+          "quote": "exit closes the session"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

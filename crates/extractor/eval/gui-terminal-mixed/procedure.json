@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "skill_name": "gui-terminal-mixed",
+  "title": "Install the editor's command line tool",
+  "description": "Use when installing an editor's shell command from its command palette and checking it from a terminal.",
+  "overview": "A command palette dialog, a confirmation, then which and the new command in a terminal, back to the editor.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://gui-terminal-mixed",
+    "title": "Install the editor's command line tool",
+    "duration_secs": 40.0
+  },
+  "steps": [
+    {
+      "id": "01-open-command-palette",
+      "goal": "Find the install command",
+      "actions": "Open the Command Palette and type install cli.",
+      "success_criteria": "Shell Command: Install 'edit' in PATH is listed.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 5.0,
+          "frame": null,
+          "quote": "Open the command palette and search install cli"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-install-shell-command",
+      "goal": "Install the shell command",
+      "actions": "Run Shell Command: Install 'edit' in PATH.",
+      "success_criteria": "A dialog confirms 'edit' was installed in /usr/local/bin.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 11.0,
+          "frame": null,
+          "quote": "Run Shell Command Install; a confirmation appears"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-verify-in-terminal",
+      "goal": "Check it from a terminal",
+      "actions": "Run `which edit`, then `edit notes.txt`.",
+      "success_criteria": "which prints /usr/local/bin/edit and the editor opens notes.txt.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 20.0,
+          "frame": null,
+          "quote": "which edit shows where it was installed"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

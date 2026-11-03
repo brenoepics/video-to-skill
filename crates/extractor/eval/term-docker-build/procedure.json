@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "skill_name": "term-docker-build",
+  "title": "Build and run a container image",
+  "description": "Use when building a Docker image from a Dockerfile, running it, and listing local images.",
+  "overview": "Builds an image while the build log streams, runs the container, lists images, ends on a recap slide.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-docker-build",
+    "title": "Build and run a container image",
+    "duration_secs": 46.0
+  },
+  "steps": [
+    {
+      "id": "01-build-image",
+      "goal": "Build the image",
+      "actions": "Run `docker build -t app .` in the directory with the Dockerfile.",
+      "success_criteria": "The build log ends with FINISHED and names the image.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 10.0,
+          "frame": null,
+          "quote": "docker build -t app . to build the image"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-run-container",
+      "goal": "Run the container",
+      "actions": "Run `docker run app`.",
+      "success_criteria": "Prints \"hello from the container\".",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 22.0,
+          "frame": null,
+          "quote": "docker run app starts a container"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-list-images",
+      "goal": "List local images",
+      "actions": "Run `docker images`.",
+      "success_criteria": "The app image appears with the latest tag.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 30.0,
+          "frame": null,
+          "quote": "docker images lists what was built"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

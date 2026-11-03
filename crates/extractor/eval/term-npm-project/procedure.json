@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "skill_name": "term-npm-project",
+  "title": "Set up a Node project",
+  "description": "Use when bootstrapping a Node.js project: npm init, install a dependency, run the tests.",
+  "overview": "Initialises package.json, installs express while the install output streams by, and runs npm test.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-npm-project",
+    "title": "Set up a Node project",
+    "duration_secs": 44.0
+  },
+  "steps": [
+    {
+      "id": "01-init-package",
+      "goal": "Create package.json",
+      "actions": "Run `npm init -y` to accept every default.",
+      "success_criteria": "package.json is written and echoed back.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 8.0,
+          "frame": null,
+          "quote": "npm init -y to create package.json"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-install-express",
+      "goal": "Install the web framework",
+      "actions": "Run `npm install express`.",
+      "success_criteria": "npm reports the packages it added.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 19.0,
+          "frame": null,
+          "quote": "npm install express adds the web framework"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-run-tests",
+      "goal": "Run the test suite",
+      "actions": "Run `npm test`.",
+      "success_criteria": "Every test reports ok and the summary says fail 0.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 29.0,
+          "frame": null,
+          "quote": "npm test runs the test suite"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

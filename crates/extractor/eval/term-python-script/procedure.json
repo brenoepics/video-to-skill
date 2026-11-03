@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "skill_name": "term-python-script",
+  "title": "Write and run a Python script",
+  "description": "Use when creating a small Python script from the terminal: open it in nano, save, run it with python3, print it with cat.",
+  "overview": "Writes app.py line by line in nano, runs it, then prints the file.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://term-python-script",
+    "title": "Write and run a Python script",
+    "duration_secs": 40.0
+  },
+  "steps": [
+    {
+      "id": "01-create-script",
+      "goal": "Write app.py",
+      "actions": "Run `nano app.py`, type the greet function and the print call, save with Ctrl+O and exit with Ctrl+X.",
+      "success_criteria": "Back at the prompt with app.py saved.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 14.0,
+          "frame": null,
+          "quote": "Type the greet function and a print call"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-run-script",
+      "goal": "Run the script",
+      "actions": "Run `python3 app.py`.",
+      "success_criteria": "Prints \"Hello, world!\".",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 24.0,
+          "frame": null,
+          "quote": "run python3 app.py"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-show-script",
+      "goal": "Print the script",
+      "actions": "Run `cat app.py`.",
+      "success_criteria": "The four lines of the script are printed.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 32.0,
+          "frame": null,
+          "quote": "cat app.py to print the script"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "skill_name": "gui-new-project-wizard",
+  "title": "Create a project with the wizard",
+  "description": "Use when creating a project through a three-page New Project wizard: name it, pick a template, review and create.",
+  "overview": "A wizard dialog sequence with field typing, a template choice, and a summary page.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://gui-new-project-wizard",
+    "title": "Create a project with the wizard",
+    "duration_secs": 40.0
+  },
+  "steps": [
+    {
+      "id": "01-name-project",
+      "goal": "Name the project",
+      "actions": "On page 1 of the wizard type demo-site into Name and click Next.",
+      "success_criteria": "The Name field reads demo-site.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 8.0,
+          "frame": null,
+          "quote": "name the project demo-site"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-pick-template",
+      "goal": "Choose a template",
+      "actions": "On page 2 select Static site and click Next.",
+      "success_criteria": "Static site is the checked template.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 17.0,
+          "frame": null,
+          "quote": "pick the Static site template"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-create",
+      "goal": "Create the project",
+      "actions": "On page 3 review the summary and click Create.",
+      "success_criteria": "The wizard closes and the status bar reads Project demo-site created.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 27.0,
+          "frame": null,
+          "quote": "Review the summary and click Create"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

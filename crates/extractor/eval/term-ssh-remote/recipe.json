@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "id": "term-ssh-remote",
+  "title": "Check a remote server over SSH",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 40.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {}
+    },
+    {
+      "t": 4.0,
+      "step": "01-connect",
+      "terminal": {
+        "type": "ssh server"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-connect",
+      "terminal": {
+        "output": [
+          "Welcome to Ubuntu 24.04 LTS",
+          "Last login: Mon Nov  2 10:14:01 2026"
+        ],
+        "prompt": "demo@server:~$ "
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-check-uptime",
+      "terminal": {
+        "type": "uptime"
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "02-check-uptime",
+      "terminal": {
+        "output": [
+          " 10:15:02 up 41 days,  3:12,  1 user,  load: 0.08"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "03-check-hostname",
+      "terminal": {
+        "type": "hostname"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "03-check-hostname",
+      "terminal": {
+        "output": [
+          "server"
+        ]
+      }
+    },
+    {
+      "t": 30.0,
+      "step": "04-disconnect",
+      "terminal": {
+        "type": "exit"
+      }
+    },
+    {
+      "t": 33.0,
+      "step": "04-disconnect",
+      "terminal": {
+        "output": [
+          "logout",
+          "Connection to server closed."
+        ],
+        "prompt": "$ "
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Let's check a remote server over SSH."
+    },
+    {
+      "t": 4.5,
+      "text": "Connect with ssh server; the prompt changes."
+    },
+    {
+      "t": 13.5,
+      "text": "uptime shows how long it has been running."
+    },
+    {
+      "t": 22.5,
+      "text": "hostname confirms which machine we are on."
+    },
+    {
+      "t": 30.5,
+      "text": "Finally, exit closes the session."
+    }
+  ]
+}
