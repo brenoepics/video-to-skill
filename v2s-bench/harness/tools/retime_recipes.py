@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import tempfile
 from pathlib import Path
@@ -83,8 +84,23 @@ def retime(
         begin = max(start, cursor)
         new.append(round(begin, 2))
         cursor = begin + length + gap
-    needed = max(total, round(cursor - gap + 0.5, 1))
+    # `cursor` sits one gap past the last cue's end, so the speech really
+    # ends at `cursor - gap`. Extend only when that overruns the video, and
+    # extend to exactly what is required: adding slack on every pass would
+    # make the tool never converge, since each run would find the previous
+    # run's slack insufficient and add more.
+    speech_ends = cursor - gap
+    needed = total if speech_ends <= total else _ceil_tenth(speech_ends)
     return new, needed
+
+
+def _ceil_tenth(value: float) -> float:
+    """Round up to a tenth of a second, avoiding float residue.
+
+    `round()` would sometimes land a hundredth below the true end and leave
+    the final cue clipped by an inaudible but test-visible margin.
+    """
+    return math.ceil(value * 10.0 - 1e-9) / 10.0
 
 
 def process(
@@ -111,7 +127,7 @@ def process(
         # arms depend on.
         needs_change = (
             worst > CHECK_TOLERANCE
-            or needed - recipe.duration_secs > CHECK_TOLERANCE
+            or round(needed - recipe.duration_secs, 3) > CHECK_TOLERANCE
         )
         status = "NEEDS RETIMING" if needs_change else "ok"
     else:

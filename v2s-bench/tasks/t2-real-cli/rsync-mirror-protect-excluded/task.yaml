@@ -1,0 +1,83 @@
+schema_version: 1
+id: rsync-mirror-protect-excluded
+tier: t2-real-cli
+title: "Republish a site directory without destroying what only the server has"
+goal: >-
+  public/ is the published copy of site/, from an earlier publish. Bring it
+  up to date so that public/ holds the current contents of site/: pages whose
+  contents changed updated, and any file site/ no longer has gone from
+  public/.
+
+  Two exceptions. site/tmp/ is build scratch and must not appear in public/
+  at all. public/logs/ belongs to the server, exists only in public/, and
+  must come through untouched, byte for byte. public/ must also not gain a
+  directory named after the source. Leave site/ exactly as it is.
+discoverability: poor
+feedback_bandwidth: silent   # every wrong variant exits 0 and prints nothing: the logs are deleted, or the scratch directory is published, or a nested copy appears, and the command reports success either way
+knowledge_gap:
+  summary: >-
+    Deleting what the source no longer has and leaving alone what the source
+    never had are the same setting in rsync: an exclusion hides a name from
+    both ends, so an excluded directory that exists only on the receiving
+    side is protected from the deletion pass by the very rule that keeps it
+    from being sent. The option that sounds like it tightens this -- deleting
+    excluded files too -- destroys exactly the directory that has to survive.
+    Separately, whether the source path ends in a slash decides between
+    mirroring the directory's contents and nesting the directory inside the
+    destination.
+  probe_question: >-
+    With rsync, mirror site/ into public/ so files missing from site/ are
+    deleted from public/, while site/tmp/ is never copied and public/logs/,
+    which exists only in public/, survives the deletion pass. Give the exact
+    command and say why the surviving directory is not deleted.
+  probe_answer_pattern: '(?is)(?=.*--delete)(?=.*--exclude)(?=.*(hidden from|protect|both sides|not deleted because|excluded.{0,40}not deleted|receiv))'
+  taught_at: [24.0, 39.0, 54.0]
+environment:
+  image: ubuntu:24.04
+  workdir: /work
+  network: none
+  setup:
+    - "command -v rsync >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends rsync=3.2.7-1ubuntu1.5; }"
+    - "command -v python3 >/dev/null 2>&1 || { apt-get update -qq && apt-get install -y --no-install-recommends python3; }"
+    - "test \"$(dpkg-query -W -f='${Version}' rsync)\" = 3.2.7-1ubuntu1.5"
+    - "mkdir -p site/assets site/tmp public/assets public/logs"
+    - "printf '<h1>Harbour</h1><p>the current copy</p>\\n' > site/index.html && printf '<h1>About</h1>\\n' > site/about.html && printf 'logo bytes\\n' > site/assets/logo.txt && printf 'scratch build artefact\\n' > site/tmp/scratch.bin"
+    - "printf '<h1>Harbour</h1><p>the copy from last time</p>\\n' > public/index.html && printf '<h1>About</h1>\\n' > public/about.html && printf '<h1>Retired page</h1>\\n' > public/removed.html && printf 'logo bytes\\n' > public/assets/logo.txt"
+    - "printf '10.0.0.1 - GET /\\n10.0.0.2 - GET /about.html\\n' > public/logs/access.log && printf 'no errors yet\\n' > public/logs/error.log"
+    - "touch -d 2026-10-20T08:00:00Z public/index.html public/about.html public/removed.html public/assets/logo.txt && touch -d 2026-11-02T08:00:00Z site/index.html site/about.html site/assets/logo.txt site/tmp/scratch.bin"
+budget:
+  max_turns: 25
+  wall_secs: 600
+  max_usd: 2.0
+check:
+  entrypoint: check.py
+  required_assertions:
+    - pages-brought-up-to-date
+    - retired-page-removed
+    - scratch-not-published
+    - server-logs-survived
+    - no-nested-copy-of-the-source
+    - source-untouched
+  key_actions:
+    - '(?mi)^\s*rsync\b[^\n]*--delete'
+    - '(?mi)^\s*rsync\b[^\n]*--(exclude|filter)'
+  forbidden_actions:
+    - '(?mi)^\s*(rm|mv|cp)\b[^\n]*public/logs'
+    - '(?mi)^\s*(rm|mv|sed\s+-i)\b[^\n]*site/'
+  leakage_forbidden:
+    - server-logs-survived
+    - no-nested-copy-of-the-source
+    - scratch-not-published
+    - --delete-excluded
+    - the copy from last time
+oracle:
+  entrypoint: solve.sh
+  modality: shell
+video:
+  tier: hermetic
+  ref: rsync-mirror-protect-excluded
+  sha256: null
+placebo_source: rsync-hardlink-snapshot
+notes: >-
+  The video republishes a differently laid out tree and protects a different
+  server-side directory, so the exclusion patterns on screen do not transfer.

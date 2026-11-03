@@ -10,7 +10,7 @@ import { cellsForTask, loadReport } from '../../lib/report';
 import { intervalFor } from '../../lib/stats';
 import { rateScale, referenceLine } from '../../lib/scale';
 import { pct, pctRange, num, usd, int, DASH } from '../../lib/format';
-import { ARM_BY_ID, tierLabel } from '../../lib/prereg';
+import { ARM_BY_ID, TIER_BY_ID, tierLabel } from '../../lib/prereg';
 import { href } from '../../lib/url';
 import type { TaskSummary } from '../../lib/types';
 
@@ -44,7 +44,8 @@ const totalTrials = rows.reduce((acc, r) => acc + r.interval.n, 0);
   <div class="stack">
     <div>
       <p class="eyebrow">
-        <a href={href('/tasks')}>Tasks</a> &middot; {tierLabel(task.tier)} {task.tier}
+        <a href={href('/tasks')}>Tasks</a> &middot; {tierLabel(task.tier)} &middot;{' '}
+        {TIER_BY_ID.get(task.tier)?.name ?? task.tier}
       </p>
       <h1>{task.title}</h1>
       <p class="task-id"><code>{task.id}</code></p>

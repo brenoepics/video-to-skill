@@ -15,7 +15,7 @@ goal: >-
   source/ must not appear in the new snapshot. source/ and
   snapshots/2026-11-01 must be left exactly as they are.
 discoverability: poor
-feedback_bandwidth: silent   # a plain copy produces a snapshot that is correct in every visible respect and silently costs a second copy of every byte; nothing reports the difference
+feedback_bandwidth: silent   # the procedure most reach for is a plain copy, which is correct in every visible respect and silently costs a second copy of every byte; only the narrower mistake of mis-resolving the comparison path draws a warning
 knowledge_gap:
   summary: >-
     rsync can be pointed at a previous snapshot to compare against, and for
