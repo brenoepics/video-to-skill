@@ -33,17 +33,47 @@ path = "src/main.rs"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 whisper-rs = { version = "0.16", features = ["metal"] }
-# Read-only accessibility observation (`vts-extract observe`). These objc2
-# bindings are pure Rust over the system frameworks, so the build stays a
-# plain `cargo build --locked`; the `axuielement` crate would have added a
-# `swift build` step and a Swift runtime link to every macOS build.
+# Read-only accessibility observation (`vts-extract observe`) and Apple
+# Vision text recognition for the screen text track. These objc2 bindings
+# are pure Rust over the system frameworks, so the build stays a plain
+# `cargo build --locked`; only the framework files the two features touch
+# are enabled, which keeps the generated bindings small.
+objc2 = "0.6"
 objc2-application-services = { version = "0.3", default-features = false, features = ["std", "HIServices", "AXUIElement", "AXError", "libc"] }
-objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFBase", "CFString", "CFArray", "CFNumber"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFBase", "CFString", "CFArray", "CFNumber", "CFCGTypes"] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+    "std",
+    "NSArray",
+    "NSDictionary",
+    "NSEnumerator",
+    "NSError",
+    "NSObject",
+    "NSString",
+    "NSURL",
+] }
+objc2-vision = { version = "0.3", default-features = false, features = [
+    "std",
+    "objc2-core-foundation",
+    "VNObservation",
+    "VNRecognizeTextRequest",
+    "VNRequest",
+    "VNRequestHandler",
+    "VNTypes",
+] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 whisper-rs = "0.16"
 
 [target.'cfg(windows)'.dependencies]
+# Windows.Media.Ocr (WinRT) for the screen text track.
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Globalization",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage_Streams",
+] }
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
     "Win32_Security",

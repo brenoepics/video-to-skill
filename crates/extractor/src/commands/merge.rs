@@ -7,17 +7,29 @@ use vts_extract::merge::{merge, PlanAction};
 
 /// Fold a new video's IR into an existing generated skill package.
 /// Dry-run prints the plan; otherwise the merged package is compiled to
-/// `out` (unverified — re-run verification after a fold).
-pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -> Result<()> {
+/// `out` — a directory named after the skill, `merged/<skill-name>` by
+/// default — unverified: re-run verification after a fold.
+pub fn run(
+    skill: &str,
+    ir_path: &str,
+    bundle: &str,
+    out: Option<&str>,
+    dry_run: bool,
+) -> Result<()> {
     let existing: ProcedureIr = serde_json::from_str(
         &fs::read_to_string(Path::new(skill).join("provenance.json"))
             .context("not a generated skill package (missing provenance.json)")?,
     )
     .context("package provenance.json is not valid")?;
-    let mut incoming: ProcedureIr = serde_json::from_str(
-        &fs::read_to_string(ir_path).with_context(|| format!("no Procedure IR at {ir_path}"))?,
-    )
-    .context("incoming Procedure IR is not valid")?;
+    let mut incoming = compile::load_ir(Path::new(ir_path), Path::new(bundle))
+        .context("loading the incoming Procedure IR")?;
+    for note in [&existing, &incoming]
+        .into_iter()
+        .filter_map(compile::deprecation_note)
+    {
+        eprintln!("{note}");
+    }
+    let out = out.map_or_else(|| format!("merged/{}", existing.skill_name), str::to_string);
 
     // Namespace the incoming frames by fold sequence so two videos'
     // `shot000.jpg` never collide inside one package.
@@ -39,14 +51,28 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
             PlanAction::Unconfirmed => "keep   ",
         };
         println!(
-            "  {label}  {} {}",
+            "  {label}  {} {}{}",
             entry.existing_id.as_deref().unwrap_or("-"),
             entry
                 .incoming_id
                 .as_deref()
                 .map(|id| format!("<- {id}"))
-                .unwrap_or_default()
+                .unwrap_or_default(),
+            if entry.relabelled {
+                "  (matched by its position in the task graph)"
+            } else {
+                ""
+            }
         );
+    }
+    for variant in result
+        .merged
+        .history
+        .last()
+        .map(|record| record.order_variants.as_slice())
+        .unwrap_or_default()
+    {
+        println!("  order    {variant} — the merged order keeps the heavier direction");
     }
     if dry_run {
         println!("dry run — nothing written.");
@@ -54,7 +80,7 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
     }
 
     let staging = stage_frames(Path::new(skill), Path::new(bundle), &incoming, &prefix)?;
-    compile::compile(&result.merged, &staging, Path::new(out))?;
+    compile::compile(&result.merged, &staging, Path::new(&out))?;
     fs::remove_dir_all(&staging).ok();
     println!(
         "merged package written: {out}/ — re-verify before installing (the fold invalidates any previous badge)"
