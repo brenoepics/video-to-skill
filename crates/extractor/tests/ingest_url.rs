@@ -6,9 +6,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use vts_extract::bundle::{ingest_any, load_manifest, DownloadedVideo, VideoDownloader};
+use vts_extract::bundle::{
+    ingest_any, load_manifest, CaptionTrack, Chapter, DownloadedVideo, PlatformPriors, SkipRange,
+    VideoDownloader,
+};
 use vts_extract::tools::Toolchain;
 
+#[path = "ingest_url/fake_ytdlp.rs"]
+mod fake_ytdlp;
 #[path = "ingest_url/ytdlp.rs"]
 mod ytdlp;
 
@@ -52,7 +57,12 @@ fn generate_video(path: &Path) {
 /// Writes a real (generated) video into the destination, like yt-dlp
 /// would; or fails in configurable ways.
 enum FakeDownloader {
-    Working { title: &'static str },
+    Working {
+        title: &'static str,
+    },
+    /// Like `Working`, plus everything the platform offered beside the
+    /// media: a creator caption file, chapters and `SponsorBlock` ranges.
+    WithPriors,
     PrivateVideo,
     DiesMidDownload,
     MustNotBeCalled,
@@ -67,6 +77,40 @@ impl VideoDownloader for FakeDownloader {
                 Ok(DownloadedVideo {
                     path,
                     title: Some((*title).to_string()),
+                    platform: PlatformPriors::default(),
+                    notes: vec![],
+                })
+            }
+            FakeDownloader::WithPriors => {
+                let path = dest_dir.join("source.mp4");
+                generate_video(&path);
+                fs::write(
+                    dest_dir.join("source.en.vtt"),
+                    "WEBVTT\n\n00:00:00.500 --> 00:00:01.800\nHello there\n",
+                )
+                .unwrap();
+                Ok(DownloadedVideo {
+                    path,
+                    title: Some("With Priors".into()),
+                    platform: PlatformPriors {
+                        captions: Some(CaptionTrack {
+                            path: "source.en.vtt".into(),
+                            language: "en".into(),
+                            format: "vtt".into(),
+                            available_languages: vec!["en".into()],
+                        }),
+                        chapters: vec![Chapter {
+                            start_secs: 0.0,
+                            end_secs: 2.0,
+                            title: "Intro".into(),
+                        }],
+                        skips: vec![SkipRange {
+                            start_secs: 1.5,
+                            end_secs: 2.0,
+                            category: "outro".into(),
+                        }],
+                    },
+                    notes: vec!["ingest: SponsorBlock marks unavailable".into()],
                 })
             }
             FakeDownloader::PrivateVideo => anyhow::bail!("Private video. Sign in if..."),
@@ -104,6 +148,37 @@ fn url_ingest_downloads_into_the_bundle_and_records_provenance() {
     assert_eq!(load_manifest(&bundle).unwrap(), *m);
 }
 
+/// Captions, chapters and `SponsorBlock` ranges the downloader found are
+/// recorded in the manifest, and the caption file stays in the bundle.
+#[test]
+fn url_ingest_records_platform_priors_in_the_manifest() {
+    let dir = scratch("priors-manifest");
+    let bundle = dir.join("bundle");
+
+    let report = ingest_any(
+        "https://youtube.example/watch?v=priors",
+        &bundle,
+        &toolchain(),
+        &FakeDownloader::WithPriors,
+    )
+    .unwrap();
+
+    let m = &report.manifest;
+    let captions = m.platform.captions.as_ref().unwrap();
+    assert_eq!(captions.language, "en");
+    assert!(bundle.join(&captions.path).is_file());
+    assert_eq!(m.platform.chapters.len(), 1);
+    assert_eq!(m.platform.chapters[0].title, "Intro");
+    assert_eq!(m.platform.skips.len(), 1);
+    assert_eq!(m.platform.skips[0].category, "outro");
+    assert!(
+        m.notes.iter().any(|n| n.contains("SponsorBlock")),
+        "{:?}",
+        m.notes
+    );
+    assert_eq!(load_manifest(&bundle).unwrap(), *m);
+}
+
 #[test]
 fn local_paths_bypass_the_downloader_entirely() {
     let dir = scratch("local");
@@ -120,6 +195,7 @@ fn local_paths_bypass_the_downloader_entirely() {
 
     assert!(report.created);
     assert!(report.manifest.source.title.is_none());
+    assert_eq!(report.manifest.platform, PlatformPriors::default());
 }
 
 #[test]

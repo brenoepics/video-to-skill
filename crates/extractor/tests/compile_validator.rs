@@ -8,7 +8,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use vts_extract::bundle::{save_manifest, Manifest, MediaInfo, SourceInfo, Tracks};
+use vts_extract::bundle::{save_manifest, Manifest, MediaInfo, PlatformPriors, SourceInfo, Tracks};
 use vts_extract::compile::{compile, load_ir, Evidence, ProcedureIr, ScriptFile, SourceRef, Step};
 
 /// The pinned reference validator: `skills-ref` 0.1.1 from pypi.org, whose
@@ -94,6 +94,7 @@ fn manifest(sha256: &str) -> Manifest {
             language: None,
         },
         tracks: Tracks::default(),
+        platform: PlatformPriors::default(),
         notes: vec![],
     }
 }
