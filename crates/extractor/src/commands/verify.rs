@@ -11,15 +11,17 @@ pub fn run(skill: &str, report_path: &str) -> Result<()> {
         .with_context(|| format!("no verification report at {report_path}"))?;
     let report: VerificationReport =
         serde_json::from_str(&raw).context("verification report is not valid for schema v1")?;
-    record_verification(Path::new(skill), &report)?;
+    let recorded = record_verification(Path::new(skill), &report)?;
+    let cited: usize = recorded.steps.iter().map(|s| s.repairs.len()).sum();
     println!(
-        "verification recorded: {} ({} step outcomes) — badge stamped in {skill}/SKILL.md",
-        if report.verified {
+        "verification recorded: {} ({} step outcomes, {cited} repair signals cited) — badge \
+         stamped in {skill}/SKILL.md",
+        if recorded.verified {
             "VERIFIED"
         } else {
             "NOT VERIFIED"
         },
-        report.steps.len()
+        recorded.steps.len()
     );
     Ok(())
 }

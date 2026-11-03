@@ -59,3 +59,29 @@ fn planner_rejects_an_unsafe_name_even_when_called_directly() {
 
     assert!(matches!(error, PlanError::InvalidSkillName { .. }));
 }
+
+/// Installation reads only SKILL.md, so a package compiled from a v1
+/// Procedure IR keeps installing after the schema moved to v2.
+#[test]
+fn v1_packages_remain_installable() {
+    let package = scratch("v1-package");
+    fs::write(
+        package.join("SKILL.md"),
+        "---\nname: vim-basics\ndescription: Test\n---\n",
+    )
+    .unwrap();
+    fs::write(
+        package.join("provenance.json"),
+        r#"{"schema_version": 1, "skill_name": "vim-basics", "title": "Vim Basics",
+            "description": "Test", "overview": "o", "genre": "screencast",
+            "source": {"original": "v.mp4", "title": null, "duration_secs": 1.0},
+            "steps": [{"id": "01-quit", "goal": "g", "actions": "a", "success_criteria": "s",
+                       "confidence": "high", "caveats": null,
+                       "evidence": [{"timestamp_secs": 0.0, "frame": null, "quote": "q"}]}]}"#,
+    )
+    .unwrap();
+
+    assert_eq!(skill_name_of(&package).unwrap(), "vim-basics");
+    let states = [RootState::vacant("universal", package.join("skills"))];
+    assert!(plan_install("vim-basics", &states, false).is_ok());
+}

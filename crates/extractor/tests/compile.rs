@@ -32,12 +32,15 @@ fn valid_ir() -> ProcedureIr {
         skill_name: "vim-basics".into(),
         title: "Vim Basics".into(),
         description: "Use when editing files with Vim: quitting, saving, navigation.".into(),
+        license: None,
+        compatibility: None,
         overview: "Vim fundamentals from a tutorial video.".into(),
         genre: "screencast".into(),
         source: SourceRef {
             original: "https://youtube.example/watch?v=abc".into(),
             title: Some("Vim in 100 Seconds".into()),
             duration_secs: 712.0,
+            sha256: None,
         },
         steps: vec![
             Step {
@@ -58,6 +61,12 @@ fn valid_ir() -> ProcedureIr {
                     contents: "#!/bin/sh\n# In vim: :q!\n".into(),
                 }],
                 variants: vec![],
+                preconditions: vec![],
+                parameters: vec![],
+                postcondition: None,
+                failure_notes: vec![],
+                usage_count: 0,
+                verdict: None,
             },
             Step {
                 id: "02-paste-clipboard".into(),
@@ -74,11 +83,18 @@ fn valid_ir() -> ProcedureIr {
                 }],
                 scripts: vec![],
                 variants: vec![],
+                preconditions: vec![],
+                parameters: vec![],
+                postcondition: None,
+                failure_notes: vec![],
+                usage_count: 0,
+                verdict: None,
             },
         ],
         artifacts: vec![],
         gaps: vec!["22 of 27 keyframes not inspected".into()],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     }
 }
 
@@ -86,7 +102,7 @@ fn valid_ir() -> ProcedureIr {
 fn compile_produces_a_spec_compliant_package() {
     let dir = scratch("happy");
     let bundle = fake_bundle(&dir);
-    let out = dir.join("skill");
+    let out = dir.join("vim-basics");
 
     compile(&valid_ir(), &bundle, &out).unwrap();
 
@@ -128,7 +144,7 @@ fn compile_produces_a_spec_compliant_package() {
 fn low_confidence_steps_are_visibly_flagged() {
     let dir = scratch("lowconf");
     let bundle = fake_bundle(&dir);
-    let out = dir.join("skill");
+    let out = dir.join("vim-basics");
 
     compile(&valid_ir(), &bundle, &out).unwrap();
 
@@ -149,7 +165,7 @@ fn steps_without_evidence_are_rejected() {
     let mut ir = valid_ir();
     ir.steps[0].evidence.clear();
 
-    let err = compile(&ir, &bundle, &dir.join("skill")).unwrap_err();
+    let err = compile(&ir, &bundle, &dir.join("vim-basics")).unwrap_err();
 
     assert!(err.to_string().contains("01-quit-vim"), "got: {err}");
     assert!(err.to_string().contains("evidence"), "got: {err}");
@@ -167,7 +183,7 @@ fn bad_skill_names_and_missing_frames_are_rejected() {
 
     let mut ghost_frame = valid_ir();
     ghost_frame.steps[0].evidence[0].frame = Some("frames/nope.jpg".into());
-    let err = compile(&ghost_frame, &bundle, &dir.join("s2")).unwrap_err();
+    let err = compile(&ghost_frame, &bundle, &dir.join("vim-basics")).unwrap_err();
     assert!(err.to_string().contains("nope.jpg"), "got: {err}");
 }
 
@@ -175,7 +191,7 @@ fn bad_skill_names_and_missing_frames_are_rejected() {
 fn compilation_is_pure_and_deterministic() {
     let dir = scratch("pure");
     let bundle = fake_bundle(&dir);
-    let (a, b) = (dir.join("a"), dir.join("b"));
+    let (a, b) = (dir.join("a/vim-basics"), dir.join("b/vim-basics"));
 
     compile(&valid_ir(), &bundle, &a).unwrap();
     compile(&valid_ir(), &bundle, &b).unwrap();
@@ -217,20 +233,22 @@ fn variants_and_fold_history_are_rendered() {
             original: "https://youtube.example/watch?v=other".into(),
             title: Some("Another Vim Video".into()),
             duration_secs: 300.0,
+            sha256: None,
         },
         date: "2026-08-05".into(),
         confirmed: vec!["02-paste-clipboard".into()],
         added: vec![],
         variants: vec!["01-quit-vim".into()],
+        order_variants: vec![],
     });
 
-    compile(&ir, &bundle, &dir.join("skill")).unwrap();
+    compile(&ir, &bundle, &dir.join("vim-basics")).unwrap();
 
-    let step = fs::read_to_string(dir.join("skill/steps/01-quit-vim.md")).unwrap();
+    let step = fs::read_to_string(dir.join("vim-basics/steps/01-quit-vim.md")).unwrap();
     assert!(step.contains("Variant"), "variant section: {step}");
     assert!(step.contains("ZQ"));
     assert!(step.contains("watch?v=other"), "variant cites its source");
-    let skill_md = fs::read_to_string(dir.join("skill/SKILL.md")).unwrap();
+    let skill_md = fs::read_to_string(dir.join("vim-basics/SKILL.md")).unwrap();
     assert!(skill_md.contains("Sources"), "sources section: {skill_md}");
     assert!(skill_md.contains("Another Vim Video"));
     assert!(skill_md.contains("2026-08-05"));

@@ -5,5 +5,7 @@ pub mod extract;
 pub mod frame;
 pub mod install;
 pub mod merge;
+pub mod observe;
 pub mod sandbox;
+pub mod text;
 pub mod verify;
