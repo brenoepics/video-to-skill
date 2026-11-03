@@ -11,6 +11,8 @@ goal: >-
   kiln's state must be consistent with the lane description it was built
   from.
 discoverability: poor
+feedback_bandwidth: high   # editing the profile leaves the lane stale and firing is refused by name, and the status command reports the staleness
+placebo_source: prow-latch-sheet
 knowledge_gap:
   summary: >-
     How many shards a batch holds is the hold-count field of the lane
@@ -26,7 +28,7 @@ knowledge_gap:
     number matched, and what has to happen between changing the setting and
     firing the lane?
   probe_answer_pattern: '(?i)(?=[\s\S]*hold-count)(?=[\s\S]*(last|newest|latest|highest|end of))(?=[\s\S]*\bprime)'
-  taught_at: [18.0, 30.0, 42.0]
+  taught_at: [19.0, 25.0, 31.0, 34.0, 49.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

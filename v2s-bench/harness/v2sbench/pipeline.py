@@ -126,7 +126,10 @@ def plan(
         Stage("extract", [extractor, "extract", str(video), "--out", str(bundle)])
     )
     built.stages.append(
-        Stage("analyse (frames allowed) -> procedure.json", _analysis_argv(bundle, model, frames=True))
+        Stage(
+            "analyse (frames allowed) -> procedure.json",
+            _analysis_argv(bundle, model, frames=True),
+        )
     )
     built.stages.append(
         Stage(

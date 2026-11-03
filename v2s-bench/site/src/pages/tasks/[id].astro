@@ -1,0 +1,332 @@
+---
+import Base from '../../layouts/Base.astro';
+import Figure from '../../components/Figure.astro';
+import PlotAxis from '../../components/PlotAxis.astro';
+import PlotRow from '../../components/PlotRow.astro';
+import RateCell from '../../components/RateCell.astro';
+import StatusBanner from '../../components/StatusBanner.astro';
+import { cellsForTask, loadReport } from '../../lib/report';
+import { intervalFor } from '../../lib/stats';
+import { rateScale, referenceLine } from '../../lib/scale';
+import { pct, pctRange, num, usd, int, DASH } from '../../lib/format';
+import { ARM_BY_ID, tierLabel } from '../../lib/prereg';
+import { href } from '../../lib/url';
+import type { TaskSummary } from '../../lib/types';
+
+export async function getStaticPaths() {
+  const { bundle } = loadReport();
+  return bundle.tasks.map((task) => ({ params: { id: task.id }, props: { task } }));
+}
+
+interface Props {
+  task: TaskSummary;
+}
+
+const { task } = Astro.props as Props;
+const { bundle, gate, source } = loadReport();
+
+const cells = cellsForTask(bundle, task.id).sort((a, b) => a.arm.localeCompare(b.arm));
+const rows = cells.map((cell) => ({ cell, interval: intervalFor(cell) }));
+const scale = rateScale();
+const baseline = rows.find((r) => r.cell.arm === 'A0');
+const grid =
+  baseline && baseline.interval.rate !== null
+    ? [referenceLine(scale, baseline.interval.rate), scale.gridImage()].join(', ')
+    : scale.gridImage();
+
+const anyRecomputed = rows.some((r) => r.interval.recomputed);
+const anyMismatch = rows.some((r) => r.interval.mismatch);
+const totalTrials = rows.reduce((acc, r) => acc + r.interval.n, 0);
+---
+
+<Base title={task.title} description={`v2s-bench task ${task.id}: per-arm results, measured headroom and video provenance.`}>
+  <div class="stack">
+    <div>
+      <p class="eyebrow">
+        <a href={href('/tasks')}>Tasks</a> &middot; {tierLabel(task.tier)} {task.tier}
+      </p>
+      <h1>{task.title}</h1>
+      <p class="task-id"><code>{task.id}</code></p>
+      <ul class="facts">
+        <li><span class="facts__k">Tier</span> {tierLabel(task.tier)} &middot; {task.tier}</li>
+        <li>
+          <span class="facts__k">Documentation</span> {task.discoverability ?? DASH}
+        </li>
+        <li>
+          <span class="facts__k">Headroom band</span> {task.headroom_band ?? DASH}
+          {task.saturated && <> &middot; saturated, excluded from the primary endpoint</>}
+        </li>
+        <li>
+          <span class="facts__k">Measured headroom</span>
+          {task.probe_known === null || task.probe_known === undefined ? (
+            'not probed'
+          ) : (
+            <>
+              {pct(task.probe_known)} of cold probes answered correctly
+              <sup aria-hidden="true">&dagger;</sup>
+            </>
+          )}
+        </li>
+        <li><span class="facts__k">Video tier</span> {task.video_tier ?? DASH}</li>
+      </ul>
+    </div>
+
+    <StatusBanner
+      gate={gate}
+      status={bundle.status}
+      generatedAt={bundle.generated_at}
+      source={source.split('/').slice(-3).join('/')}
+    />
+
+    <section aria-labelledby="goal">
+      <div class="section__head">
+        <h2 id="goal">Goal and knowledge gap</h2>
+        <p class="eyebrow">Identical across arms</p>
+      </div>
+      <div class="panel">
+        <h3>Goal</h3>
+        <p>{task.goal ?? 'The bundle does not carry this task’s goal text.'}</p>
+        <h3>Knowledge gap</h3>
+        <p>
+          {task.knowledge_gap ??
+            'The bundle does not carry this task’s knowledge-gap summary.'}
+        </p>
+        <p class="note">
+          The goal is the prompt the agent receives and is byte-identical in every arm.
+          The knowledge gap is the thing the video teaches that the task requires &mdash;
+          the reason this task can show an effect at all. Its probe score above is how
+          often the model could state it cold, with no tools and no skill.
+        </p>
+      </div>
+    </section>
+
+    <section aria-labelledby="cells">
+      <h2 id="cells" class="visually-hidden">Per-arm results</h2>
+      <Figure
+        id={`cells-${task.id}`}
+        title="Success rate per arm on this task"
+        sub={`Every cell is one (task, arm) pair run over the same seeds. ${totalTrials > 0 ? `${int(totalTrials)} trials on this task.` : ''}`}
+        gate={gate}
+        alt="One row per arm, with the number of trials, the success rate and its 95% Wilson interval drawn as a dot and bar on a 0 to 100% axis, the rate at which the trace contained the task's declared key actions, and whether the trace shows the skill was read. The same numbers are in the columns beside each row."
+        emptyTitle="This task has no trials."
+        emptyBody="No arm has been run on this task, so there is no rate, no interval and no cell grid. The task is listed because it is in the suite, not because it has been measured."
+      >
+        {
+          rows.length === 0 ? (
+            <p class="plot-none">The bundle carries no cells for this task.</p>
+          ) : (
+            <table class="dt dt--stack dt--rows cell-grid" style={`--plot-grid: ${grid}`}>
+              <caption class="visually-hidden">
+                Per-arm results for this task, with 95% Wilson intervals.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Arm</th>
+                  <th scope="col" class="num">Trials</th>
+                  <th scope="col" class="num">Success rate</th>
+                  <th scope="col" class="plot-col">
+                    <PlotAxis scale={scale} />
+                    <span class="visually-hidden">
+                      Success rate with its 95% Wilson interval
+                    </span>
+                  </th>
+                  <th scope="col" class="num">Procedure fidelity</th>
+                  <th scope="col" class="num">Skill cited</th>
+                  <th scope="col" class="num">Turns</th>
+                  <th scope="col" class="num">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ cell, interval }) => {
+                  const spec = ARM_BY_ID.get(cell.arm);
+                  return (
+                    <tr>
+                      <th scope="row">
+                        {cell.arm}
+                        <span class="sub">
+                          {spec?.name ?? ''}
+                          {spec && <> &middot; {spec.isolates}</>}
+                        </span>
+                      </th>
+                      <td class="num" data-label="Trials">
+                        {int(interval.n)}
+                        <span class="sub">
+                          {int(interval.successes)} passed
+                          {typeof cell.errors === 'number' && cell.errors > 0 && (
+                            <> &middot; {int(cell.errors)} errored</>
+                          )}
+                        </span>
+                      </td>
+                      <td class="num" data-label="Success rate">
+                        {interval.rate === null ? 'no trials' : pct(interval.rate)}
+                        <span class="sub ci">
+                          {pctRange(interval.lo, interval.hi)}
+                          {interval.recomputed && <sup aria-hidden="true">&dagger;</sup>}
+                          {interval.mismatch && <sup aria-hidden="true">&para;</sup>}
+                        </span>
+                      </td>
+                      <td class="plot-col" data-label="Interval">
+                        {interval.n > 0 ? (
+                          <PlotRow
+                            scale={scale}
+                            value={interval.rate}
+                            lo={interval.lo}
+                            hi={interval.hi}
+                            label={`${cell.arm}: success rate ${pct(interval.rate)}, 95% Wilson interval ${pctRange(interval.lo, interval.hi)}, ${int(interval.n)} trials`}
+                          />
+                        ) : (
+                          <p class="plot-none">no trials</p>
+                        )}
+                      </td>
+                      <td class="num" data-label="Procedure fidelity">
+                        <RateCell rate={cell.key_action_hit_rate} n={cell.n} />
+                      </td>
+                      <td class="num" data-label="Skill cited">
+                        <RateCell rate={cell.skill_cited_rate} n={cell.n} />
+                      </td>
+                      <td class="num" data-label="Mean turns">{num(cell.mean_turns, 1)}</td>
+                      <td class="num" data-label="Mean cost">{usd(cell.mean_usd)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )
+        }
+        <ul class="footnotes" slot="alt">
+          <li>
+            <strong>Procedure fidelity</strong> is <code>key_action_hit_rate</code>:
+            whether the trace contains the task&rsquo;s declared key actions. It measures
+            whether the procedure was followed, independently of whether the task passed.
+          </li>
+          <li>
+            <strong>Skill cited</strong> is <code>skill_cited_rate</code>: whether the
+            trace shows the skill was actually read and followed. An arm that wins without
+            reading the skill is evidence of a harness leak, not of utility.
+          </li>
+          <li>
+            <sup>&Dagger;</sup> Intervals for the two rates above are derived from the
+            published rate and the cell&rsquo;s n; <sup>&sect;</sup> marks one whose
+            denominator is not n, where no interval can be recovered without guessing.
+          </li>
+          {anyRecomputed && (
+            <li>
+              <sup>&dagger;</sup> The bundle carried no Wilson bounds for this row, so they
+              were recomputed here from successes and n.
+            </li>
+          )}
+          {anyMismatch && (
+            <li>
+              <sup>&para;</sup> The bundle&rsquo;s published bounds disagree with the
+              recomputation from successes and n. The recomputed interval is shown.
+            </li>
+          )}
+        </ul>
+      </Figure>
+      {
+        rows.length > 0 && baseline && baseline.interval.rate !== null && (
+          <ul class="footnotes">
+            <li>
+              The vertical rule is A0&rsquo;s observed rate on this task,{' '}
+              {pct(baseline.interval.rate)}. Gridlines are at 0, 25, 50, 75 and 100%.
+            </li>
+          </ul>
+        )
+      }
+    </section>
+
+    <section aria-labelledby="video">
+      <div class="section__head">
+        <h2 id="video">Video provenance</h2>
+        <p class="eyebrow">Never averaged across tiers</p>
+      </div>
+      <div class="panel">
+        <dl class="defs">
+          <div>
+            <dt>Tier</dt>
+            <dd>
+              {task.video_tier ?? DASH}
+              {task.video_tier === 'hermetic' && (
+                <>
+                  {' '}&mdash; rendered deterministically from a committed recipe at run
+                  time. No video bytes are committed. Extraction quality on this tier
+                  overstates real-world performance: it bounds the mechanism, not the
+                  product.
+                </>
+              )}
+              {task.video_tier === 'real' && (
+                <>
+                  {' '}&mdash; a Creative-Commons or public-domain screencast, referenced
+                  by URL and sha256, never redistributed by this repository. A hash
+                  mismatch invalidates the row rather than silently changing it.
+                </>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>Licence</dt>
+            <dd>{task.video_license ?? `${DASH} none recorded in the bundle`}</dd>
+          </div>
+          <div>
+            <dt>Attribution</dt>
+            <dd>{task.video_attribution ?? `${DASH} none recorded in the bundle`}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <ul class="footnotes">
+      <li>
+        <sup>&dagger;</sup> <code>probe_known</code> is published as a fraction without
+        the number of probes behind it, so no interval is computed for it. It is a point
+        estimate and is marked as one.
+      </li>
+    </ul>
+  </div>
+</Base>
+
+<style>
+  .task-id {
+    margin-top: -0.3rem;
+    color: var(--text-secondary);
+  }
+
+  .facts {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.1rem 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    max-width: none;
+  }
+
+  .facts li {
+    max-width: none;
+    padding: 0.33rem 0;
+    border-bottom: 1px solid var(--grid);
+    font-size: 0.92rem;
+  }
+
+  .facts__k {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+  }
+
+  .cell-grid .plot-col {
+    width: 22%;
+  }
+
+  .cell-grid td.num .sub {
+    font-size: 0.82em;
+  }
+
+  .panel h3 {
+    margin-top: 1.1rem;
+  }
+
+  .panel h3:first-child {
+    margin-top: 0;
+  }
+</style>

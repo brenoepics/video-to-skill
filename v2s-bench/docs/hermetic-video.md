@@ -48,7 +48,7 @@ temporary gigabytes.
 from v2sbench.render import render, plan, verify, load_recipe
 
 result = render("videos/recipes/term-git-init.json", "out/term-git-init.mp4")
-result.sha256              # '59de08de…'   what was produced
+result.sha256              # 'ff67f1c1…'   what was produced
 result.narrated            # True
 result.narration_backend   # 'espeak-ng' | 'say' | None
 result.ffmpeg_version      # 'ffmpeg version 6.1.1-3ubuntu5 …'
@@ -77,8 +77,8 @@ build, produce **byte-identical** files. Measured on the test fixture
 ffmpeg 6.1.1-3ubuntu5, espeak-ng 1.51):
 
 ```
-59de08de2064793b4f03054c617f3c74ebfd12381883ebf17c4dde62a63336a3  hermetic-1.mp4
-59de08de2064793b4f03054c617f3c74ebfd12381883ebf17c4dde62a63336a3  hermetic-2.mp4
+ff67f1c1784a6969005d97f6a36a6ffbceda7664db06c9fe247f43f5e4b7a745  hermetic-1.mp4
+ff67f1c1784a6969005d97f6a36a6ffbceda7664db06c9fe247f43f5e4b7a745  hermetic-2.mp4
 ```
 
 What makes that true:

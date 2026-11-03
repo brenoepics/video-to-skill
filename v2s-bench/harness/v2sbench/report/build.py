@@ -20,10 +20,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .. import __version__
+from .. import __version__, stats
 from .. import arms as arms_mod
 from .. import record as record_mod
-from .. import stats
 from .. import tasks as tasks_mod
 
 SCHEMA_VERSION = 1

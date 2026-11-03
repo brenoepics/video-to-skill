@@ -65,9 +65,18 @@ def wilson_interval(successes: int, n: int, z: float = Z_95) -> tuple[float, flo
     the blank as "zero". The report's ``n`` field is what tells a reader
     there is no evidence here; the interval must not pretend otherwise.
 
-    ``k == 0`` yields ``lo == 0.0`` exactly and ``k == n`` yields
-    ``hi == 1.0`` exactly -- an algebraic identity of the formula, not a
-    clamp, since the centre and the half-width coincide there.
+    ``k == 0`` and ``k == n`` use the closed forms the algebra collapses
+    to, because there the centre and the half-width are equal::
+
+        k = 0:  (0,              z^2 / (n + z^2))
+        k = n:  (n / (n + z^2),  1)
+
+    Evaluating the general expression there instead leaves a residue of a
+    few times 1e-17 on the bound that should be exactly 0 -- small, but
+    this module's output is published and recomputed, and a lower bound
+    that prints as 5.6e-17 or fails an ``== 0.0`` check is a defect in a
+    figure. Both forms are hand-checkable: 0/20 at z=1.96 gives
+    3.8415 / 23.8415 = 0.16113.
     """
     if not isinstance(successes, int) or isinstance(successes, bool):
         raise ValueError(f"successes must be an int, got {successes!r}")
@@ -83,10 +92,15 @@ def wilson_interval(successes: int, n: int, z: float = Z_95) -> tuple[float, flo
     if n == 0:
         return (0.0, 1.0)
 
-    k = float(successes)
     nf = float(n)
     z2 = z * z
     denom = nf + z2
+    if successes == 0:
+        return (0.0, z2 / denom)
+    if successes == n:
+        return (nf / denom, 1.0)
+
+    k = float(successes)
     centre = (k + z2 / 2.0) / denom
     half = (z / denom) * math.sqrt(k * (nf - k) / nf + z2 / 4.0)
     lo = centre - half
@@ -119,8 +133,10 @@ def harmonic_mean_bound(p_lo: float, r_lo: float) -> float:
     harmonic mean of two individually-valid lower bounds is **not** a
     rigorous 95% lower bound on F1, because the two counts are not
     independent and no joint coverage argument is made. It is a
-    conservative, monotone summary that cannot exceed either input. We
-    use it only where the parent project already does, and never as the
+    conservative, monotone summary that lies between the two inputs and
+    is pulled towards the smaller of them -- which is the behaviour
+    wanted from an F1 bound, since F1 is itself a harmonic mean. We use
+    it only where the parent project already does, and never as the
     interval behind a hypothesis test -- those use the cluster bootstrap
     (``bootstrap.py``) instead.
 

@@ -195,7 +195,7 @@ def _order_stat(ordered: list[float], q: float) -> float:
     outside (0, 1) degrades to the extreme resample rather than raising.
     """
     size = len(ordered)
-    index = int(math.ceil(q * size)) - 1
+    index = math.ceil(q * size) - 1
     return ordered[min(max(index, 0), size - 1)]
 
 

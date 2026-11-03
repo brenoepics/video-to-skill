@@ -10,6 +10,8 @@ goal: >-
   with wave 2 gated on wave 1 and prow's own record describing the file on
   disk.
 discoverability: good
+feedback_bandwidth: low   # parking a retired unit in a late wave, and leaving the old sheet in place, both go unreported
+placebo_source: lath-pin-fingerprint
 knowledge_gap:
   summary: >-
     Planning a unit that is already planned moves it rather than
@@ -23,8 +25,8 @@ knowledge_gap:
     different wave, how do you take a unit out of the plan altogether, and
     what has to happen after changing the plan for the rollout sheet on
     disk to match it?
-  probe_answer_pattern: '(?i)(?=[\s\S]*plan[^\n]*--wave)(?=[\s\S]*\bdrop\b)(?=[\s\S]*(re-?render|render again|re-?run|prow\s+sheet))'
-  taught_at: [22.0, 34.0, 46.0]
+  probe_answer_pattern: '(?i)(?=[\s\S]*plan[^\n]*--wave)(?=[\s\S]*\bdrop\b)(?=[\s\S]*(re-?render|re-?run|prow\s+sheet|render[^\n]{0,24}again))'
+  taught_at: [9.5, 15.0, 23.5, 31.5]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

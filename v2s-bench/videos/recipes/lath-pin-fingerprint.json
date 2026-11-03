@@ -152,7 +152,7 @@
     },
     {
       "t": 16.8,
-      "text": "So we stage it into a layer of its own. It is a value, so it goes before the name, same as always."
+      "text": "So we stage it into a layer of its own, in the usual order for this tool. Watch what I type."
     },
     {
       "t": 22.8,
@@ -160,7 +160,7 @@
     },
     {
       "t": 28.8,
-      "text": "A layer that is not in the order contributes nothing, so we add it at the end."
+      "text": "A layer that is not in the order contributes nothing at all, so we add it."
     },
     {
       "t": 34.8,
@@ -172,7 +172,7 @@
     },
     {
       "t": 44.5,
-      "text": "Carry the fingerprint the merge printed into a layer of its own, stack it, and merge again."
+      "text": "Carry what the first merge printed into a layer of its own, add it to the order, and merge again."
     }
   ],
   "notes": "Teaches that the fingerprint is only available from the merge output, that it is carried as a value, and that the second merge has a different fingerprint."

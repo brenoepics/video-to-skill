@@ -9,6 +9,8 @@ goal: >-
   carrying an anchor, and the drop must hold exactly those three keys with
   exactly those values and nothing else.
 discoverability: poor
+feedback_bandwidth: low   # staging mistakes are refused loudly, but the modal end state of a wrong run is a silently provisional drop
+placebo_source: lath-stage-pair
 knowledge_gap:
   summary: >-
     A zep drop has to exist before anything can be staged into it, every
@@ -22,7 +24,7 @@ knowledge_gap:
     with it sealed and anchored -- and which of those steps becomes
     impossible once the drop has been closed?
   probe_answer_pattern: '(?i)(?=[\s\S]*--grant)(?=[\s\S]*\bopen\b[\s\S]{0,400}\bput\b[\s\S]{0,400}\bseal\b)'
-  taught_at: [10.0, 22.0, 40.0]
+  taught_at: [12.5, 15.0, 31.5, 40.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

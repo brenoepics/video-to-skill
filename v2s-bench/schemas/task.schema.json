@@ -14,7 +14,8 @@
     "environment",
     "check",
     "video",
-    "oracle"
+    "oracle",
+    "feedback_bandwidth"
   ],
   "additionalProperties": false,
   "properties": {
@@ -286,8 +287,7 @@
         "high",
         "low"
       ],
-      "default": "high",
-      "description": "Whether a wrong attempt yields a diagnostic error (high) or silently produces a plausible-looking wrong result (low). A published null attributes its result to environments that already correct the agent: where feedback is high, trial-and-error substitutes for instruction. Reported as a stratum and expected to be the main moderator."
+      "description": "Whether a wrong attempt yields a diagnostic error (high) or silently produces a plausible-looking wrong result (low). REQUIRED and never defaulted: a published null attributes its result to environments that already correct the agent, so this is the primary moderator, and a silent default would quietly mislabel the stratification that the headline conclusion depends on."
     },
     "placebo_source": {
       "type": "string",

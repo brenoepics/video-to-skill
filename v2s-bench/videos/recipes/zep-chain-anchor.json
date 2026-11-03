@@ -163,7 +163,7 @@
     },
     {
       "t": 28.8,
-      "text": "Close it with its own nonce -- each drop has its own, not the parent's."
+      "text": "Close it with its own nonce, each drop has its own, not the parent's."
     },
     {
       "t": 34.8,

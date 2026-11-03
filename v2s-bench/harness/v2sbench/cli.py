@@ -18,7 +18,8 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, arms as arms_mod
+from . import __version__
+from . import arms as arms_mod
 from . import record as record_mod
 from . import tasks as tasks_mod
 
@@ -35,7 +36,8 @@ def repo_root(start: Path | None = None) -> Path:
 def _load(args) -> tuple[Path, list]:
     root = Path(args.root).resolve() if args.root else repo_root()
     tiers = tuple(args.tier) if getattr(args, "tier", None) else tasks_mod.TIERS
-    suite = tasks_mod.load_suite(root, tiers=tiers, validate=not getattr(args, "no_validate", False))
+    strict = not getattr(args, "no_validate", False)
+    suite = tasks_mod.load_suite(root, tiers=tiers, validate=strict)
     if getattr(args, "task", None):
         wanted = set(args.task)
         suite = [t for t in suite if t.id in wanted]
@@ -63,7 +65,8 @@ def cmd_doctor(args) -> int:
         print(f"tasks           {len(suite)} loaded")
     except (ValueError, OSError) as exc:
         print(f"tasks           FAILED: {exc}")
-    print(f"suite version   {tasks_mod.suite_version(root) if (root / 'tasks').exists() else 'n/a'}")
+    version = tasks_mod.suite_version(root) if (root / "tasks").exists() else "n/a"
+    print(f"suite version   {version}")
     return 0
 
 
@@ -169,8 +172,8 @@ def cmd_run(args) -> int:
     )
     planned = len(suite) * len(config.armset) * len(config.seeds)
     print(
-        f"run {config.run_id}: {len(suite)} tasks × {len(config.armset)} arms "
-        f"× {len(config.seeds)} seeds = {planned} trials"
+        f"run {config.run_id}: {len(suite)} tasks x {len(config.armset)} arms "
+        f"x {len(config.seeds)} seeds = {planned} trials"
     )
     print(f"  agent {adapter.name} · model {config.model} · sandbox {config.backend}")
     if args.dry_run:
@@ -189,7 +192,10 @@ def cmd_run(args) -> int:
             f"success={success}"
         )
 
-    summary = run(config, suite, adapter, suite_version=tasks_mod.suite_version(root), on_trial=progress)
+    summary = run(
+        config, suite, adapter,
+        suite_version=tasks_mod.suite_version(root), on_trial=progress,
+    )
     print("\n" + summary.line())
     print(f"records: {summary.path}")
     return 0
@@ -279,7 +285,11 @@ def cmd_build_materials(args) -> int:
         return 1
     for task in suite:
         video = root / ".cache" / "videos" / f"{task.video.ref}.mp4"
-        print(plan(task, root=root, video=video, extractor=args.extractor, model=args.model or "").describe())
+        stages = plan(
+            task, root=root, video=video,
+            extractor=args.extractor, model=args.model or "",
+        )
+        print(stages.describe())
         print()
     if args.dry_run:
         print("dry run: nothing executed.")
@@ -387,7 +397,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--repeats", type=int, default=10)
     p.set_defaults(func=cmd_probe)
 
-    p = sub.add_parser("build-materials", help="run the v2s pipeline to produce each arm's material")
+    p = sub.add_parser(
+        "build-materials", help="run the v2s pipeline to produce each arm's material"
+    )
     common(p)
     p.add_argument("--extractor", default="vts-extract")
     p.add_argument("--model", help="model for the agent-driven analysis stage")

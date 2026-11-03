@@ -9,6 +9,8 @@ goal: >-
   layer must agree -- asking lath to show base must print those two keys
   holding those two values, and nothing else.
 discoverability: good
+feedback_bandwidth: low   # the reversed argument order is accepted and stages a key named after the value
+placebo_source: zep-stage-three-facts
 knowledge_gap:
   summary: >-
     lath's staging command takes the layer, then the VALUE, then the key --
@@ -20,7 +22,7 @@ knowledge_gap:
     In the lath config tool, what is the positional argument order of
     `lath set`, and what happens if you give the key before the value?
   probe_answer_pattern: '(?i)(?=[\s\S]*(<layer>\s+<value>\s+<key>|layer[^\n]{0,24}value[^\n]{0,24}key|value (comes |goes )?(first|before)))(?=[\s\S]*(accept|no error|without (an )?error|without complaint|silently|wrong key|key named|swapped|reversed))'
-  taught_at: [16.0, 28.0]
+  taught_at: [9.5, 12.5, 29.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

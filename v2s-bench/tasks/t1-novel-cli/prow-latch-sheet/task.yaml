@@ -9,6 +9,8 @@ goal: >-
   status must report a released sheet, and the released sheet must be the
   one whose text is on disk when you stop, not an earlier rendering of it.
 discoverability: good
+feedback_bandwidth: low   # releasing one rendering and then re-rendering leaves a clean status line pointing at text that is no longer on disk
+placebo_source: kiln-fire-newest-three
 knowledge_gap:
   summary: >-
     Releasing a sheet is a step of its own that takes the sheet id the
@@ -24,7 +26,7 @@ knowledge_gap:
     released, what argument does that command take, and why does it refuse
     if you tidied the sheet file up afterwards?
   probe_answer_pattern: '(?i)(?=[\s\S]*\blatch\b)(?=[\s\S]*(sheet[- ]id|the id|id (that |which )?(prow )?(sheet )?print))(?=[\s\S]*(drift|chang|digest|hash|differ|edit|no longer match))'
-  taught_at: [24.0, 40.0, 52.0]
+  taught_at: [7.0, 13.0, 16.0, 37.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

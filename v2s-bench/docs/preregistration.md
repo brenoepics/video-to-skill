@@ -286,11 +286,23 @@ Run by CI before any trial, and published with the results.
 **Hermetic** (`videos/recipes/*.json`) — rendered deterministically at run
 time by `v2sbench render`: a real terminal session, dialog sequence or
 walkthrough, drawn frame by frame and narrated by TTS. Nothing binary is
-committed. *Strength:* perfect reproducibility, no licensing question, no
+committed. *Strength:* reproducibility, no licensing question, no
 contamination. *Weakness:* flat colours, clean fonts, no compression
 artifacts, no cursor jitter, synthetic narration — so extraction quality on
 this tier **overstates** real-world performance. It bounds the mechanism,
 not the product.
+
+The reproducibility claim has a boundary worth stating precisely, because
+it is narrower than "deterministic" suggests. Repeated renders on one
+machine are byte-identical, audio included, and this is verified. Drawing
+is machine-independent by construction — integer arithmetic over a bundled
+bitmap font, no FreeType — so the *video* stream should travel. The
+*narration* bytes are a TTS output and therefore an input to the mux, so
+byte-equality holds per TTS build: espeak-ng 1.51 and 1.52 need not agree,
+and macOS `say` agrees with neither. **Cross-machine byte-equality is not
+verified.** The practical consequence is that a hermetic row is
+reproducible against a pinned (ffmpeg, TTS) pair, which the run record
+captures, rather than universally.
 
 **Real** (`videos/manifest.yaml`) — Creative-Commons or public-domain
 screencasts, referenced by URL + `sha256` + licence, never redistributed.

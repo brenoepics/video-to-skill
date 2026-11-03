@@ -158,27 +158,27 @@
     },
     {
       "t": 10.3,
-      "text": "Now we stage a value into a layer. Read it as: in layer edge, this value, under this name."
+      "text": "Now we stage a setting into a layer. Watch the order of what I type, because it is not the one you would expect."
     },
     {
       "t": 15.8,
-      "text": "And there it is, the right way round."
+      "text": "And lath reads it back to us the way it stored it. That is the check worth doing."
     },
     {
       "t": 21.3,
-      "text": "Here is the trap. Give those two the other way round and lath does not complain at all."
+      "text": "Here is the trap. Type those two the other way round and lath does not complain at all."
     },
     {
       "t": 26.8,
-      "text": "Look closely: we have gained a key named after the value. No error, just nonsense in the layer."
+      "text": "Look closely at the layer now. There is an entry in there that nobody asked for. No error, just nonsense."
     },
     {
       "t": 32.3,
-      "text": "So we drop that, which does take the name."
+      "text": "So we take that entry out again."
     },
     {
       "t": 37.8,
-      "text": "And stage the second setting properly, value first again."
+      "text": "And stage the second setting the same way as the first."
     },
     {
       "t": 43.3,
@@ -186,7 +186,7 @@
     },
     {
       "t": 47.0,
-      "text": "Value first, then the name you want it under. Check the layer afterwards and you cannot go wrong."
+      "text": "Watch the order on that line, and read the layer back afterwards. That is all there is to it."
     }
   ],
   "notes": "Teaches lath's value-before-key argument order and shows the reversed order silently staging a key named after the value."

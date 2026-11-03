@@ -19,16 +19,26 @@ every machine, which a BLAS-backed library does not promise.
 The pre-registered analysis plan (section 8) maps onto these modules as:
 
 =========================================  ==================================
-Section 8 clause                           Implementation
+Pre-registration clause                    Implementation
 =========================================  ==================================
-primary test: exact McNemar                ``mcnemar.mcnemar_exact``
-primary interval: cluster bootstrap, BCa   ``bootstrap.cluster_bootstrap_diff``
-per-task rates: Wilson                     ``wilson.wilson_interval``
-Holm-Bonferroni over the ablations         ``multiplicity.holm_bonferroni``
+8.2 primary test: sign-flip permutation    ``permutation.paired_permutation``
+8.2 robustness check: exact McNemar        ``mcnemar.mcnemar_exact``
+8.2 interval: cluster bootstrap, BCa       ``bootstrap.cluster_bootstrap_diff``
+8.2 per-task/per-cell rates: Wilson        ``wilson.wilson_interval``
+8.2 normalised gain                        ``wilson.normalized_gain``
+8.2 estimated ICC, effective samples       ``power.icc_estimate``,
+                                           ``power.effective_samples_per_trial``
+8.2 Holm-Bonferroni over the ablations     ``multiplicity.holm_bonferroni``
+8.2 difference-of-differences, no verdict  ``analysis.analyse_difference_of_differences``
+8.1 power / sample size                    ``power.mde_for_grid``
+5.3 exclusions (probe-declared, errored)   ``analysis.pair_trials``
 H2 by headroom band                        ``analysis.analyse_strata``
-exclusions (saturated, errored)            ``analysis.pair_trials``
-power / sample size (section 8.1)          ``power.mde_for_grid``
 =========================================  ==================================
+
+A secondary clustered interval for a *rate* is in
+``wilson.beta_binomial_hdi``; section 8.2's declared under-coverage of
+the bootstrap interval is documented in ``bootstrap``'s module
+docstring.
 
 Nothing in this package reads a task checker, a skill, or anything else
 that could make an estimator depend on the outcome it is estimating; it
@@ -41,21 +51,48 @@ from .analysis import (
     ArmSummary,
     CellSummary,
     ComparisonResult,
+    DiffOfDiffResult,
     StratumResult,
     analyse_arms,
     analyse_cells,
     analyse_comparison,
     analyse_comparisons,
+    analyse_difference_of_differences,
     analyse_strata,
     pair_trials,
+    pair_trials_by_task,
     refuse_mixed,
     verdict,
 )
-from .bootstrap import BootstrapResult, cluster_bootstrap_diff, norm_cdf, norm_ppf
+from .bootstrap import (
+    BootstrapResult,
+    bootstrap_mean,
+    cluster_bootstrap_diff,
+    norm_cdf,
+    norm_ppf,
+    task_diffs,
+)
 from .mcnemar import chi2_sf_1df, discordant, mcnemar_chi2, mcnemar_exact
 from .multiplicity import holm_bonferroni, holm_rejected
-from .power import PowerRow, mde_for_grid, power_table, render_markdown
-from .wilson import Z_95, harmonic_mean_bound, rate, wilson_interval, wilson_lower
+from .permutation import PermutationResult, paired_permutation
+from .power import (
+    PowerRow,
+    effective_samples_per_trial,
+    effective_trials,
+    icc_estimate,
+    mde_for_grid,
+    power_table,
+    render_markdown,
+)
+from .wilson import (
+    Z_95,
+    beta_binomial_hdi,
+    harmonic_mean_bound,
+    normalized_gain,
+    rate,
+    wilson_interval,
+    wilson_lower,
+)
 
 __all__ = [
     "Z_95",
@@ -63,29 +100,41 @@ __all__ = [
     "BootstrapResult",
     "CellSummary",
     "ComparisonResult",
+    "DiffOfDiffResult",
+    "PermutationResult",
     "PowerRow",
     "StratumResult",
     "analyse_arms",
     "analyse_cells",
     "analyse_comparison",
     "analyse_comparisons",
+    "analyse_difference_of_differences",
     "analyse_strata",
+    "beta_binomial_hdi",
+    "bootstrap_mean",
     "chi2_sf_1df",
     "cluster_bootstrap_diff",
     "discordant",
+    "effective_samples_per_trial",
+    "effective_trials",
     "harmonic_mean_bound",
     "holm_bonferroni",
     "holm_rejected",
+    "icc_estimate",
     "mcnemar_chi2",
     "mcnemar_exact",
     "mde_for_grid",
     "norm_cdf",
     "norm_ppf",
+    "normalized_gain",
     "pair_trials",
+    "pair_trials_by_task",
+    "paired_permutation",
     "power_table",
     "rate",
     "refuse_mixed",
     "render_markdown",
+    "task_diffs",
     "verdict",
     "wilson_interval",
     "wilson_lower",

@@ -9,6 +9,8 @@ goal: >-
   how many shards a batch holds -- and ready to fire. Do not produce a
   rollup artifact: kiln must be prepared, not fired.
 discoverability: poor
+feedback_bandwidth: high   # a missing or incomplete profile is refused outright and no state is written, so a wrong attempt cannot look successful
+placebo_source: zep-chain-anchor
 knowledge_gap:
   summary: >-
     kiln takes its lane description from a file called kiln.profile in the
@@ -23,7 +25,7 @@ knowledge_gap:
     that file called, where does kiln look for it, which keys must it
     contain, and which subcommand turns it into kiln's own state?
   probe_answer_pattern: '(?i)(?=[\s\S]*kiln\.profile)(?=[\s\S]*fire-lane)(?=[\s\S]*shard-glob)(?=[\s\S]*hold-count)(?=[\s\S]*\bprime\b)'
-  taught_at: [14.0, 20.0, 32.0]
+  taught_at: [7.0, 31.0, 37.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

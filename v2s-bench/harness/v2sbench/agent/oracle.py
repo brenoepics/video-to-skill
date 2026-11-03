@@ -12,6 +12,7 @@ from pathlib import Path
 
 from .base import AgentError, AgentRun
 
+
 class OracleAgent:
     name = "oracle"
     is_mock = True

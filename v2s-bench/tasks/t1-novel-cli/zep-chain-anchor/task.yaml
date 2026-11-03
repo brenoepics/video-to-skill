@@ -9,6 +9,8 @@ goal: >-
   recorded as descending from base-19 -- zep must report base-19's anchor
   as patch-20's parent. base-19 itself must be left exactly as it is.
 discoverability: poor
+feedback_bandwidth: low   # omitting the parent link produces a correctly sealed, correctly anchored, simply unchained drop with no diagnostic
+placebo_source: kiln-author-profile
 knowledge_gap:
   summary: >-
     A drop's parent is declared at the moment the drop is created, by
@@ -22,7 +24,7 @@ knowledge_gap:
     parent, where does the value you pass come from, and at which point in
     the new drop's life does it have to be supplied?
   probe_answer_pattern: '(?i)(?=[\s\S]*--after)(?=[\s\S]*anchor)(?=[\s\S]*\bopen)'
-  taught_at: [28.0, 40.0]
+  taught_at: [13.0, 16.0, 43.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

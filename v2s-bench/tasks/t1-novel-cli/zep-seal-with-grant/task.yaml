@@ -9,6 +9,8 @@ goal: >-
   the three entries it was given, unchanged. A drop that zep records
   without an anchor is not finished.
 discoverability: poor
+feedback_bandwidth: low   # closing without the nonce exits 0, prints a confirmation and records a provisional drop
+placebo_source: lath-pin-fingerprint
 knowledge_gap:
   summary: >-
     zep seals a drop only when the close is given that drop's grant nonce.
@@ -21,7 +23,7 @@ knowledge_gap:
     drop to end up sealed and carrying an anchor rather than provisional,
     and where does that value come from?
   probe_answer_pattern: '(?i)(?=[\s\S]*--grant)(?=[\s\S]*(\.zep/drops|grant file|zep grant))'
-  taught_at: [22.0, 34.0]
+  taught_at: [19.0, 31.0, 34.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

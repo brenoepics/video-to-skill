@@ -216,7 +216,10 @@ def _check_consistency(task: Task, directory: Path) -> None:
     if task.tier not in TIERS:
         raise ValueError(f"unknown tier {task.tier!r}")
     if directory.parent.name != task.tier:
-        raise ValueError(f"task {task.id} declares tier {task.tier} but sits in {directory.parent.name}")
+        raise ValueError(
+            f"task {task.id} declares tier {task.tier} "
+            f"but sits in {directory.parent.name}"
+        )
     entry = directory / "check" / task.check.entrypoint
     if not entry.exists():
         raise ValueError(f"task {task.id}: missing checker {entry}")

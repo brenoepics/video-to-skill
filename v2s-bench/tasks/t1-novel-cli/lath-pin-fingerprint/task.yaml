@@ -11,6 +11,8 @@ goal: >-
   That extra key has to be contributed by a lath layer named release and
   the file has to be one lath wrote -- not a copy you edited.
 discoverability: good
+feedback_bandwidth: low   # a swapped pin, an unstacked layer or a hand-edited output all produce a plausible file without complaint
+placebo_source: zep-seal-with-grant
 knowledge_gap:
   summary: >-
     The fingerprint is only ever printed by the merge itself, so it has to
@@ -25,7 +27,7 @@ knowledge_gap:
     in the next flatten's output. Give the commands you would run, in
     order.
   probe_answer_pattern: '(?i)(?=[\s\S]*lath\s+set\s+\S+\s+\S{6,}\s+pinned_from)(?=[\s\S]*lath\s+stack\s+\S+)(?=[\s\S]*lath\s+flatten[^\n]*--out)'
-  taught_at: [20.0, 36.0, 48.0]
+  taught_at: [13.0, 16.0, 28.0, 43.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

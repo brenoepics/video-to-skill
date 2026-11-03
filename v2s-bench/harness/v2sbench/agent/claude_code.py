@@ -22,6 +22,13 @@ excludes subagent tokens, so it would systematically undercount exactly
 the arms whose skills cause the agent to fork work -- biasing the cost
 comparison in the treatment's favour.
 
+**And count the cache fields.** On a real run, ``inputTokens`` was 4 while
+``cacheReadInputTokens`` was 62 096 and ``cacheCreationInputTokens`` 9 759.
+Summing only the first would understate input by four orders of magnitude
+-- and would do so *unevenly across arms*, because a skill arm carries a
+larger prompt and therefore more cached context. Cost is a reported
+endpoint here, so the three are summed and also kept separately.
+
 **``--max-turns`` is accepted but absent from ``--help``** on the version
 tested (2.1.317). It is passed defensively: if a future version rejects
 it, the adapter says so rather than silently running an unbounded trial.
@@ -92,7 +99,8 @@ class ClaudeCodeAgent:
         res = sandbox.exec([self.binary, "--version"], timeout=60)
         if not res.ok:
             raise AgentError(
-                f"cannot run {self.binary!r} in the environment: {res.stderr.strip() or res.stdout.strip()}"
+                f"cannot run {self.binary!r} in the environment: "
+                f"{res.stderr.strip() or res.stdout.strip()}"
             )
         self._version = res.stdout.strip()
         return self._version
@@ -214,6 +222,7 @@ def parse_stream_json(stdout: str) -> AgentRun:
             saw_usage = True
             tokens_in += usage[0]
             tokens_out += usage[1]
+            run.raw["token_breakdown"] = usage[2]
         if etype == "result":
             run.usd_cost = _coerce_float(
                 event.get("total_cost_usd", event.get("cost_usd"))
@@ -247,24 +256,44 @@ def _tool_commands(event: dict) -> list[str]:
     return out
 
 
-def _model_usage(event: dict) -> tuple[int, int] | None:
+#: Every field that counts as input. Omitting the cache fields understates
+#: input by orders of magnitude, and does so more for arms with longer
+#: prompts -- which is exactly the comparison being made.
+_INPUT_FIELDS = (
+    ("inputTokens", "input_tokens"),
+    ("cacheReadInputTokens", "cache_read_input_tokens"),
+    ("cacheCreationInputTokens", "cache_creation_input_tokens"),
+)
+
+
+def _model_usage(event: dict) -> tuple[int, int, dict[str, int]] | None:
     """Read ``modelUsage``, never ``usage``.
 
     ``usage`` omits subagent tokens, which would undercount precisely the
-    arms whose skill leads the agent to delegate.
+    arms whose skill leads the agent to delegate. Returns
+    ``(input, output, breakdown)``; the breakdown is kept so a reader can
+    separate fresh input from cached context, which price differently.
     """
     for key in ("modelUsage", "model_usage"):
         block = event.get(key)
-        if isinstance(block, dict) and block:
-            tin = tout = 0
-            for per_model in block.values():
-                if not isinstance(per_model, dict):
-                    continue
-                tin += int(per_model.get("inputTokens", per_model.get("input_tokens", 0)) or 0)
-                tout += int(
-                    per_model.get("outputTokens", per_model.get("output_tokens", 0)) or 0
-                )
-            return tin, tout
+        if not isinstance(block, dict) or not block:
+            continue
+        tin = tout = 0
+        breakdown: dict[str, int] = {}
+        for per_model in block.values():
+            if not isinstance(per_model, dict):
+                continue
+            for camel, snake in _INPUT_FIELDS:
+                value = int(per_model.get(camel, per_model.get(snake, 0)) or 0)
+                tin += value
+                breakdown[camel] = breakdown.get(camel, 0) + value
+            out = int(per_model.get("outputTokens", per_model.get("output_tokens", 0)) or 0)
+            tout += out
+            breakdown["outputTokens"] = breakdown.get("outputTokens", 0) + out
+            basis = per_model.get("costBasis")
+            if basis:
+                breakdown.setdefault("costBasis", basis)  # type: ignore[arg-type]
+        return tin, tout, breakdown
     return None
 
 

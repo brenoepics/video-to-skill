@@ -132,7 +132,9 @@ def _sampled_p(
     count = 0
     for _ in range(resamples):
         bits = rng.getrandbits(n)
-        stat = math.fsum(d if (bits >> i) & 1 else -d for i, d in enumerate(diffs))
+        # The mean, not the sum: it must be the same statistic as
+        # ``observed``, which is the mean task difference.
+        stat = math.fsum(d if (bits >> i) & 1 else -d for i, d in enumerate(diffs)) / n
         if alternative == "two-sided":
             # Tolerance so that a resample equal to the observed statistic
             # up to float noise counts as "at least as extreme", which it is.

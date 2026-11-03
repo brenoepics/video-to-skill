@@ -10,6 +10,8 @@ goal: >-
   wrote from those layers, and lath's own record of the merge must describe
   exactly that file.
 discoverability: good
+feedback_bandwidth: low   # the reversed stack order merges cleanly and silently yields the other layer's value
+placebo_source: kiln-chain-batches
 knowledge_gap:
   summary: >-
     lath precedence is first-wins: the layer stacked FIRST supplies a
@@ -22,7 +24,7 @@ knowledge_gap:
     In lath, which of two stacked layers wins a key they both define, and in
     what order must you stack prod and base so that prod's values win?
   probe_answer_pattern: '(?i)(?=[\s\S]*(first|earliest)[^\n]{0,40}(wins|win|takes precedence|precedence|highest))(?=[\s\S]*(stack\s+prod[\s\S]{0,80}stack\s+base|prod[^\n]{0,40}(first|before base)))'
-  taught_at: [24.0, 32.0, 44.0]
+  taught_at: [14.0, 32.0, 47.0, 57.0]
 environment:
   image: v2sbench/t1-novel-cli:0.1
   workdir: /work

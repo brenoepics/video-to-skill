@@ -23,7 +23,10 @@ def available_backends() -> dict[str, str]:
         out["docker"] = "unavailable: docker not on PATH"
     else:
         probe = subprocess.run(["docker", "info"], capture_output=True, text=True)
-        out["docker"] = "available" if probe.returncode == 0 else "unavailable: CLI present, no daemon"
+        out["docker"] = (
+            "available" if probe.returncode == 0
+            else "unavailable: CLI present, no daemon"
+        )
     out["local"] = "available (requires --allow-unsandboxed; not valid for a published figure)"
     out["bubblewrap"] = (
         "available but not implemented" if shutil.which("bwrap")

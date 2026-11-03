@@ -22,7 +22,8 @@ from pathlib import Path
 from typing import Any
 
 from . import arms as arms_mod
-from . import materials, metrics, record, sandbox as sandbox_mod
+from . import materials, metrics, record
+from . import sandbox as sandbox_mod
 from .agent.base import AgentError, AgentRun
 
 #: Where a skill package is installed so it is discoverable by description.

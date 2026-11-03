@@ -203,7 +203,7 @@
   "narration": [
     {
       "t": 0.5,
-      "text": "Two layers, both setting the same thing. Which one wins is the opposite of what most people guess."
+      "text": "Two layers, both setting the same thing. Which one wins surprises most people, so watch the screen."
     },
     {
       "t": 4.8,
@@ -215,31 +215,31 @@
     },
     {
       "t": 14.8,
-      "text": "We put this one into the order first. Note the position it reports."
+      "text": "We add this one to the order, and note the position it reports."
     },
     {
       "t": 19.8,
-      "text": "And the other one after it."
+      "text": "And then the other one."
     },
     {
       "t": 24.8,
-      "text": "Now merge the stack into a file."
+      "text": "Now merge the whole thing into a file."
     },
     {
       "t": 29.8,
-      "text": "Three won. That is the layer we stacked first, not the last one."
+      "text": "Look at the value that survived, then look back at the order we built. That is the rule, right there on screen."
     },
     {
       "t": 34.8,
-      "text": "So if we want the other one to win, we take this one out of the order..."
+      "text": "So if we want the other value to come through, we take this one out of the order..."
     },
     {
       "t": 39.8,
-      "text": "...and add it back, which puts it at the end."
+      "text": "...and add it again, which lands it somewhere else. Watch the position it reports this time."
     },
     {
       "t": 44.8,
-      "text": "The order now reads top to bottom, and the top one is the winner."
+      "text": "Here is the order as it now stands. Read it carefully, including the heading."
     },
     {
       "t": 49.8,
@@ -247,11 +247,11 @@
     },
     {
       "t": 54.8,
-      "text": "Nine this time. Same two layers, different order, different answer."
+      "text": "A different answer this time, from the very same two layers."
     },
     {
       "t": 58.5,
-      "text": "The one you stack first is the one that wins. Reorder the stack, not the layers."
+      "text": "Same two layers, different order, different answer. Change the order, not the layers."
     }
   ],
   "notes": "Teaches first-stacked-wins precedence by merging the same two layers in both orders and showing both results."

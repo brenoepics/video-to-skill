@@ -171,7 +171,7 @@
     },
     {
       "t": 15.8,
-      "text": "And this one is retired, which is its own step -- parking it in some far-off wave is not the same thing."
+      "text": "And this one is retired, which is its own step, parking it in some far-off wave is not the same thing."
     },
     {
       "t": 21.3,
@@ -191,7 +191,7 @@
     },
     {
       "t": 41.5,
-      "text": "Move what moves, take out what is retired, and render again -- the sheet is a snapshot, not a view."
+      "text": "Move what moves, take out what is retired, and render again, the sheet is a snapshot, not a view."
     }
   ],
   "notes": "Teaches that re-planning a unit moves it, that removal is its own step, and that the rendered sheet does not follow later plan changes."

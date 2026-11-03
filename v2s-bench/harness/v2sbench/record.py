@@ -12,7 +12,7 @@ import hashlib
 import json
 import platform
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,7 @@ from . import SCHEMA_VERSION, __version__
 
 
 def utcnow() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def trial_id(run_id: str, task: str, arm: str, seed: int) -> str:

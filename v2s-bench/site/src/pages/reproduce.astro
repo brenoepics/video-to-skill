@@ -1,0 +1,301 @@
+---
+import Base from '../layouts/Base.astro';
+import { loadReport } from '../lib/report';
+import { href } from '../lib/url';
+import { REPO_URL, REPO_BENCH_PATH } from '../../site.config.mjs';
+import { int, isoDate } from '../lib/format';
+
+const { bundle, gate, source } = loadReport();
+const p = bundle.provenance;
+
+const repoBench = `${REPO_URL}/tree/main/${REPO_BENCH_PATH}`;
+const schemaUrl = `${REPO_URL}/blob/main/${REPO_BENCH_PATH}/schemas/report.schema.json`;
+const recordSchemaUrl = `${REPO_URL}/blob/main/${REPO_BENCH_PATH}/schemas/run-record.schema.json`;
+const wilsonUrl = `${REPO_URL}/blob/main/${REPO_BENCH_PATH}/harness/v2sbench/stats/wilson.py`;
+const armsUrl = `${REPO_URL}/blob/main/${REPO_BENCH_PATH}/harness/v2sbench/arms.py`;
+const siteUrl = `${REPO_URL}/tree/main/${REPO_BENCH_PATH}/site`;
+
+const auditChecks = [
+  {
+    title: 'Is the pre-registration frozen?',
+    body: `The provenance block records the pre-registration commit. If it is empty, or the status line says the pre-registration is not frozen, the pre-registration's own instruction applies: treat the numbers as exploratory. This build says "${bundle.status.prereg_frozen ? 'frozen' : 'not yet frozen'}".`,
+  },
+  {
+    title: 'Is this real data?',
+    body: `Check provenance.is_mock in the bundle and the status banner on every page. This build reports is_mock = ${p.is_mock === true}, status.kind = "${bundle.status.kind}", rendered as "${gate.kind}". The report builder refuses to aggregate mock and real records, so a figure can never be a blend of the two.`,
+  },
+  {
+    title: 'Do the arithmetic yourself',
+    body: 'v2sbench verify-results recomputes every published figure from the immutable run records. Separately, this site recomputes each Wilson interval from the published successes and n at build time and marks any row where its own result disagrees with the bundle, so a mismatch shows up on the page rather than in a log.',
+  },
+  {
+    title: 'Did the suite change under the figure?',
+    body: 'Every trial record carries the task-suite digest, the harness digest and the container image digest. A figure whose suite digest differs from the suite in your checkout is not a figure about your checkout.',
+  },
+  {
+    title: 'Were the baselines real?',
+    body: 'The baseline prompt is committed at tasks/_prompts/baseline.md and is byte-identical across arms. Read it. A weak baseline is the standard way to manufacture a benchmark win, and the only defence a reader has is being able to see the prompt.',
+  },
+  {
+    title: 'Could the skills have seen the checkers?',
+    body: 'Run v2sbench validate --blind. It rejects any arm material containing a declared forbidden literal, a checker or oracle filename, or a mined string literal from either. CI runs it on every change.',
+  },
+  {
+    title: 'Do the tasks work at all?',
+    body: 'Run the oracle gate and the trivial-agent gate. Every task ships an oracle that must pass the checker in a fresh environment, and a null agent that must score 0. Independent measurements put the broken-task rate in borrowed agent benchmarks at 10 to 15%.',
+  },
+];
+---
+
+<Base
+  title="Reproduce"
+  description="How to run v2s-bench yourself, and how to audit every figure on this site back to the immutable run records."
+>
+  <div class="stack">
+    <div>
+      <p class="eyebrow">Auditability</p>
+      <h1>Reproduce it, or audit it</h1>
+      <p class="lede">
+        This benchmark is run by the authors of the tool it grades. That is a reason to
+        check the numbers rather than read them, so the whole chain is designed to be
+        re-run by a stranger: the suite is in the repository, the trial records are
+        immutable and published, and <code>v2sbench verify-results</code> recomputes every
+        figure on this site from those records.
+      </p>
+    </div>
+
+    <section aria-labelledby="chain">
+      <div class="section__head">
+        <h2 id="chain">What produced this page</h2>
+        <p class="eyebrow">Four steps, each inspectable</p>
+      </div>
+      <ol class="chain">
+        <li>
+          <strong>Trials.</strong> One immutable JSON record per (task, arm, seed),
+          validating against <a href={recordSchemaUrl}>run-record.schema.json</a>. Records
+          are append-only: a correction is a new record, never an edit.
+        </li>
+        <li>
+          <strong>Aggregation.</strong> <code>v2sbench report</code> reduces the records
+          to one bundle validating against <a href={schemaUrl}>report.schema.json</a>.
+          Verdicts are computed here, from the pre-registered failure conditions in
+          <a href={armsUrl}>arms.py</a>, never written by hand.
+        </li>
+        <li>
+          <strong>Rendering.</strong> This site reads that bundle and nothing else. It has
+          no database, no API and no second source of numbers. The bundle it read for this
+          build is <code>{source.split('/').slice(-3).join('/')}</code>, generated{' '}
+          {isoDate(bundle.generated_at)}, carrying {int(p.trials_total ?? 0)} trials.
+        </li>
+        <li>
+          <strong>Audit.</strong> <code>v2sbench verify-results</code> recomputes the
+          bundle from the records and fails on any disagreement. The bundle this page was
+          built from is served at <a href={href('/report.json')}>report.json</a>, so you
+          can diff it against your own run.
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="run">
+      <div class="section__head">
+        <h2 id="run">Run the benchmark</h2>
+        <p class="eyebrow">Docker and Python 3.11+</p>
+      </div>
+      <p>
+        Tasks run offline in throwaway containers; no task requires a destructive,
+        networked or credentialed action. The harness is deliberately
+        dependency-light so a reader can audit the arithmetic without installing a
+        scientific stack.
+      </p>
+      <pre><code>{`git clone ${REPO_URL}
+cd video-to-skill/${REPO_BENCH_PATH}
+
+# the harness, and nothing else
+python -m pip install ./harness
+
+# integrity gates first: a suite that fails these is not measuring anything
+v2sbench validate --blind          # no arm material contains checker or oracle strings
+v2sbench gates                     # oracle must pass, trivial agent must score 0
+
+# hermetic videos are rendered, never committed
+v2sbench render
+
+# headroom before outcomes: probe each task's knowledge gap cold
+v2sbench probe
+
+# the headline comparison over the whole suite
+v2sbench run --armset core
+
+# the comparisons that distinguish v2s from a transcript summariser
+v2sbench run --armset ablation
+
+# aggregate the immutable records into one bundle, then check it
+v2sbench report --out results/report.json
+v2sbench verify-results results/report.json`}</code></pre>
+      <p class="note">
+        Those are the suite&rsquo;s documented entry points; run
+        <code>v2sbench --help</code> in your checkout for what that version implements.
+        The harness is v0.1 and still being built, and every figure on this site carries
+        the <code>harness_version</code> that produced it, so a figure can never be
+        silently attributed to a different one.
+      </p>
+      <p>
+        Arm sets are named in <a href={armsUrl}>arms.py</a> and can also be given as a
+        comma list. An arm is only ever a choice of context material: the model, the
+        tools, the sandbox, the budget and the task prompt are held identical by
+        construction, because the moment an arm differs in anything else the comparison
+        stops meaning anything.
+      </p>
+    </section>
+
+    <section aria-labelledby="site">
+      <div class="section__head">
+        <h2 id="site">Build this site against your own results</h2>
+        <p class="eyebrow">One bundle in, static files out</p>
+      </div>
+      <pre><code>{`cd ${REPO_BENCH_PATH}/site
+pnpm install
+
+# reads ../results/report.json; falls back to the committed
+# no-results bundle when that file does not exist
+pnpm build
+
+# or point it anywhere
+V2S_BENCH_REPORT=/path/to/your/report.json pnpm build
+
+# base path for the two deployment homes, one value each
+V2S_BENCH_BASE=/bench   V2S_BENCH_ORIGIN=https://v2s.dev       pnpm build
+V2S_BENCH_BASE=/        V2S_BENCH_ORIGIN=https://bench.v2s.dev pnpm build`}</code></pre>
+      <p>
+        The build fails rather than publishing something misleading. If the bundle&rsquo;s
+        <code>schema_version</code> is not the one this site renders, it refuses to guess
+        at the difference; and if a bundle that reports no results still carries
+        measurements after sanitisation, a build-time assertion stops the build instead of
+        letting a figure through. The <a href={siteUrl}>site source</a> is about a dozen
+        components and no chart library: the figures are hand-rolled inline SVG, so the
+        page ships no client-side JavaScript except a small progressive-enhancement script
+        that makes the task table sortable.
+      </p>
+    </section>
+
+    <section aria-labelledby="honesty">
+      <div class="section__head">
+        <h2 id="honesty">What this site will not do</h2>
+        <p class="eyebrow">Enforced in the loader, not in the templates</p>
+      </div>
+      <ul class="spaced">
+        <li>
+          <strong>It will not draw a figure it has no data for.</strong> When the bundle
+          reports no results, the loader strips the arms, the cells, the strata, the effect
+          sizes and the probe scores before any page sees them, and forces every verdict to
+          <em>insufficient data</em>. The pages then render empty states rather than zeros.
+          A build-time assertion fails the build if anything survives that strip.
+        </li>
+        <li>
+          <strong>It will not quietly render mock data.</strong> A mock bundle is banner-ed
+          on every page, watermarked inside every figure, and labelled in the provenance
+          block. If <code>provenance.is_mock</code> and <code>status.kind</code> disagree,
+          the more cautious reading wins and the disagreement is printed on the page.
+        </li>
+        <li>
+          <strong>It will not show a rate without an interval.</strong> Where the bundle
+          omits the Wilson bounds they are recomputed from successes and n; where it
+          publishes bounds that disagree with that recomputation, the row is marked.
+          Secondary rates published as bare fractions get an interval derived from the
+          row&rsquo;s n, marked as derived, or no interval and a note saying why.
+        </li>
+        <li>
+          <strong>It will not style a null result as a failure.</strong>
+          <em>not supported</em> renders at exactly the weight of <em>supported</em>: same
+          surface, same border, same type size, no colour. A null result is a result, and
+          the pre-registration commits to publishing it.
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="audit">
+      <div class="section__head">
+        <h2 id="audit">A sceptic&rsquo;s checklist</h2>
+        <p class="eyebrow">In the order worth doing it</p>
+      </div>
+      <dl class="defs">
+        {
+          auditChecks.map((check) => (
+            <div>
+              <dt>{check.title}</dt>
+              <dd>{check.body}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <section aria-labelledby="contracts">
+      <div class="section__head">
+        <h2 id="contracts">The contracts</h2>
+        <p class="eyebrow">Everything this page depends on</p>
+      </div>
+      <ul class="links">
+        <li><a href={schemaUrl}>report.schema.json</a> &mdash; what this site renders, field for field.</li>
+        <li><a href={recordSchemaUrl}>run-record.schema.json</a> &mdash; one immutable record per trial.</li>
+        <li><a href={armsUrl}>arms.py</a> &mdash; the arms and the pre-registered comparisons.</li>
+        <li><a href={wilsonUrl}>stats/wilson.py</a> &mdash; the interval convention, shared with the parent project.</li>
+        <li><a href={repoBench}>v2s-bench/</a> &mdash; the suite, the harness, the pre-registration and this site.</li>
+        <li><a href={href('/report.json')}>report.json</a> &mdash; the bundle this build rendered.</li>
+      </ul>
+      <p class="note">
+        Independent replication is invited. If you run this suite and get a different
+        answer, that is the most useful thing that could happen to it.
+      </p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .chain {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .chain li {
+    position: relative;
+    padding: 0.55rem 0 0.55rem 2.3rem;
+    border-bottom: 1px solid var(--grid);
+    max-width: var(--measure);
+  }
+
+  .chain li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0.62rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+  }
+
+  .spaced li + li {
+    margin-top: 0.6rem;
+  }
+
+  .links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .links li {
+    padding: 0.33rem 0;
+    border-bottom: 1px solid var(--grid);
+    max-width: var(--measure);
+  }
+</style>
