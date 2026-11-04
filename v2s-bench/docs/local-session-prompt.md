@@ -19,24 +19,30 @@ Clone it, then read these three files before doing anything else:
   - docs/cost.md              <- what this should cost
 
 THE SHAPE OF THE RUN
-  - Agent under test: <<<PICK ONE>>>
-      Claude:  --agent claude-code --model <CLAUDE-MODEL-ID>   (ANTHROPIC_API_KEY)
-      GPT-6.1: --agent codex       --model <GPT-6.1-MODEL-ID>  (CODEX_API_KEY)
-    Use the same choice in every command below.
-  - Materials (the skills themselves) are built with Claude, not GPT. Those
-    are two different roles on purpose: "v2s makes a good skill" and "the
-    skill helps this agent" are separate claims, and cross-model transfer
-    is the stronger result.
+  - Agent under test: Claude, via the Claude Code CLI, authenticated with
+    an Anthropic API key. Everything below uses
+    `--agent claude-code --model $MODEL`.
+    (To test GPT-6.1 instead, swap every occurrence for
+    `--agent codex --model <GPT-6.1-ID>`, export CODEX_API_KEY instead, and
+    build the images with --build-arg AGENT=codex. Read the warning about
+    that adapter in the NOT VERIFIED section first.)
+  - Materials (the skills themselves) are also built with Claude. The agent
+    that does the tasks and the model that reads the video are separate
+    roles; here they happen to be the same model, which is fine, but do not
+    conflate them when reporting.
   - Target: tier 1 only (12 tasks, purpose-built CLIs). It is the
     uncontaminated tier, so a null result there would actually mean
     something.
 
 WHAT I HAVE
   - Docker running
-  - `codex` CLI installed, authenticated for GPT-6.1
-  - `claude` CLI installed (for building materials)
-  - API keys available as env vars
+  - `claude` CLI installed on the host (for building materials)
+  - ANTHROPIC_API_KEY
   - cargo, and the video-to-skill source for building vts-extract
+
+Set these once at the start and reuse them:
+    export ANTHROPIC_API_KEY=sk-ant-...
+    export MODEL=<full-model-id>        # a full id, not an alias; preflight refuses aliases
 
 THE STAGES. Each is durable — a failure never costs the earlier ones. Do
 them in order and stop at the first thing that looks wrong.
@@ -56,20 +62,20 @@ them in order and stop at the first thing that looks wrong.
        docker build --build-arg AGENT=claude \
          -t v2sbench/t2-real-cli:0.1  -f env/t2-real-cli/Dockerfile .
 
-  2b. Export the key for whichever agent you chose. The harness forwards
-      only these names into the container:
+  2b. The key must be exported in the shell you run from. The harness
+      forwards only these names into the container, never the whole
+      environment:
         ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL,
         CODEX_API_KEY, OPENAI_API_KEY, OPENAI_BASE_URL
-        export ANTHROPIC_API_KEY=sk-ant-...
 
   3. Preflight. It is free and checks everything:
        cd harness
-       python3 -m v2sbench.cli preflight --agent codex --model <GPT-6.1-MODEL-ID> \
+       python3 -m v2sbench.cli preflight --agent claude-code --model "$MODEL" \
          --tier t1-novel-cli --arms core --seeds 10
      Fix everything it reports before spending anything.
 
   4. Build materials (costs ~$15-35, resumable, durable):
-       python3 -m v2sbench.cli build-materials --model <CLAUDE-MODEL-ID> --tier t1-novel-cli
+       python3 -m v2sbench.cli build-materials --model "$MODEL" --tier t1-novel-cli
      If it dies partway, just re-run it — tasks already built are skipped.
      If `vts-extract verify` fails for want of a sandbox, install bubblewrap
      rather than using --skip-verify: without the badge, arms A1 and A3
@@ -78,7 +84,7 @@ them in order and stop at the first thing that looks wrong.
   5. Preflight again — it should now be clean.
 
   6. SMOKE TEST FIRST, before the real run. This is important (see below):
-       python3 -m v2sbench.cli run --agent codex --model <GPT-6.1-MODEL-ID> \
+       python3 -m v2sbench.cli run --agent claude-code --model "$MODEL" \
          --task zep-seal-with-grant --arms A0 --seeds 1 --max-usd 2
      Then show me the resulting record from results/runs/. I want to see
      sane values for `turns`, `tokens_in` and the command log before we
@@ -86,9 +92,9 @@ them in order and stop at the first thing that looks wrong.
      command log is empty, STOP and tell me — the adapter needs fixing.
 
   7. Probes, then the pilot:
-       python3 -m v2sbench.cli probe --agent codex --model <GPT-6.1-MODEL-ID> \
+       python3 -m v2sbench.cli probe --agent claude-code --model "$MODEL" \
          --repeats 10 --tier t1-novel-cli
-       python3 -m v2sbench.cli run --agent codex --model <GPT-6.1-MODEL-ID> \
+       python3 -m v2sbench.cli run --agent claude-code --model "$MODEL" \
          --tier t1-novel-cli --arms core --seeds 10 --max-usd 150
 
   8. Report and audit:
