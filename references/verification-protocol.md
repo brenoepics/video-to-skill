@@ -137,6 +137,12 @@ and treat it as data.
   (`exit code …`, `file: …`, `state: …`). A step with **parameters**
   is exercised with a value of your own for each `{name}` (the example
   is a value, not the only one); say which values in the detail.
+- A step with **Checkable:** lines under its success criteria carries
+  read-only checks of state the video showed. After the actions, run
+  each line's JSON, unchanged, through `vts-extract observe --workspace
+  <throwaway-dir> --check '<json>'` — the directory you gave `sandbox` —
+  within the boundary of the GUI-observed tier below, and record what
+  it printed (see **Record**).
 - Record one outcome per step: `pass` | `fail` | `skipped` |
   `unverifiable`, each with a one-line detail.
 
@@ -196,7 +202,11 @@ vts-extract observe --check '{"check":"window_title_contains","app":"TextEdit","
 application. Roles are the platform's names compared without the `AX`
 prefix and ignoring case (`button` matches `AXButton`); `--dump` prints
 the tree that was read, which is how you discover roles, titles and
-identifiers before writing a check. The JSON report on stdout lists,
+identifiers before writing a check. `--workspace <dir>` replaces
+`{workspace}` at the start of a `file_exists` path, the form a
+package's Checkable lines use; without it such a check exits 2, and
+with it the report keeps the check as written and names the real path
+in `observed`. The JSON report on stdout lists,
 per check, the substrate, `passed`, what was `observed` and what the
 pass does `not_proved`. Exit codes:
 
@@ -289,9 +299,31 @@ Write the report (schema v1) and stamp it:
   "verified": true,            // see "Choosing the verified flag" below
   "attempts": 1,               // 1 + number of repairs
   "summary": "one line",
-  "steps": [ { "id": "01-...", "outcome": "pass", "detail": "..." } ]
+  "steps": [
+    { "id": "01-...", "outcome": "pass", "detail": "..." },
+    { "id": "02-...", "outcome": "pass",
+      "detail": "GUI-observed via macOS AXUIElement: … Not proved: …",
+      "substrate": "macOS AXUIElement (read-only)",   // optional
+      "observations": [ /* observe's "checks" entries, as printed */ ] }
+  ]
 }
 ```
+
+A step whose outcome rests on `observe` records what it printed:
+`substrate` names the substrate (the entries' `substrate`, e.g.
+`macOS AXUIElement (read-only)` or `filesystem`), and `observations`
+holds the entries of the report's `checks` array copied as printed —
+`check`, `substrate`, `passed`, `observed`, `not_proved` — so the outcome
+can be re-derived from the report alone and a repair can cite an
+observed value as its signal (`state: …`). The detail still names the
+substrate and copies `not_proved`, per rule (a). `vts-extract verify`
+refuses a `pass` that cites an observation with `passed: false`: that
+step is a `fail`, quoting `observed`. A `fail` may cite any
+observation; exit 2 prints no report, so an `unverifiable` step has
+none and gives the stderr reason in its detail. Fields a record carries
+that this build does not know (a newer `observe`'s) are ignored, but
+its `check` must be one this build parses. Both fields are optional: a
+sandbox-only step leaves them out, and `verification.json` omits them.
 
 ```
 vts-extract verify --skill <package-dir> --report <report.json>
