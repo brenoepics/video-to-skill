@@ -54,6 +54,62 @@ fn observe_cli(args: &[&str]) -> (i32, String, String) {
     )
 }
 
+/// TEMPORARY CI probe: raw stderr is not captured by libtest.
+fn probe(text: &str) {
+    use std::io::Write as _;
+    let _ = writeln!(std::io::stderr().lock(), "VTS-PROBE {text}");
+}
+
+fn summary(report: &Report) -> String {
+    let mut lines = Vec::new();
+    for check in &report.checks {
+        lines.push(format!(
+            "check {} passed={} observed={}",
+            check.check.kind(),
+            check.passed,
+            check.observed
+        ));
+    }
+    for snapshot in &report.snapshots {
+        lines.push(format!(
+            "snapshot app={} pid={:?} truncated={} nodes={}",
+            snapshot.app,
+            snapshot.pid,
+            snapshot.truncated,
+            snapshot.root.descendants().len()
+        ));
+        for window in &snapshot.root.children {
+            lines.push(format!(
+                "  top {} children={}",
+                window.describe(),
+                window.children.len()
+            ));
+        }
+        let mut roles: Vec<&str> = snapshot
+            .root
+            .descendants()
+            .iter()
+            .map(|n| n.role.as_str())
+            .collect();
+        roles.sort_unstable();
+        roles.dedup();
+        lines.push(format!("  roles {roles:?}"));
+        for node in snapshot
+            .root
+            .descendants()
+            .iter()
+            .filter(|n| n.value.is_some() || n.has_role("menuitem"))
+            .take(25)
+        {
+            lines.push(format!(
+                "  node {}",
+                node.describe().chars().take(160).collect::<String>()
+            ));
+        }
+    }
+    lines.join("\n")
+}
+
 fn absent_app() -> String {
     format!("vts-no-such-app-{}", std::process::id())
 }
@@ -118,7 +174,12 @@ fn explorer_is_read_into_a_well_formed_tree_or_the_reason_is_named() {
     )
     .unwrap();
 
-    match observe(&checks, true) {
+    let result = observe(&checks, true);
+    match &result {
+        Ok(report) => probe(&format!("explorer read\n{}", summary(report))),
+        Err(error) => probe(&format!("explorer not read: {error:#}")),
+    }
+    match result {
         Ok(report) => {
             let check = &report.checks[0];
             assert_eq!(check.substrate, SUBSTRATE);
@@ -169,7 +230,6 @@ fn poll(checks: &[Check]) -> anyhow::Result<Report> {
 }
 
 #[test]
-#[ignore = "opens Notepad on the interactive desktop; see the module docs"]
 fn notepad_window_title_and_menu_bar_are_observable_live() {
     let dir = scratch("live");
     let document = dir.join("vts-a11y-probe.txt");
@@ -207,6 +267,10 @@ fn notepad_window_title_and_menu_bar_are_observable_live() {
         }
     }
 
+    match &observed {
+        Ok(report) => probe(&format!("notepad before={before:?}\n{}", summary(report))),
+        Err(error) => probe(&format!("notepad not read: {error:#}")),
+    }
     let report = observed.unwrap();
     assert!(
         report.passed,
