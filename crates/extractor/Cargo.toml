@@ -65,7 +65,9 @@ objc2-vision = { version = "0.3", default-features = false, features = [
 whisper-rs = "0.16"
 
 [target.'cfg(windows)'.dependencies]
-# Windows.Media.Ocr (WinRT) for the screen text track.
+# Windows.Media.Ocr (WinRT) for the screen text track, and read-only UI
+# Automation (`vts-extract observe`): COM, the UIA client interfaces and a
+# Toolhelp32 process snapshot to resolve `app` by executable name.
 windows = { version = "0.62", features = [
     "Foundation",
     "Foundation_Collections",
@@ -73,6 +75,10 @@ windows = { version = "0.62", features = [
     "Graphics_Imaging",
     "Media_Ocr",
     "Storage_Streams",
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_UI_Accessibility",
 ] }
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",

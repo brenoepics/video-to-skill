@@ -16,9 +16,9 @@
 //! on the host is still out of scope (see
 //! `references/verification-protocol.md`, "GUI-observed tier").
 //!
-//! Backends: macOS `AXUIElement` ([`macos`]). Windows UI Automation and
-//! AT-SPI are designed in issue #37 and not implemented yet; on those
-//! platforms only `file_exists` can be observed.
+//! Backends: macOS `AXUIElement` ([`macos`]) and Windows UI Automation
+//! ([`windows`]). AT-SPI is designed in issue #37 and not implemented
+//! yet; on Linux only `file_exists` can be observed.
 
 pub mod check;
 pub mod eval;
@@ -26,3 +26,6 @@ pub mod eval;
 pub mod macos;
 pub mod observe;
 pub mod tree;
+// Its UI Automation half is `cfg(windows)` inside; the pure mapping
+// compiles everywhere so its tests run on every OS.
+pub mod windows;
