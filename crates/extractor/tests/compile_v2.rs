@@ -54,6 +54,7 @@ fn v2_step() -> Step {
             example: Some("TODO".into()),
         }],
         postcondition: Some("`:echo line('.')` prints a line containing the term.".into()),
+        checks: vec![],
         failure_notes: vec!["Unsolved: `/` in insert mode types a slash.".into()],
         usage_count: 3,
         verdict: None,

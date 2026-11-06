@@ -16,7 +16,7 @@ pub fn emit(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
         write(
             out_dir,
             &format!("steps/{}.md", step.id),
-            &render_step(step),
+            &render_step(step)?,
         )?;
     }
     emit_scripts(ir, out_dir)?;
@@ -112,7 +112,7 @@ fn render_skill_md(ir: &ProcedureIr) -> String {
     md
 }
 
-fn render_step(step: &Step) -> String {
+fn render_step(step: &Step) -> Result<String> {
     let mut md = String::new();
     let _ = writeln!(md, "# {} — {}\n", step.id, step.goal);
     if step.confidence == "low" {
@@ -145,6 +145,13 @@ fn render_step(step: &Step) -> String {
         "## Success criteria\n\n{}\n",
         step.success_criteria.trim()
     );
+    // The same contract the verifier runs, so a human reads it too.
+    for check in &step.checks {
+        let _ = writeln!(md, "- {}", super::checks::checkable_line(check)?);
+    }
+    if !step.checks.is_empty() {
+        let _ = writeln!(md);
+    }
     if let Some(postcondition) = &step.postcondition {
         let _ = writeln!(md, "## Postcondition (check)\n\n{}\n", postcondition.trim());
     }
@@ -201,7 +208,7 @@ fn render_step(step: &Step) -> String {
             let _ = writeln!(md, "- `scripts/{}`", script.name);
         }
     }
-    md
+    Ok(md)
 }
 
 /// A `## Title` section of bullet points, omitted when there are none.
