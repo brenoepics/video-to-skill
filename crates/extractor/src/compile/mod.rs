@@ -2,9 +2,11 @@
 //! the analyzing agent and this tool) compiled into an installable
 //! agent-skills package. Pure: same IR + bundle → byte-identical output.
 
+mod cleanup;
 mod emit;
 pub mod frontmatter;
 pub mod graph;
+mod output;
 pub mod repairs;
 mod safety;
 mod validate;
@@ -199,7 +201,7 @@ pub struct OnScreenArtifact {
 pub fn compile(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> Result<()> {
     validate::validate(ir, bundle_dir, out_dir)?;
     let ir = safety::flag(ir)?;
-    emit::emit(&ir, bundle_dir, out_dir)
+    output::emit(&ir, bundle_dir, out_dir)
 }
 
 /// The note a command prints when it reads an IR written at an older
