@@ -40,6 +40,7 @@ fn step(id: &str, usage_count: u32) -> Step {
         preconditions: vec![],
         parameters: vec![],
         postcondition: None,
+        checks: vec![],
         failure_notes: vec![],
         usage_count,
         verdict: None,
@@ -85,6 +86,8 @@ fn outcome(id: &str, outcome: &str, detail: &str) -> StepOutcome {
         outcome: outcome.into(),
         detail: detail.into(),
         repairs: vec![],
+        substrate: None,
+        observations: vec![],
     }
 }
 

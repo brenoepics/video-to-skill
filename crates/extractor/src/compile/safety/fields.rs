@@ -5,10 +5,11 @@
 use super::{field, Field, Scope};
 use crate::compile::Step;
 
-/// What v2 added to a step. Preconditions and parameters are prose the
-/// skill tells the agent; the postcondition is something the verifier
-/// runs; failure notes describe what a repair fixed, so like caveats
-/// they may quote a danger without being refused for it.
+/// What v2 added to a step. Preconditions, parameters and the strings
+/// in structured checks are prose the skill tells the agent; the
+/// postcondition is something the verifier runs; failure notes describe
+/// what a repair fixed, so like caveats they may quote a danger without
+/// being refused for it.
 pub(super) fn v2(step: &Step) -> Vec<Field<'_>> {
     use Scope::{Executable, Prose, Warning};
     let at = || format!("step '{}'", step.id);
@@ -42,5 +43,21 @@ pub(super) fn v2(step: &Step) -> Vec<Field<'_>> {
             .iter()
             .map(|n| field(at(), "failure notes", n, Warning)),
     );
+    out.extend(checks(step));
+    out
+}
+
+/// Every string inside the step's structured checks. The step file
+/// renders each one in a "Checkable:" line the agent reads — an app
+/// name, a title, a menu entry, a path — so they are prose: a secret or
+/// text addressed to the agent is refused there like anywhere else.
+fn checks(step: &Step) -> Vec<Field<'_>> {
+    let mut out = Vec::new();
+    for (index, check) in step.checks.iter().enumerate() {
+        let at = || format!("step '{}' check {}", step.id, index + 1);
+        for (name, text) in crate::compile::checks::strings(check) {
+            out.push(field(at(), name, text, Scope::Prose));
+        }
+    }
     out
 }
