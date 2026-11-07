@@ -43,10 +43,22 @@ impl Staging {
     fn new(out_dir: &Path) -> Result<Self> {
         fs::create_dir_all(out_dir)?;
         let root = fs::canonicalize(out_dir).context("resolving package directory")?;
+        let parent = root
+            .parent()
+            .context("package directory has no parent for staging")?;
         loop {
             let sequence = STAGING_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-            let path = root.join(format!(".compile-{}-{sequence}.tmp", std::process::id()));
-            match fs::create_dir(&path) {
+            // A killed process bypasses Drop: keep any orphan outside the
+            // installable tree, beside the canonical package directory.
+            let path = parent.join(format!(".compile-{}-{sequence}.tmp", std::process::id()));
+            #[cfg(unix)]
+            let created = {
+                use std::os::unix::fs::DirBuilderExt;
+                fs::DirBuilder::new().mode(0o700).create(&path)
+            };
+            #[cfg(not(unix))]
+            let created = fs::create_dir(&path);
+            match created {
                 Ok(()) => return Ok(Self { path }),
                 Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
                 Err(error) => return Err(error).context("creating package staging directory"),
