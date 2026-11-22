@@ -124,8 +124,8 @@ impl Transitions {
     /// before any of the [`LIVE_MEMORY`] transitions leading up to it.
     fn live(&self, i: usize) -> Vec<bool> {
         let mut live = vec![false; WINDOWS];
-        for k in i.saturating_sub(LIVE_MEMORY)..=i {
-            for (live, &hit) in live.iter_mut().zip(&self.animating[k]) {
+        for animating in &self.animating[i.saturating_sub(LIVE_MEMORY)..=i] {
+            for (live, &hit) in live.iter_mut().zip(animating) {
                 *live |= hit;
             }
         }
