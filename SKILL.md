@@ -165,6 +165,15 @@ SponsorBlock marks for sponsor, intro, outro and self-promo segments
 original timeline. Extraction is deterministic and idempotent; a
 partial bundle (e.g. no speech) is normal and noted, not an error.
 
+Only when the user asks for it and has a GPU-backed runner installed
+(`--actions --actions-runner <program>`, after `check --fix --actions`
+has disclosed and fetched 33.2 GB of model weights), the bundle also gets
+`actions.json`: typed GUI events (click, drag, scroll, type, keypress)
+on the screen-recording segments, repeated per segment as `actions` in
+the timeline. Never pass `--actions` unprompted. Events are evidence of
+*what was done*, never coordinates for a skill — see "Action events" in
+[references/analysis-method.md](references/analysis-method.md).
+
 ## 3. Read the timeline, then look closer
 
 Read `timeline.json` first — it is the token-lean digest: one segment

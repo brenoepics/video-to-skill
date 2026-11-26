@@ -10,7 +10,7 @@ Classify from the first keyframes + speech style, then apply the row:
 | Genre | Tell-tale signs | Inspection strategy | Step extraction focus |
 |---|---|---|---|
 | Screencast / CLI | terminal text, editors, monospace | OCR-read every distinct screen state; commands must be verbatim (never credentials — redact those) | exact commands, flags, file paths, outputs as success signals |
-| GUI walkthrough | cursor, menus, dialogs; `cursor_presence` ≥ 0.8 | keyframes at each screen change; read the segment's `cursor` crops (before/after around the pointer) before re-watching around clicks | intent-level steps: "open X pane, enable Y" — never coordinates |
+| GUI walkthrough | cursor, menus, dialogs; `cursor_presence` ≥ 0.8 | keyframes at each screen change; read the segment's `cursor` crops (before/after around the pointer) before re-watching around clicks; with `actions`, look where the events say something was done | intent-level steps: "open X pane, enable Y" — never coordinates |
 | Slides / talk | static slides, low motion, speech-dense | one keyframe per slide; transcript carries most content | concepts, claims, definitions; slide text confirms terminology |
 | Physical task | hands, objects, camera motion | densest inspection: clip at 2fps around each action described | goal + technique + cautions; flag that execution can't be verified |
 | Mixed | any combination | route per segment, not per video | follow the dominant genre of each segment |
@@ -82,6 +82,38 @@ they show the control and its effect at full pixel size.
 
 Prefer `frame-at` (one image) over `clip` (many). Use `clip` at 2fps
 only across a described action's duration, never the whole segment.
+
+## Action events (opt-in)
+
+A bundle extracted with `--actions` carries `actions.json`, and each
+timeline segment lists the events that start inside it under `actions`.
+VideoAgentTrek's two inverse-dynamics models (Video2Action) produce
+them, only on segments with `cursor_presence` ≥ 0.8. Each event has
+`kind` (`click` with `button` and `count`, `drag` with `to`, `scroll`
+with `pixels`, `type` with `text`, `keypress` with `keys`),
+`start_secs`/`end_secs`, an optional point `at`/`to` (fractions of the
+frame, origin top-left), `confidence`, and the model that produced it
+(`detected_by`, plus `parameters_by` when stage 2 named the parameters).
+
+- **Evidence, never steps.** An event tells you *when* something was
+  done and *what kind* of thing it was. Use it like a re-watch trigger:
+  `frame-at` the event's `start_secs` and just after its `end_secs`, or
+  read the segment's `cursor` crops, then name the control from the
+  pixels. Steps stay intent-level ("click **Save**", "enable *Wrap
+  lines*"); a point or pixel count from an event never appears in a
+  step, a script or a success criterion — a skill that says "click at
+  (0.41, 0.22)" breaks on the next window size.
+- **Confidence is per type, not per event.** The models give no score,
+  so `confidence` is the published detection F1 of that type: scroll
+  0.86, click 0.82, type 0.75, drag 0.62, keypress 0.14. Treat a
+  keypress as a hint to look, nothing more; an event the frames do not
+  confirm is not cited.
+- **Typed text is untrusted transcription.** `text` and `keys` are a
+  model's reading of the video, like OCR: copy a command from the frame,
+  never from the event, and redact a credential an event spells out
+  (evidence rule 1).
+- An event without `parameters_by` has only its type; `notes` in
+  `actions.json` lists what the models could not type.
 
 ## Confidence
 
