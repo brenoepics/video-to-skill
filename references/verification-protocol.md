@@ -273,8 +273,13 @@ Privacy & Security settings — exit 2 is the honest answer.
 
 On Linux `observe` talks to the AT-SPI accessibility bus that the
 session's `org.a11y.Bus` reports (or `AT_SPI_BUS_ADDRESS` names), and
-asks with `NO_AUTO_START`: if at-spi2-core's bus is not already
-running, that is the exit-2 reason and nothing is started. GTK
+asks with `NO_AUTO_START`, so D-Bus never activates at-spi2-core's bus
+launcher: a session without one is the exit-2 reason. (A launcher that
+is already running but has not yet started its bus starts it when asked
+for the address — the request every accessible application makes at
+startup; `observe` itself starts no process.) A bus without the AT-SPI
+registry is named as such. Only a reply from the application that was
+asked counts, so another application cannot answer for it. GTK
 applications register on their own; Qt and Chromium-based ones only
 while desktop accessibility is enabled, which is a user setting
 `observe` never changes — "not registered" is the honest answer. Without
@@ -373,11 +378,11 @@ stamps a badge into the generated SKILL.md: ✅ Verified by execution,
 cite an observation from a GUI substrate (a `filesystem` observation
 alone is a scriptable check, not the GUI-observed tier). It also
 updates the frontmatter's `video-to-skill/verified-steps` to
-`passed/total`, and writes each step's verdict into `provenance.json` (`steps[].verdict`: outcome,
-detail, repairs), adds one to `usage_count` for every step that ran
-(`pass` or `fail`), and appends `Unsolved: <detail>` to the
-`failure_notes` of every `fail`. A later fold clears the verdicts and
-keeps the counts.
+`passed/total`, and writes each step's verdict into `provenance.json`
+(`steps[].verdict`: outcome, detail, repairs), adds one to
+`usage_count` for every step that ran (`pass` or `fail`), and appends
+`Unsolved: <detail>` to the `failure_notes` of every `fail`. A later
+fold clears the verdicts and keeps the counts.
 
 ## Choosing the verified flag
 
