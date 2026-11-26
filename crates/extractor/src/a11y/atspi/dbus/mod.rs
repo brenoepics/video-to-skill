@@ -6,7 +6,11 @@ pub mod address;
 pub mod connection;
 pub mod message;
 mod signature;
+#[cfg(target_os = "linux")]
+mod transport;
 pub mod value;
 
+#[cfg(test)]
+mod hardening_tests;
 #[cfg(test)]
 mod tests;

@@ -45,9 +45,12 @@ pub struct Bus {
 }
 
 /// Find and connect to the accessibility bus: `AT_SPI_BUS_ADDRESS` when
-/// set, else the address the session's `org.a11y.Bus` reports — asked
-/// with `NO_AUTO_START`, so a session without one is reported, and none
-/// is started.
+/// set, else the address the session's `org.a11y.Bus` reports. That is
+/// asked with `NO_AUTO_START`, so D-Bus never activates the bus launcher
+/// to answer: a session without one is reported. A launcher that is
+/// already running but has not yet started its bus does start it when
+/// asked — the same request every accessible application makes when it
+/// starts — and nothing else is started.
 pub fn open() -> Result<Bus> {
     let timeout = MESSAGING_TIMEOUT;
     if let Some(address) = std::env::var("AT_SPI_BUS_ADDRESS")
@@ -78,6 +81,7 @@ pub fn open() -> Result<Bus> {
         interface: "org.a11y.Bus",
         member: "GetAddress",
         args: Vec::new(),
+        reply: "s",
     })?;
     let address = match reply {
         Ok(body) => body
@@ -87,8 +91,8 @@ pub fn open() -> Result<Bus> {
             .context("org.a11y.Bus.GetAddress returned no address")?,
         Err(error) => bail!(
             "no accessibility bus is running in this session ({}) — applications expose \
-             nothing to AT-SPI until at-spi2-core's bus is up, and observe never starts it; \
-             mark the step unverifiable with this reason",
+             nothing to AT-SPI until at-spi2-core's bus launcher is up, and observe never \
+             starts it; mark the step unverifiable with this reason",
             error.name
         ),
     };
@@ -106,6 +110,7 @@ impl Bus {
         interface: &str,
         member: &str,
         args: Vec<Arg<'_>>,
+        reply: &str,
     ) -> Result<Result<Vec<Value>, RemoteError>> {
         self.connection.call(&Call {
             destination: &object.bus_name,
@@ -113,6 +118,7 @@ impl Bus {
             interface,
             member,
             args,
+            reply,
         })
     }
 
@@ -124,16 +130,17 @@ impl Bus {
         interface: &str,
         member: &str,
         args: Vec<Arg<'_>>,
+        reply: &str,
     ) -> Result<Option<Value>> {
         Ok(self
-            .ask(object, interface, member, args)?
+            .ask(object, interface, member, args, reply)?
             .ok()
             .and_then(|body| body.into_iter().next()))
     }
 
     pub fn role_name(&mut self, object: &Object) -> Result<Result<String, RemoteError>> {
         Ok(self
-            .ask(object, ACCESSIBLE, "GetRoleName", Vec::new())?
+            .ask(object, ACCESSIBLE, "GetRoleName", Vec::new(), "s")?
             .map(|body| {
                 body.first()
                     .and_then(Value::as_str)
@@ -153,6 +160,7 @@ impl Bus {
             PROPERTIES,
             "Get",
             vec![Arg::Str(interface), Arg::Str(name)],
+            "v",
         )
     }
 
@@ -164,27 +172,35 @@ impl Bus {
     }
 
     pub fn children(&mut self, object: &Object) -> Result<Vec<Object>> {
-        let Some(list) = self.first(object, ACCESSIBLE, "GetChildren", Vec::new())? else {
-            return Ok(Vec::new());
-        };
-        Ok(list
-            .items()
-            .unwrap_or_default()
-            .iter()
-            .filter_map(|entry| match entry.items()? {
-                [bus_name, path] => Some(Object {
-                    bus_name: bus_name.as_str()?.to_string(),
-                    path: path.as_str()?.to_string(),
-                }),
-                _ => None,
-            })
-            .filter(|child| child.path != NULL_PATH && !child.bus_name.is_empty())
-            .collect())
+        Ok(self
+            .first(object, ACCESSIBLE, "GetChildren", Vec::new(), "a(so)")?
+            .map(|list| objects(&list))
+            .unwrap_or_default())
+    }
+
+    /// The applications registered with the registry; a bus without a
+    /// registry is said to be one, not read as "no applications".
+    pub fn applications(&mut self) -> Result<Vec<Object>> {
+        match self.ask(
+            &Object::desktop(),
+            ACCESSIBLE,
+            "GetChildren",
+            Vec::new(),
+            "a(so)",
+        )? {
+            Ok(body) => Ok(body.first().map(objects).unwrap_or_default()),
+            Err(error) => bail!(
+                "the AT-SPI registry (org.a11y.atspi.Registry) does not answer on the \
+                 accessibility bus ({}) — at-spi2-core's registry daemon is not running, so no \
+                 application can be listed; mark the step unverifiable with this reason",
+                error.name
+            ),
+        }
     }
 
     pub fn states(&mut self, object: &Object) -> Result<Option<States>> {
         Ok(self
-            .first(object, ACCESSIBLE, "GetState", Vec::new())?
+            .first(object, ACCESSIBLE, "GetState", Vec::new(), "au")?
             .and_then(|value| {
                 let words: Option<Vec<u32>> = value.items()?.iter().map(Value::as_u32).collect();
                 words.map(|words| States::from_words(&words))
@@ -193,7 +209,7 @@ impl Bus {
 
     pub fn interfaces(&mut self, object: &Object) -> Result<Vec<String>> {
         Ok(self
-            .first(object, ACCESSIBLE, "GetInterfaces", Vec::new())?
+            .first(object, ACCESSIBLE, "GetInterfaces", Vec::new(), "as")?
             .and_then(|value| {
                 value.items().map(|items| {
                     items
@@ -208,7 +224,8 @@ impl Bus {
 
     /// The `id` object attribute (web content, some toolkits).
     pub fn id_attribute(&mut self, object: &Object) -> Result<Option<String>> {
-        let Some(map) = self.first(object, ACCESSIBLE, "GetAttributes", Vec::new())? else {
+        let Some(map) = self.first(object, ACCESSIBLE, "GetAttributes", Vec::new(), "a{ss}")?
+        else {
             return Ok(None);
         };
         Ok(map.items().unwrap_or_default().iter().find_map(|entry| {
@@ -230,6 +247,7 @@ impl Bus {
                 "org.a11y.atspi.Text",
                 "GetText",
                 vec![Arg::I32(0), Arg::I32(chars)],
+                "s",
             )?
             .and_then(|value| value.as_str().map(str::to_string)))
     }
@@ -246,9 +264,26 @@ impl Bus {
                 "org.freedesktop.DBus",
                 "GetConnectionUnixProcessID",
                 vec![Arg::Str(bus_name)],
+                "u",
             )?
             .and_then(|value| value.as_u32()))
     }
+}
+
+/// The `(so)` references in a `GetChildren` reply, without null ones.
+fn objects(list: &Value) -> Vec<Object> {
+    list.items()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|entry| match entry.items()? {
+            [bus_name, path] => Some(Object {
+                bus_name: bus_name.as_str()?.to_string(),
+                path: path.as_str()?.to_string(),
+            }),
+            _ => None,
+        })
+        .filter(|child| child.path != NULL_PATH && !child.bus_name.is_empty())
+        .collect()
 }
 
 /// An error reply as the sentence `observe` prints.

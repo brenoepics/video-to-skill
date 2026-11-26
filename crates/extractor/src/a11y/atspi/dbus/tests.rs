@@ -9,6 +9,7 @@ fn hello() -> Call<'static> {
         interface: "org.freedesktop.DBus",
         member: "Hello",
         args: Vec::new(),
+        reply: "s",
     }
 }
 
@@ -54,6 +55,7 @@ fn a_call_with_arguments_carries_their_signature_and_aligned_body() {
         interface: "org.a11y.atspi.Text",
         member: "GetText",
         args: vec![Arg::Str("x"), Arg::I32(0), Arg::U32(7)],
+        reply: "s",
     };
 
     let bytes = encode_call(&call, 9).unwrap();
