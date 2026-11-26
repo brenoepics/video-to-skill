@@ -172,3 +172,35 @@ fn reports_without_observations_are_written_as_before() {
         "no substrate or observations keys appear when none were given"
     );
 }
+
+#[test]
+fn the_badge_names_the_passes_that_rest_on_gui_observation() {
+    let dir = scratch("badge");
+    let package = package(&dir);
+    let badge = |package: &Path| fs::read_to_string(package.join("SKILL.md")).unwrap();
+
+    record_verification(&package, &report("pass", &[observation(true)])).unwrap();
+    assert!(
+        badge(&package).contains("1 passed (1 GUI-observed), 0 skipped"),
+        "{}",
+        badge(&package)
+    );
+
+    // A filesystem observation is a scriptable check, not the GUI tier.
+    let file = json!({
+        "check": {"check": "file_exists", "path": "/w/notes.txt"},
+        "substrate": "filesystem", "passed": true,
+        "observed": "/w/notes.txt exists", "not_proved": "the file's contents"
+    });
+    record_verification(&package, &report("pass", &[file])).unwrap();
+    assert!(
+        badge(&package).contains("1 passed, 0 skipped"),
+        "{}",
+        badge(&package)
+    );
+    assert!(
+        !badge(&package).contains("GUI-observed"),
+        "{}",
+        badge(&package)
+    );
+}
