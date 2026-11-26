@@ -6,6 +6,8 @@ use ::windows::Win32::UI::Accessibility::{
     IUIAutomationTogglePattern, IUIAutomationValuePattern, UIA_RangeValuePatternId,
     UIA_TogglePatternId, UIA_ValuePatternId,
 };
+use std::sync::{Mutex, PoisonError};
+
 use anyhow::{bail, Context, Result};
 
 use super::com::{failed, Apartment, Client};
@@ -21,10 +23,21 @@ const MAX_NODES: usize = 5_000;
 /// The role of the synthesized root, the counterpart of `AXApplication`.
 const APPLICATION_ROLE: &str = "Application";
 
+/// Held for the whole of one observation. UI Automation clients built on
+/// several threads at once race inside `UIAutomationCore`: one thread's
+/// client creation or apartment teardown can make another's factory calls
+/// fail with `E_FAIL` (seen as "creating a UI Automation condition
+/// failed" while tests observe in parallel). Observing one application at
+/// a time costs nothing a single `observe` run would notice.
+static OBSERVING: Mutex<()> = Mutex::new(());
+
 /// Read the windows of the application named `app` (its executable name,
 /// `.exe` optional), or of the application owning the focused element
 /// when `None`.
 pub fn snapshot(app: Option<&str>) -> Result<Snapshot> {
+    // A panic in another observation leaves nothing behind to protect:
+    // the guard owns no data, so a poisoned lock is still a good lock.
+    let _observing = OBSERVING.lock().unwrap_or_else(PoisonError::into_inner);
     // Entered first and dropped last: every COM pointer lives in `read`.
     let _apartment = Apartment::enter()?;
     read(app)
