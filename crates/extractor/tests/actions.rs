@@ -42,7 +42,7 @@ fn only_screen_recording_segments_reach_the_detector_in_ten_second_clips() {
     let dir = scratch("gate");
     let bundle = bundle_with_shots(&dir, &SHOTS);
     let (s1, s2) = models(&dir);
-    let backend = Scripted::new(|_, _| None);
+    let backend = Scripted::new(|_, _| Some("[]".to_string()));
 
     let track = extract_action_track(
         &bundle,
@@ -60,7 +60,12 @@ fn only_screen_recording_segments_reach_the_detector_in_ten_second_clips() {
         .iter()
         .map(|w| (w.start_secs, w.end_secs))
         .collect();
-    assert_eq!(windows, [(0.0, 10.0), (10.0, 14.0), (20.0, 30.0)]);
+    assert_eq!(
+        windows,
+        [(0.0, 7.0), (7.0, 14.0), (20.0, 30.0)],
+        "a 14 s stretch is cut into equal clips of at most 10 s"
+    );
+    assert_eq!(track.notes, Vec::<String>::new(), "`[]` is a valid answer");
     let calls = backend.calls();
     assert_eq!(calls.len(), 1, "no detection, so stage 2 never runs");
     let (stage, model_dir, requests) = &calls[0];
@@ -74,6 +79,60 @@ fn only_screen_recording_segments_reach_the_detector_in_ten_second_clips() {
         assert_eq!(request.resized_height % 28, 0);
     }
     assert_eq!(track.events, []);
+}
+
+#[test]
+fn a_stage_that_answers_no_clip_fails_instead_of_reporting_no_actions() {
+    let dir = scratch("silent");
+    let bundle = bundle_with_shots(&dir, &SHOTS);
+    let (s1, s2) = models(&dir);
+    let silent = Scripted::new(|_, _| None);
+    let models = Models {
+        detector: &s1,
+        parameterizer: &s2,
+    };
+
+    let error = extract_action_track(&bundle, &toolchain(), &silent, &models).unwrap_err();
+
+    assert!(format!("{error:#}").contains("answered none"), "{error:#}");
+    assert!(!bundle.join(ACTIONS_FILE).exists());
+
+    let detects_only = Scripted::new(|stage, id| match (stage, id) {
+        (Stage::Detect, "w002") => Some(CLICK_AT_2S.to_string()),
+        (Stage::Detect, _) => Some("[]".to_string()),
+        (Stage::Identify, _) => None,
+    });
+    let error = extract_action_track(&bundle, &toolchain(), &detects_only, &models).unwrap_err();
+    assert!(format!("{error:#}").contains("Identify"), "{error:#}");
+}
+
+#[test]
+fn an_unreadable_detector_answer_is_noted_not_taken_for_no_actions() {
+    let dir = scratch("unreadable");
+    let bundle = bundle_with_shots(&dir, &SHOTS);
+    let (s1, s2) = models(&dir);
+    let backend = Scripted::new(|stage, id| match (stage, id) {
+        (Stage::Detect, "w001") => Some("I see a dialog and a cursor.".to_string()),
+        (Stage::Detect, _) => Some("[]".to_string()),
+        (Stage::Identify, _) => None,
+    });
+
+    let track = extract_action_track(
+        &bundle,
+        &toolchain(),
+        &backend,
+        &Models {
+            detector: &s1,
+            parameterizer: &s2,
+        },
+    )
+    .unwrap();
+
+    assert_eq!(track.events, []);
+    assert_eq!(
+        track.notes,
+        ["unreadable detector answer for 7.0-14.0s".to_string()]
+    );
 }
 
 #[test]

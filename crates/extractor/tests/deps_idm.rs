@@ -14,10 +14,12 @@ use vts_extract::deps::idm::{install_model, model_dir, model_ready};
 use vts_extract::deps::registry::{self, idm_models, IdmFile, IdmModel};
 use vts_extract::hashing::sha256_hex;
 
-/// Serves canned bytes per URL and logs every request.
+/// Serves canned bytes per URL and logs every request, with the size the
+/// installer said to expect.
 struct FakeHub {
     files: HashMap<String, Vec<u8>>,
     requested: Mutex<Vec<String>>,
+    expected: Mutex<Vec<u64>>,
 }
 
 impl Fetcher for FakeHub {
@@ -29,6 +31,11 @@ impl Fetcher for FakeHub {
             .ok_or_else(|| anyhow::anyhow!("404 {url}"))?;
         fs::write(dest, bytes)?;
         Ok(())
+    }
+
+    fn fetch_sized(&self, url: &str, dest: &Path, size: u64) -> anyhow::Result<()> {
+        self.expected.lock().unwrap().push(size);
+        self.fetch(url, dest)
     }
 }
 
@@ -76,6 +83,7 @@ fn hub_for(model: &IdmModel, payloads: &[(&'static str, &[u8])]) -> FakeHub {
     FakeHub {
         files,
         requested: Mutex::new(Vec::new()),
+        expected: Mutex::new(Vec::new()),
     }
 }
 
@@ -156,12 +164,40 @@ fn a_model_installs_every_pinned_file_and_reads_ready() {
     assert_eq!(fs::read(dir.join("model.safetensors")).unwrap(), b"weights");
     assert!(model_ready(&model, &data));
 
+    assert_eq!(
+        *hub.expected.lock().unwrap(),
+        [2, 7],
+        "each download is bounded by its own pinned size"
+    );
+
     install_model(&model, &hub, &data).unwrap();
     assert_eq!(
         hub.requested.lock().unwrap().len(),
         2,
         "verified files are never fetched again"
     );
+}
+
+#[test]
+fn an_interrupted_download_left_behind_is_swept_on_the_next_install() {
+    let data = scratch("sweep");
+    let payloads: [(&'static str, &[u8]); 2] =
+        [("config.json", b"{}"), ("model.safetensors", b"weights")];
+    let model = tiny_model(&payloads);
+    let dir = model_dir(&model, &data);
+    fs::create_dir_all(&dir).unwrap();
+    let stale = dir.join(".model.safetensors.4242.0.download");
+    fs::write(&stale, vec![0u8; 4096]).unwrap();
+    let keep = dir.join("notes.txt");
+    fs::write(&keep, "not ours").unwrap();
+
+    install_model(&model, &hub_for(&model, &payloads), &data).unwrap();
+
+    assert!(
+        !stale.exists(),
+        "a dead download must not keep its gigabytes"
+    );
+    assert!(keep.exists(), "only partial downloads are swept");
 }
 
 #[test]

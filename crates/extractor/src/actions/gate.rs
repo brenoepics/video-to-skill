@@ -10,9 +10,6 @@ use crate::frames::Shot;
 
 /// Longest clip handed to the detector.
 pub const MAX_WINDOW_SECS: f64 = 10.0;
-/// A tail shorter than this is too short to hold an action and its
-/// result, so it joins the clip before it instead.
-const MIN_TAIL_SECS: f64 = 1.0;
 
 /// The detector clips for `shots`, in time order.
 #[must_use]
@@ -36,21 +33,29 @@ pub fn screen_recording_windows(shots: &[Shot]) -> Vec<Window> {
     stretches.into_iter().flat_map(split).collect()
 }
 
+/// Cut a stretch into the fewest equal clips of at most
+/// [`MAX_WINDOW_SECS`], so no clip is a sliver too short to hold an
+/// action and its result.
 fn split(stretch: Window) -> Vec<Window> {
-    let mut windows = Vec::new();
-    let mut start = stretch.start_secs;
-    while stretch.end_secs - start > 1e-6 {
-        let mut end = (start + MAX_WINDOW_SECS).min(stretch.end_secs);
-        if stretch.end_secs - end < MIN_TAIL_SECS {
-            end = stretch.end_secs;
-        }
-        windows.push(Window {
-            start_secs: start,
-            end_secs: end,
-        });
-        start = end;
-    }
-    windows
+    let span = stretch.end_secs - stretch.start_secs;
+    let count = (span / MAX_WINDOW_SECS - 1e-9).ceil().max(1.0);
+    let length = span / count;
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // small, positive
+    let count = count as usize;
+    (0..count)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)] // small
+            let at = |k: usize| stretch.start_secs + length * k as f64;
+            Window {
+                start_secs: at(i),
+                end_secs: if i + 1 == count {
+                    stretch.end_secs
+                } else {
+                    at(i + 1)
+                },
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -93,14 +98,23 @@ mod tests {
 
         assert_eq!(
             spans(&screen_recording_windows(&shots)),
-            [(0.0, 10.0), (10.0, 12.0), (18.0, 21.0)]
+            [(0.0, 6.0), (6.0, 12.0), (18.0, 21.0)]
         );
     }
 
     #[test]
-    fn a_sliver_of_a_tail_joins_the_clip_before_it() {
-        let shots = [shot(0.0, 10.5, Some(0.9))];
+    fn clips_never_exceed_ten_seconds_and_leave_no_sliver() {
+        let shots = [shot(0.0, 10.5, Some(0.9)), shot(20.0, 50.0, Some(0.9))];
 
-        assert_eq!(spans(&screen_recording_windows(&shots)), [(0.0, 10.5)]);
+        assert_eq!(
+            spans(&screen_recording_windows(&shots)),
+            [
+                (0.0, 5.25),
+                (5.25, 10.5),
+                (20.0, 30.0),
+                (30.0, 40.0),
+                (40.0, 50.0)
+            ]
+        );
     }
 }

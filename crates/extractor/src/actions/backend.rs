@@ -10,8 +10,10 @@
 //! "requests": [{"id", "clip", "fps", "resized_width", "resized_height",
 //! "system", "prompt", "max_new_tokens"}]}`, loads the model in
 //! `model_dir` once, and prints `{"responses": [{"id", "text"}]}` on
-//! stdout: each clip's decoded answer, verbatim. A request it could not
-//! answer is left out. Its stderr is the user's progress display.
+//! stdout: each clip's decoded answer, verbatim. `clip` is an absolute
+//! file path (not a `file://` URL). A request it could not answer is
+//! left out; a stage with no answer at all fails. Its stderr is the
+//! user's progress display, and nothing but the answer may go to stdout.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -35,6 +37,7 @@ pub enum Stage {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ClipRequest {
     pub id: String,
+    /// Absolute, so the runner can open it from any directory.
     pub clip: PathBuf,
     pub fps: f64,
     pub resized_width: u32,
