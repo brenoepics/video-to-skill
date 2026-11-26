@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "id": "term-git-init",
+  "title": "Initialise a Git repository",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 36.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {}
+    },
+    {
+      "t": 4.0,
+      "step": "01-create-directory",
+      "terminal": {
+        "type": "mkdir demo"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-create-directory",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-enter-directory",
+      "terminal": {
+        "type": "cd demo"
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "02-enter-directory",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-init-repo",
+      "terminal": {
+        "type": "git init"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-init-repo",
+      "terminal": {
+        "output": [
+          "Initialized empty Git repository in /home/demo/.git/"
+        ]
+      }
+    },
+    {
+      "t": 24.0,
+      "step": "04-check-status",
+      "terminal": {
+        "type": "git status"
+      }
+    },
+    {
+      "t": 27.0,
+      "step": "04-check-status",
+      "terminal": {
+        "output": [
+          "On branch main",
+          "",
+          "No commits yet",
+          "",
+          "nothing to commit (use \"git add\" to track)"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Welcome. In this tutorial we start a new project."
+    },
+    {
+      "t": 4.5,
+      "text": "First, run mkdir demo to create the project folder."
+    },
+    {
+      "t": 10.5,
+      "text": "Then change into it with cd demo."
+    },
+    {
+      "t": 16.5,
+      "text": "Now run git init to create the repository."
+    },
+    {
+      "t": 24.5,
+      "text": "Finally, git status confirms the tree is clean."
+    }
+  ]
+}

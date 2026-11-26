@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "id": "term-git-commit-flow",
+  "title": "Stage, commit and inspect history",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 44.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "demo - bash",
+        "lines": [
+          "$ git status",
+          "On branch main",
+          "Untracked files:",
+          "  README.md",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-stage-file",
+      "terminal": {
+        "type": "git add README.md"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-stage-file",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 12.0,
+      "step": "02-commit",
+      "terminal": {
+        "type": "git commit -m \"Add readme\""
+      }
+    },
+    {
+      "t": 15.0,
+      "step": "02-commit",
+      "terminal": {
+        "output": [
+          "[main (root-commit) 7d3f1a2] Add readme",
+          " 1 file changed, 3 insertions(+)",
+          " create mode 100644 README.md"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "03-inspect-history",
+      "terminal": {
+        "type": "git log"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "03-inspect-history",
+      "terminal": {
+        "output": [
+          "commit 7d3f1a2 (HEAD -> main)",
+          "Author: Demo <demo@example.com>",
+          "Date:   Mon Nov 2 10:20:00 2026",
+          "",
+          "    Add readme"
+        ]
+      }
+    },
+    {
+      "t": 32.0,
+      "step": "04-check-status",
+      "terminal": {
+        "type": "git status"
+      }
+    },
+    {
+      "t": 35.0,
+      "step": "04-check-status",
+      "terminal": {
+        "output": [
+          "On branch main",
+          "nothing to commit, working tree clean"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "The repository has one untracked file; let's commit it."
+    },
+    {
+      "t": 4.5,
+      "text": "Stage it with git add README.md."
+    },
+    {
+      "t": 12.5,
+      "text": "Commit with git commit -m \"Add readme\"."
+    },
+    {
+      "t": 22.5,
+      "text": "git log shows the new commit."
+    },
+    {
+      "t": 32.5,
+      "text": "git status is clean again."
+    }
+  ]
+}

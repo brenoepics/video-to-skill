@@ -1,17 +1,15 @@
-use std::fs;
 use std::path::Path;
 
-use anyhow::{Context, Result};
-use vts_extract::compile::{self, ProcedureIr};
+use anyhow::Result;
+use vts_extract::compile;
 
 /// Compile a Procedure IR (authored by the analyzing agent) into an
-/// installable skill package.
+/// installable skill package. `out` must be named after the skill.
 pub fn run(bundle: &str, ir_path: &str, out: &str) -> Result<()> {
-    let raw = fs::read_to_string(ir_path).with_context(|| {
-        format!("no Procedure IR at {ir_path} — write it first (see references/ir-format.md)")
-    })?;
-    let ir: ProcedureIr =
-        serde_json::from_str(&raw).context("Procedure IR is not valid JSON for schema v1")?;
+    let ir = compile::load_ir(Path::new(ir_path), Path::new(bundle))?;
+    if let Some(note) = compile::deprecation_note(&ir) {
+        eprintln!("{note}");
+    }
     compile::compile(&ir, Path::new(bundle), Path::new(out))?;
     println!(
         "skill package written: {out}/ ({} steps{})",

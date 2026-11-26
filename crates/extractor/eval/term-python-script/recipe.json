@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "id": "term-python-script",
+  "title": "Write and run a Python script",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 40.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {}
+    },
+    {
+      "t": 4.0,
+      "step": "01-create-script",
+      "terminal": {
+        "type": "nano app.py"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-create-script",
+      "terminal": {
+        "title": "nano - app.py",
+        "lines": [
+          "def greet(name):"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "01-create-script",
+      "terminal": {
+        "lines": [
+          "def greet(name):",
+          "    return f\"Hello, {name}!\""
+        ]
+      }
+    },
+    {
+      "t": 13.0,
+      "step": "01-create-script",
+      "terminal": {
+        "lines": [
+          "def greet(name):",
+          "    return f\"Hello, {name}!\"",
+          "",
+          "print(greet(\"world\"))"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "01-create-script",
+      "terminal": {
+        "title": "demo - bash",
+        "lines": [
+          "$ nano app.py",
+          "$ "
+        ]
+      }
+    },
+    {
+      "t": 20.0,
+      "step": "02-run-script",
+      "terminal": {
+        "type": "python3 app.py"
+      }
+    },
+    {
+      "t": 23.0,
+      "step": "02-run-script",
+      "terminal": {
+        "output": [
+          "Hello, world!"
+        ]
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "03-show-script",
+      "terminal": {
+        "type": "cat app.py"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "03-show-script",
+      "terminal": {
+        "output": [
+          "def greet(name):",
+          "    return f\"Hello, {name}!\"",
+          "",
+          "print(greet(\"world\"))"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "We'll write a small Python script and run it."
+    },
+    {
+      "t": 4.5,
+      "text": "Open nano app.py to create the file."
+    },
+    {
+      "t": 10.5,
+      "text": "Type the greet function and a print call."
+    },
+    {
+      "t": 16.5,
+      "text": "Save with control O and leave with control X."
+    },
+    {
+      "t": 20.5,
+      "text": "Now run python3 app.py."
+    },
+    {
+      "t": 28.5,
+      "text": "Use cat app.py to print the script."
+    }
+  ]
+}

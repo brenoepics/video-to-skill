@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "id": "mixed-slides-then-terminal",
+  "title": "Shell basics",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 46.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "slide": {
+        "title": "Shell basics",
+        "bullets": [
+          "pwd",
+          "ls",
+          "cd"
+        ]
+      }
+    },
+    {
+      "t": 6.0,
+      "step": "01-print-directory",
+      "terminal": {
+        "type": "pwd"
+      }
+    },
+    {
+      "t": 9.0,
+      "step": "01-print-directory",
+      "terminal": {
+        "output": [
+          "/home/demo"
+        ]
+      }
+    },
+    {
+      "t": 14.0,
+      "step": "02-list-files",
+      "terminal": {
+        "type": "ls"
+      }
+    },
+    {
+      "t": 17.0,
+      "step": "02-list-files",
+      "terminal": {
+        "output": [
+          "Documents  Downloads  notes.txt  projects"
+        ]
+      }
+    },
+    {
+      "t": 22.0,
+      "step": "03-change-directory",
+      "terminal": {
+        "type": "cd projects"
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "03-change-directory",
+      "terminal": {
+        "output": []
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "03-change-directory",
+      "terminal": {
+        "type": "pwd"
+      }
+    },
+    {
+      "t": 31.0,
+      "step": "03-change-directory",
+      "terminal": {
+        "output": [
+          "/home/demo/projects"
+        ]
+      }
+    },
+    {
+      "t": 36.0,
+      "slide": {
+        "title": "Recap",
+        "bullets": [
+          "pwd",
+          "ls",
+          "cd projects"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Three commands every shell user needs."
+    },
+    {
+      "t": 6.5,
+      "text": "pwd prints the working directory."
+    },
+    {
+      "t": 14.5,
+      "text": "ls lists the files in it."
+    },
+    {
+      "t": 22.5,
+      "text": "cd projects moves into the projects folder."
+    },
+    {
+      "t": 28.5,
+      "text": "pwd confirms the new location."
+    },
+    {
+      "t": 36.5,
+      "text": "Print, list, change. That's the recap."
+    }
+  ]
+}

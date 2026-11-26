@@ -7,24 +7,37 @@ use vts_extract::merge::{merge, PlanAction};
 
 /// Fold a new video's IR into an existing generated skill package.
 /// Dry-run prints the plan; otherwise the merged package is compiled to
-/// `out` (unverified — re-run verification after a fold).
-pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -> Result<()> {
+/// `out` — a directory named after the skill, `merged/<skill-name>` by
+/// default — unverified: re-run verification after a fold.
+pub fn run(
+    skill: &str,
+    ir_path: &str,
+    bundle: &str,
+    out: Option<&str>,
+    dry_run: bool,
+) -> Result<()> {
     let existing: ProcedureIr = serde_json::from_str(
         &fs::read_to_string(Path::new(skill).join("provenance.json"))
             .context("not a generated skill package (missing provenance.json)")?,
     )
     .context("package provenance.json is not valid")?;
-    let mut incoming: ProcedureIr = serde_json::from_str(
-        &fs::read_to_string(ir_path).with_context(|| format!("no Procedure IR at {ir_path}"))?,
-    )
-    .context("incoming Procedure IR is not valid")?;
+    let mut incoming = compile::load_ir(Path::new(ir_path), Path::new(bundle))
+        .context("loading the incoming Procedure IR")?;
+    for note in [&existing, &incoming]
+        .into_iter()
+        .filter_map(compile::deprecation_note)
+    {
+        eprintln!("{note}");
+    }
+    let out = out.map_or_else(|| format!("merged/{}", existing.skill_name), str::to_string);
 
     // Namespace the incoming frames by fold sequence so two videos'
     // `shot000.jpg` never collide inside one package.
     let prefix = format!("s{}-", existing.history.len() + 2);
-    rewrite_frames(&mut incoming, &prefix);
+    rewrite_frames(&mut incoming, &prefix)?;
 
-    let result = merge(&existing, &incoming, &today());
+    let date = vts_extract::calendar::today_utc().context("reading the system clock")?;
+    let result = merge(&existing, &incoming, &date);
 
     println!(
         "fold plan for {} <- {}:",
@@ -38,14 +51,28 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
             PlanAction::Unconfirmed => "keep   ",
         };
         println!(
-            "  {label}  {} {}",
+            "  {label}  {} {}{}",
             entry.existing_id.as_deref().unwrap_or("-"),
             entry
                 .incoming_id
                 .as_deref()
                 .map(|id| format!("<- {id}"))
-                .unwrap_or_default()
+                .unwrap_or_default(),
+            if entry.relabelled {
+                "  (matched by its position in the task graph)"
+            } else {
+                ""
+            }
         );
+    }
+    for variant in result
+        .merged
+        .history
+        .last()
+        .map(|record| record.order_variants.as_slice())
+        .unwrap_or_default()
+    {
+        println!("  order    {variant} — the merged order keeps the heavier direction");
     }
     if dry_run {
         println!("dry run — nothing written.");
@@ -53,7 +80,7 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
     }
 
     let staging = stage_frames(Path::new(skill), Path::new(bundle), &incoming, &prefix)?;
-    compile::compile(&result.merged, &staging, Path::new(out))?;
+    compile::compile(&result.merged, &staging, Path::new(&out))?;
     fs::remove_dir_all(&staging).ok();
     println!(
         "merged package written: {out}/ — re-verify before installing (the fold invalidates any previous badge)"
@@ -62,21 +89,23 @@ pub fn run(skill: &str, ir_path: &str, bundle: &str, out: &str, dry_run: bool) -
 }
 
 /// Prefix every frame reference in the incoming IR.
-fn rewrite_frames(ir: &mut ProcedureIr, prefix: &str) {
-    let rename = |frame: &mut Option<String>| {
+fn rewrite_frames(ir: &mut ProcedureIr, prefix: &str) -> Result<()> {
+    let rename = |frame: &mut Option<String>| -> Result<()> {
         if let Some(f) = frame {
-            let name = f.rsplit('/').next().unwrap_or(f).to_string();
+            let name = vts_extract::safe_path::portable_basename(f)?.to_string();
             *f = format!("frames/{prefix}{name}");
         }
+        Ok(())
     };
     for step in &mut ir.steps {
         for evidence in &mut step.evidence {
-            rename(&mut evidence.frame);
+            rename(&mut evidence.frame)?;
         }
     }
     for artifact in &mut ir.artifacts {
-        rename(&mut artifact.frame);
+        rename(&mut artifact.frame)?;
     }
+    Ok(())
 }
 
 /// Build a staging dir where both videos' frames resolve under `frames/`.
@@ -105,22 +134,11 @@ fn stage_frames(
         .filter_map(|e| e.frame.as_ref())
         .chain(incoming.artifacts.iter().filter_map(|a| a.frame.as_ref()))
     {
-        let name = frame.rsplit('/').next().unwrap_or(frame);
+        let name = vts_extract::safe_path::portable_basename(frame)?;
         let original = name.strip_prefix(prefix).unwrap_or(name);
         let source = incoming_bundle.join("frames").join(original);
         fs::copy(&source, frames.join(name))
             .with_context(|| format!("staging incoming frame {}", source.display()))?;
     }
     Ok(staging)
-}
-
-fn today() -> String {
-    std::process::Command::new("date")
-        .arg("+%F")
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "unknown-date".to_string())
 }

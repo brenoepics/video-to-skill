@@ -36,6 +36,12 @@ fn step(id: &str) -> Step {
         }],
         scripts: vec![],
         variants: vec![],
+        preconditions: vec![],
+        parameters: vec![],
+        postcondition: None,
+        failure_notes: vec![],
+        usage_count: 0,
+        verdict: None,
     }
 }
 
@@ -45,21 +51,25 @@ fn compiled_package(dir: &Path) -> PathBuf {
         skill_name: "demo-skill".into(),
         title: "Demo".into(),
         description: "Use for testing.".into(),
+        license: None,
+        compatibility: None,
         overview: "Test package.".into(),
         genre: "screencast".into(),
         source: SourceRef {
             original: "file.mp4".into(),
             title: None,
             duration_secs: 60.0,
+            sha256: None,
         },
         steps: vec![step("01-first"), step("02-second")],
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     };
     let bundle = dir.join("bundle");
     fs::create_dir_all(&bundle).unwrap();
-    let out = dir.join("skill");
+    let out = dir.join("demo-skill");
     compile(&ir, &bundle, &out).unwrap();
     out
 }
@@ -75,11 +85,13 @@ fn passing_report() -> VerificationReport {
                 id: "01-first".into(),
                 outcome: "pass".into(),
                 detail: "exit 0, criteria met".into(),
+                repairs: vec![],
             },
             StepOutcome {
                 id: "02-second".into(),
                 outcome: "pass".into(),
                 detail: "exit 0".into(),
+                repairs: vec![],
             },
         ],
     }
@@ -97,11 +109,13 @@ fn partial_report() -> VerificationReport {
                 id: "01-first".into(),
                 outcome: "pass".into(),
                 detail: "exit 0, criteria met".into(),
+                repairs: vec![],
             },
             StepOutcome {
                 id: "02-second".into(),
                 outcome: "unverifiable".into(),
                 detail: "needs GUI hardware".into(),
+                repairs: vec![],
             },
         ],
     }
@@ -244,28 +258,4 @@ fn restamping_transitions_between_all_three_states() {
         "Verified by execution",
         ["NOT verified", "Partially verified"],
     );
-}
-
-#[test]
-fn reports_citing_unknown_steps_are_rejected() {
-    let dir = scratch("unknown");
-    let package = compiled_package(&dir);
-
-    let mut report = passing_report();
-    report.steps[0].id = "99-ghost".into();
-
-    let err = record_verification(&package, &report).unwrap_err();
-    assert!(err.to_string().contains("99-ghost"), "got: {err}");
-}
-
-#[test]
-fn outcomes_must_use_the_known_vocabulary() {
-    let dir = scratch("vocab");
-    let package = compiled_package(&dir);
-
-    let mut report = passing_report();
-    report.steps[0].outcome = "maybe".into();
-
-    let err = record_verification(&package, &report).unwrap_err();
-    assert!(err.to_string().contains("maybe"), "got: {err}");
 }

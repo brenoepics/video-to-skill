@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "id": "gui-terminal-mixed",
+  "title": "Install the editor's command line tool",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 40.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "desktop": {
+        "status": "Editor 2.4"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-open-command-palette",
+      "dialog": {
+        "title": "Command Palette",
+        "rows": [
+          "> install cli",
+          "  Shell Command: Install 'edit' in PATH",
+          "  Shell Command: Uninstall 'edit'"
+        ],
+        "buttons": [
+          "Run"
+        ]
+      }
+    },
+    {
+      "t": 10.0,
+      "step": "02-install-shell-command",
+      "dialog": {
+        "title": "Shell command installed",
+        "rows": [
+          "'edit' was installed in /usr/local/bin."
+        ],
+        "buttons": [
+          "OK"
+        ]
+      }
+    },
+    {
+      "t": 16.0,
+      "step": "03-verify-in-terminal",
+      "terminal": {
+        "title": "demo - bash",
+        "lines": [
+          "$ "
+        ],
+        "type": "which edit"
+      }
+    },
+    {
+      "t": 19.0,
+      "step": "03-verify-in-terminal",
+      "terminal": {
+        "output": [
+          "/usr/local/bin/edit"
+        ]
+      }
+    },
+    {
+      "t": 24.0,
+      "step": "03-verify-in-terminal",
+      "terminal": {
+        "type": "edit notes.txt"
+      }
+    },
+    {
+      "t": 27.0,
+      "step": "03-verify-in-terminal",
+      "desktop": {
+        "status": "notes.txt - Editor 2.4"
+      }
+    },
+    {
+      "t": 34.0,
+      "slide": {
+        "title": "Installed",
+        "bullets": [
+          "edit is on your PATH"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Install the command line tool from the editor."
+    },
+    {
+      "t": 4.5,
+      "text": "Open the command palette and search install cli."
+    },
+    {
+      "t": 10.5,
+      "text": "Run Shell Command Install; a confirmation appears."
+    },
+    {
+      "t": 16.5,
+      "text": "In a terminal, which edit shows where it was installed."
+    },
+    {
+      "t": 24.5,
+      "text": "edit notes.txt opens a file in the editor."
+    },
+    {
+      "t": 34.5,
+      "text": "The tool is on your path."
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "id": "term-docker-build",
+  "title": "Build and run a container image",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 46.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {}
+    },
+    {
+      "t": 4.0,
+      "step": "01-build-image",
+      "terminal": {
+        "type": "docker build -t app ."
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-build-image",
+      "terminal": {
+        "output": [
+          "[+] Building 0.4s (2/7)",
+          " => [internal] load build definition"
+        ]
+      }
+    },
+    {
+      "t": 7.5,
+      "step": "01-build-image",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          " => [internal] load .dockerignore",
+          " => [1/3] FROM alpine:3.20"
+        ]
+      }
+    },
+    {
+      "t": 8.0,
+      "step": "01-build-image",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          " => [2/3] COPY app.sh /app.sh",
+          " => [3/3] RUN chmod +x /app.sh"
+        ]
+      }
+    },
+    {
+      "t": 8.5,
+      "step": "01-build-image",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          " => exporting to image",
+          " => => writing image sha256:3f1a9c2d"
+        ]
+      }
+    },
+    {
+      "t": 9.0,
+      "step": "01-build-image",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          " => => naming to docker.io/library/app",
+          "[+] Building 3.0s (7/7) FINISHED"
+        ]
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "02-run-container",
+      "terminal": {
+        "type": "docker run app"
+      }
+    },
+    {
+      "t": 21.0,
+      "step": "02-run-container",
+      "terminal": {
+        "output": [
+          "hello from the container"
+        ]
+      }
+    },
+    {
+      "t": 26.0,
+      "step": "03-list-images",
+      "terminal": {
+        "type": "docker images"
+      }
+    },
+    {
+      "t": 29.0,
+      "step": "03-list-images",
+      "terminal": {
+        "output": [
+          "REPOSITORY   TAG      IMAGE ID       SIZE",
+          "app          latest   3f1a9c2d7b4e   7.8MB",
+          "alpine       3.20     1d34ffeaf190   7.8MB"
+        ]
+      }
+    },
+    {
+      "t": 36.0,
+      "slide": {
+        "title": "Recap",
+        "bullets": [
+          "docker build -t app .",
+          "docker run app",
+          "docker images"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "This video builds a container image and runs it."
+    },
+    {
+      "t": 4.5,
+      "text": "Start with docker build -t app . to build the image."
+    },
+    {
+      "t": 18.5,
+      "text": "Then docker run app starts a container from it."
+    },
+    {
+      "t": 26.5,
+      "text": "docker images lists what was built."
+    },
+    {
+      "t": 36.5,
+      "text": "To recap: build, run, list."
+    }
+  ]
+}

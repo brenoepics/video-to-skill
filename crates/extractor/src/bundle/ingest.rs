@@ -7,7 +7,9 @@ use std::path::Path;
 
 use anyhow::{bail, Context, Result};
 
-use super::{load_manifest, probe_media, save_manifest, Manifest, SourceInfo, Tracks};
+use super::{
+    load_manifest, probe_media, save_manifest, Manifest, PlatformPriors, SourceInfo, Tracks,
+};
 use crate::tools::Toolchain;
 
 pub const SUPPORTED_CONTAINERS: &[&str] = &["mp4", "mkv", "webm", "mov"];
@@ -41,6 +43,7 @@ pub fn ingest(input: &Path, bundle_dir: &Path, tools: &Toolchain) -> Result<Inge
             title: None,
         },
         media,
+        platform: PlatformPriors::default(),
         tracks: Tracks::default(),
         notes: Vec::new(),
     };

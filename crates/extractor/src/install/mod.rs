@@ -138,15 +138,25 @@ pub struct Plan {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlanError {
+    InvalidSkillName {
+        name: String,
+    },
     /// No known agent skills root exists — we refuse to invent one.
     NoAgentsDetected,
     /// A skill of this name is already installed somewhere.
-    Conflict { agent: String, path: PathBuf },
+    Conflict {
+        agent: String,
+        path: PathBuf,
+    },
 }
 
 impl fmt::Display for PlanError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidSkillName { name } => write!(
+                f,
+                "skill name '{name}' must be safe kebab-case before installation"
+            ),
             Self::NoAgentsDetected => write!(
                 f,
                 "no agent skill directory found on this machine — install an agent first \
@@ -171,6 +181,11 @@ impl std::error::Error for PlanError {}
 /// package are skipped, and any other pre-existing skill of the same
 /// name is a conflict unless `force` is set.
 pub fn plan_install(skill_name: &str, roots: &[RootState], force: bool) -> Result<Plan, PlanError> {
+    if crate::safe_path::validate_skill_name(skill_name).is_err() {
+        return Err(PlanError::InvalidSkillName {
+            name: skill_name.to_string(),
+        });
+    }
     let canonical_index = pick_canonical(roots).ok_or(PlanError::NoAgentsDetected)?;
     let canonical_root = root_of(&roots[canonical_index]);
     let canonical_path = canonical_root.join(skill_name);

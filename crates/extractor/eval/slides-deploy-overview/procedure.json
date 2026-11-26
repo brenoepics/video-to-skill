@@ -1,0 +1,69 @@
+{
+  "schema_version": 2,
+  "skill_name": "slides-deploy-overview",
+  "title": "Deploying the app",
+  "description": "Use when deploying the app: build the image, push it to the registry, roll the deployment.",
+  "overview": "A slide deck with one slide per deployment step and no live demo.",
+  "genre": "screencast",
+  "source": {
+    "original": "eval://slides-deploy-overview",
+    "title": "Deploying the app",
+    "duration_secs": 40.0
+  },
+  "steps": [
+    {
+      "id": "01-build-image",
+      "goal": "Build the image",
+      "actions": "Run `docker build` and tag the image 1.2.",
+      "success_criteria": "An image tagged 1.2 exists locally.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 7.0,
+          "frame": null,
+          "quote": "build the image with docker build"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "02-push-image",
+      "goal": "Push the image",
+      "actions": "Run `docker push` after logging in to the registry.",
+      "success_criteria": "The registry lists the 1.2 tag.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 17.0,
+          "frame": null,
+          "quote": "docker push uploads it to the registry"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    },
+    {
+      "id": "03-release",
+      "goal": "Roll the deployment",
+      "actions": "Run `kubectl rollout restart` and watch the pods come up.",
+      "success_criteria": "New pods are Running.",
+      "confidence": "high",
+      "caveats": null,
+      "evidence": [
+        {
+          "timestamp_secs": 27.0,
+          "frame": null,
+          "quote": "kubectl rollout restart deploys the new image"
+        }
+      ],
+      "scripts": [],
+      "variants": []
+    }
+  ],
+  "artifacts": [],
+  "gaps": [],
+  "history": []
+}

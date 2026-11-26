@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "id": "term-npm-project",
+  "title": "Set up a Node project",
+  "width": 1280,
+  "height": 720,
+  "fps": 10,
+  "duration_secs": 44.0,
+  "stills": [
+    {
+      "t": 0.0,
+      "terminal": {
+        "title": "project - zsh"
+      }
+    },
+    {
+      "t": 4.0,
+      "step": "01-init-package",
+      "terminal": {
+        "type": "npm init -y"
+      }
+    },
+    {
+      "t": 7.0,
+      "step": "01-init-package",
+      "terminal": {
+        "output": [
+          "Wrote to /home/demo/project/package.json:",
+          "",
+          "{",
+          "  \"name\": \"project\",",
+          "  \"version\": \"1.0.0\",",
+          "  \"main\": \"index.js\",",
+          "  \"license\": \"ISC\"",
+          "}"
+        ]
+      }
+    },
+    {
+      "t": 14.0,
+      "step": "02-install-express",
+      "terminal": {
+        "type": "npm install express"
+      }
+    },
+    {
+      "t": 17.0,
+      "step": "02-install-express",
+      "terminal": {
+        "output": [
+          "npm warn deprecated inflight@1.0.6: leaks memory"
+        ]
+      }
+    },
+    {
+      "t": 17.5,
+      "step": "02-install-express",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "npm warn deprecated glob@7.2.3: unsupported"
+        ]
+      }
+    },
+    {
+      "t": 18.0,
+      "step": "02-install-express",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "",
+          "added 64 packages in 2s"
+        ]
+      }
+    },
+    {
+      "t": 18.5,
+      "step": "02-install-express",
+      "continuous": true,
+      "terminal": {
+        "output": [
+          "",
+          "12 packages are looking for funding"
+        ]
+      }
+    },
+    {
+      "t": 25.0,
+      "step": "03-run-tests",
+      "terminal": {
+        "type": "npm test"
+      }
+    },
+    {
+      "t": 28.0,
+      "step": "03-run-tests",
+      "terminal": {
+        "output": [
+          "",
+          "> project@1.0.0 test",
+          "> node --test",
+          "",
+          "ok 1 - adds numbers",
+          "ok 2 - handles zero",
+          "1..2",
+          "# pass 2",
+          "# fail 0"
+        ]
+      }
+    },
+    {
+      "t": 36.0,
+      "slide": {
+        "title": "Done",
+        "bullets": [
+          "package.json created",
+          "express installed",
+          "tests pass"
+        ]
+      }
+    }
+  ],
+  "narration": [
+    {
+      "t": 0.5,
+      "text": "Let's set up a Node project from scratch."
+    },
+    {
+      "t": 4.5,
+      "text": "Run npm init -y to create package.json with defaults."
+    },
+    {
+      "t": 14.5,
+      "text": "Next, npm install express adds the web framework."
+    },
+    {
+      "t": 25.5,
+      "text": "Then npm test runs the test suite."
+    },
+    {
+      "t": 36.5,
+      "text": "That's it: the project is ready."
+    }
+  ]
+}

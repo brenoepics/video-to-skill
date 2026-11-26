@@ -1,17 +1,21 @@
 //! Machine identification for benchmark reports: chip name, logical
-//! cores, and OS/architecture. Parsers are pure; only [`detect`] touches
-//! the running system.
+//! cores, OS/architecture, and the whisper compute device. Parsers are
+//! pure; only [`detect`] touches the running system.
 
 use super::Machine;
+use crate::host::command_stdout;
 
 /// Identify the machine the benchmark is running on. Detection is
-/// best-effort: an undetectable chip reports as "unknown".
+/// best-effort: an undetectable chip reports as "unknown". The whisper
+/// device is the engine's own choice, passed in so the report never
+/// guesses it.
 #[must_use]
-pub fn detect() -> Machine {
+pub fn detect(whisper_device: &str) -> Machine {
     Machine {
         chip: chip(),
         logical_cores: logical_cores(),
         os: format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH),
+        whisper_device: whisper_device.to_string(),
     }
 }
 
@@ -56,17 +60,6 @@ pub fn parse_cpuinfo_model(cpuinfo: &str) -> Option<String> {
             .then(|| value.trim().to_string())
             .filter(|v| !v.is_empty())
     })
-}
-
-fn command_stdout(program: &str, args: &[&str]) -> Option<String> {
-    let output = std::process::Command::new(program)
-        .args(args)
-        .output()
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 #[cfg(test)]

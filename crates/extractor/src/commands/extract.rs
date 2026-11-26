@@ -3,13 +3,15 @@ use std::time::Instant;
 
 use anyhow::{Context, Result};
 use vts_extract::asr::{self, whisper::WhisperEngine};
-use vts_extract::bundle::{self, YtdlpDownloader};
+use vts_extract::bundle::{self, Transcript, YtdlpDownloader};
 use vts_extract::deps::{self, Env, Presence, Tool};
 use vts_extract::frames::{self, FrameConfig};
+use vts_extract::ocr;
 use vts_extract::timeline;
 use vts_extract::tools::Toolchain;
 
-/// The full extraction pipeline: ingest → transcript → frames → timeline.
+/// The full extraction pipeline: ingest → transcript → frames → screen
+/// text → timeline.
 /// A failed optional stage (e.g. missing whisper model) degrades with a
 /// warning instead of aborting — the timeline records the gap.
 pub fn run(input: &str, out: &str) -> Result<()> {
@@ -21,7 +23,11 @@ pub fn run(input: &str, out: &str) -> Result<()> {
     if input.starts_with("http") {
         println!("downloading …");
     }
-    let report = bundle::ingest_any(input, bundle_dir, &tools, &LazyYtdlp { env })?;
+    let downloader = LazyYtdlp {
+        env: &env,
+        ffmpeg: &tools.ffmpeg,
+    };
+    let report = bundle::ingest_any(input, bundle_dir, &tools, &downloader)?;
     let m = &report.manifest;
     println!(
         "{} {out}/ ({:.1}s)",
@@ -59,6 +65,8 @@ pub fn run(input: &str, out: &str) -> Result<()> {
         started.elapsed().as_secs_f32()
     );
 
+    screen_text_stage(bundle_dir, m.source.title.as_deref());
+
     let started = Instant::now();
     let tl = timeline::assemble(bundle_dir)?;
     println!(
@@ -74,46 +82,116 @@ pub fn run(input: &str, out: &str) -> Result<()> {
 
 /// Resolves yt-dlp only when a URL actually needs downloading, so
 /// local-file extraction never requires it.
-struct LazyYtdlp {
-    env: Env,
+struct LazyYtdlp<'a> {
+    env: &'a Env,
+    ffmpeg: &'a Path,
 }
 
-impl bundle::VideoDownloader for LazyYtdlp {
+impl bundle::VideoDownloader for LazyYtdlp<'_> {
     fn download(&self, url: &str, dest_dir: &Path) -> Result<bundle::DownloadedVideo> {
-        let ytdlp = deps::probe(&self.env)
-            .into_iter()
-            .find(|s| s.tool == Tool::Ytdlp && s.presence != Presence::Missing)
-            .and_then(|s| s.location)
-            .context("yt-dlp is missing — run `vts-extract check --fix --yes` first")?;
-        YtdlpDownloader::new(ytdlp).download(url, dest_dir)
+        let status = deps::status(Tool::Ytdlp, self.env);
+        let ytdlp = status
+            .location
+            .filter(|_| status.presence != Presence::Missing)
+            .context(
+                "yt-dlp is missing or incompatible — run `vts-extract check --fix --yes` first",
+            )?;
+        YtdlpDownloader::new(ytdlp, self.ffmpeg.to_path_buf()).download(url, dest_dir)
     }
 }
 
-/// Transcription is best-effort: without the model (or on engine failure)
-/// the pipeline continues and the gap surfaces in the timeline notes.
+/// Transcription is best-effort. Creator captions, when the platform
+/// offers them, are the transcript — whisper then only lends word timing
+/// — otherwise whisper transcribes; without a model (or on engine
+/// failure) the pipeline continues and the gap surfaces in the notes.
 fn transcribe_stage(bundle_dir: &Path, tools: &Toolchain) {
-    let Some(model) = tools.whisper_model.clone() else {
-        println!(
-            "! whisper model missing — skipping transcription (run `vts-extract check --fix --yes`)"
-        );
+    let captions = match bundle::load_captions(bundle_dir) {
+        Ok(cues) => cues,
+        Err(err) => {
+            println!("! creator captions unreadable, falling back to whisper: {err:#}");
+            None
+        }
+    };
+    let whisper = match &captions {
+        Some(cues) if cues.has_word_timing() => None,
+        _ => whisper_stage(bundle_dir, tools),
+    };
+    let Some(cues) = captions else {
         return;
     };
-    let started = Instant::now();
-    println!("transcribing …");
-    let result =
-        asr::extract_audio_track(bundle_dir, tools, &WhisperEngine::new(model), &mut |pct| {
-            if pct > 0 {
-                println!("  … {pct}%");
+    match bundle::extract_caption_track(bundle_dir, &cues, whisper.as_ref()) {
+        Ok(transcript) => println!(
+            "  transcript from creator captions ({}): {} segments · word timing: {}",
+            cues.language,
+            transcript.segments.len(),
+            if cues.has_word_timing() {
+                "captions"
+            } else if whisper.is_some() {
+                "whisper"
+            } else {
+                "none (cue-level only)"
             }
-        });
+        ),
+        Err(err) => println!("! creator captions not used: {err:#}"),
+    }
+}
+
+/// Whisper over the bundle's audio; `None` when no model is installed or
+/// the engine failed, both reported on the console.
+fn whisper_stage(bundle_dir: &Path, tools: &Toolchain) -> Option<Transcript> {
+    let Some(engine) = WhisperEngine::from_toolchain(tools) else {
+        println!(
+            "! whisper model missing — skipping speech recognition (run `vts-extract check --fix --yes`)"
+        );
+        return None;
+    };
+    let started = Instant::now();
+    println!("transcribing ({}) …", engine.device());
+    let result = asr::extract_audio_track(bundle_dir, tools, &engine, &mut |pct| {
+        if pct > 0 {
+            println!("  … {pct}%");
+        }
+    });
     match result {
-        Ok(t) => match (t.segments.len(), t.language.as_deref().unwrap_or("unknown")) {
-            (0, _) => println!("  no speech found (see manifest notes)"),
-            (n, lang) => println!(
-                "  {n} segments · language: {lang} ({:.1}s)",
-                started.elapsed().as_secs_f32()
-            ),
-        },
-        Err(err) => println!("! transcription failed, continuing without it: {err:#}"),
+        Ok(t) => {
+            match (t.segments.len(), t.language.as_deref().unwrap_or("unknown")) {
+                (0, _) => println!("  no speech found (see manifest notes)"),
+                (n, lang) => println!(
+                    "  {n} segments · language: {lang} ({:.1}s)",
+                    started.elapsed().as_secs_f32()
+                ),
+            }
+            Some(t)
+        }
+        Err(err) => {
+            println!("! transcription failed, continuing without it: {err:#}");
+            None
+        }
+    }
+}
+
+/// On-screen text is best-effort too: a platform without an engine, or
+/// an engine failure, leaves no artifact and a manifest note saying so.
+fn screen_text_stage(bundle_dir: &Path, title: Option<&str>) {
+    let engine = match ocr::platform_engine(&ocr::vocabulary::custom_words(title)) {
+        Ok(engine) => engine,
+        Err(no_engine) => {
+            match ocr::record_unavailable(bundle_dir, &no_engine.reason) {
+                Ok(note) => println!("! {note}"),
+                Err(err) => println!("! {no_engine}; also failed to note it: {err:#}"),
+            }
+            return;
+        }
+    };
+    let started = Instant::now();
+    println!("reading on-screen text ({}) …", engine.name());
+    match ocr::extract_text_track(bundle_dir, engine.as_ref()) {
+        Ok(track) => println!(
+            "  {} lines across {} keyframes ({:.1}s)",
+            track.lines.len(),
+            track.frames_read,
+            started.elapsed().as_secs_f32()
+        ),
+        Err(err) => println!("! screen text failed, continuing without it: {err:#}"),
     }
 }

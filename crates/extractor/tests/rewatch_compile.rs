@@ -28,6 +28,7 @@ fn toolchain() -> Toolchain {
         ffmpeg: PathBuf::from("ffmpeg"),
         ffprobe: PathBuf::from("ffprobe"),
         whisper_model: None,
+        whisper_vad: None,
     }
 }
 
@@ -74,12 +75,15 @@ fn ir_citing(frames: Vec<String>) -> ProcedureIr {
         skill_name: "color-cuts".into(),
         title: "Color Cuts".into(),
         description: "Regression fixture: every cited frame must survive packaging.".into(),
+        license: None,
+        compatibility: None,
         overview: "Fixture.".into(),
         genre: "screencast".into(),
         source: SourceRef {
             original: "colors.mp4".into(),
             title: None,
             duration_secs: 9.0,
+            sha256: None,
         },
         steps: vec![Step {
             id: "01-watch-colors".into(),
@@ -99,10 +103,17 @@ fn ir_citing(frames: Vec<String>) -> ProcedureIr {
                 .collect(),
             scripts: vec![],
             variants: vec![],
+            preconditions: vec![],
+            parameters: vec![],
+            postcondition: None,
+            failure_notes: vec![],
+            usage_count: 0,
+            verdict: None,
         }],
         artifacts: vec![],
         gaps: vec![],
         history: vec![],
+        task_graph: vts_extract::compile::TaskGraph::default(),
     }
 }
 
@@ -123,14 +134,14 @@ fn compiled_package_keeps_every_distinct_frame_byte_for_byte() {
             .unwrap()
             .to_str()
             .unwrap()
-            .to_owned()
+            .replace(std::path::MAIN_SEPARATOR, "/")
     };
     let ir = ir_citing(vec![
         "frames/kf0001.jpg".into(),
         rel(&red.path),
         rel(&blue.path),
     ]);
-    let out = dir.join("skill");
+    let out = dir.join("color-cuts");
     compile(&ir, &bundle, &out).unwrap();
 
     let packaged = out.join("references/frames");
