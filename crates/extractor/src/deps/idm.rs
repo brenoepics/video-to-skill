@@ -44,11 +44,33 @@ pub fn install_model(model: &IdmModel, fetcher: &dyn Fetcher, data_dir: &Path) -
         if installed_from_artifact(&dest, file.sha256) {
             continue;
         }
+        // Held through the download: while it is held no other process
+        // can be writing a `.download` here, which is what makes the
+        // sweep safe. A second `check --fix` waits for it (and gives up
+        // after the lock's timeout) rather than racing for the same file.
         let _lock = InstallLock::acquire(data_dir)?;
+        sweep_partial_downloads(&dir)?;
+        if installed_from_artifact(&dest, file.sha256) {
+            continue; // another process finished it while we waited
+        }
         install_file(&model.url(file), file, fetcher, &dest)
             .with_context(|| format!("installing {} {}", model.repo, file.name))?;
     }
     Ok(dir)
+}
+
+/// Remove `.<file>.<pid>.<seq>.download` files an interrupted install
+/// left behind: a dead shard download can hold gigabytes.
+fn sweep_partial_downloads(dir: &Path) -> Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with('.') && name.ends_with(".download") && entry.file_type()?.is_file() {
+            remove_file_if_exists(&entry.path())?;
+        }
+    }
+    Ok(())
 }
 
 fn install_file(url: &str, file: &IdmFile, fetcher: &dyn Fetcher, dest: &Path) -> Result<()> {
@@ -62,7 +84,7 @@ fn install_file(url: &str, file: &IdmFile, fetcher: &dyn Fetcher, dest: &Path) -
 
 fn fetch_verified(url: &str, file: &IdmFile, fetcher: &dyn Fetcher, download: &Path) -> Result<()> {
     fetcher
-        .fetch(url, download)
+        .fetch_sized(url, download, file.size)
         .with_context(|| format!("downloading {url}"))?;
     let actual = crate::hashing::sha256_hex_of_file(download)?;
     if !actual.eq_ignore_ascii_case(file.sha256) {
