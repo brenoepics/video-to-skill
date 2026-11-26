@@ -11,6 +11,7 @@ use std::path::Path;
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
+use crate::a11y::observe::CheckReport;
 use crate::compile::{frontmatter, repairs, ProcedureIr, Verdict, SCHEMA_VERSION};
 
 pub const VERIFICATION_FILE: &str = "verification.json";
@@ -21,7 +22,7 @@ const BADGE_END: &str = "<!-- /verification-badge -->";
 /// `unverifiable` (cannot be checked in a sandbox).
 const OUTCOMES: &[&str] = &["pass", "fail", "skipped", "unverifiable"];
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct VerificationReport {
     pub schema_version: u32,
     /// True only when every executed step met its success criteria AND
@@ -35,7 +36,7 @@ pub struct VerificationReport {
     pub steps: Vec<StepOutcome>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StepOutcome {
     pub id: String,
     pub outcome: String,
@@ -45,6 +46,16 @@ pub struct StepOutcome {
     /// [`record_verification`] from the package's provenance.
     #[serde(default)]
     pub repairs: Vec<String>,
+    /// The substrate the outcome rests on when it is not the sandbox
+    /// alone, e.g. `macOS AXUIElement (read-only)`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub substrate: Option<String>,
+    /// The per-check records `vts-extract observe` printed for this
+    /// step, copied as printed, so a GUI-observed outcome can be
+    /// reproduced from the report alone. Fields this build does not know
+    /// (a newer `observe`'s) are ignored, not refused.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub observations: Vec<CheckReport>,
 }
 
 /// Validate `report` against the package at `skill_dir`, carry the
@@ -79,6 +90,7 @@ pub fn record_verification(
                 step.outcome
             );
         }
+        refuse_unheld_pass(step)?;
         let cited =
             repairs::cited_signals(known.caveats.as_deref().unwrap_or("")).map_err(|line| {
                 anyhow!(
@@ -133,6 +145,31 @@ pub fn record_verification(
         serde_json::to_string_pretty(&provenance)?,
     )?;
     Ok(recorded)
+}
+
+/// A pass rests on what it cites: every observation it carries held.
+/// A step whose observation did not hold is a `fail`, quoting it.
+fn refuse_unheld_pass(step: &StepOutcome) -> Result<()> {
+    if step.outcome != "pass" {
+        return Ok(());
+    }
+    let unheld = step
+        .observations
+        .iter()
+        .enumerate()
+        .find(|(_, o)| !o.passed);
+    if let Some((index, observation)) = unheld {
+        bail!(
+            "step '{}': outcome pass cites observation {} ({}), which did not hold — \
+             observed: {} — record the step as fail, quoting what was observed (see \
+             references/verification-protocol.md)",
+            step.id,
+            index + 1,
+            observation.check.kind(),
+            observation.observed
+        );
+    }
+    Ok(())
 }
 
 /// Fold the report into the package's own record of its steps: the

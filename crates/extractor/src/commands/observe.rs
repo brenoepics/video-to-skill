@@ -8,12 +8,15 @@
 //! check). The sandbox policy is untouched; performing a tutorial's GUI
 //! actions on the host is still not a thing this tool does.
 
+use std::path::Path;
+
 use anyhow::{bail, Result};
 use vts_extract::a11y::check::Check;
 use vts_extract::a11y::observe::{observe, Report};
+use vts_extract::compile::checks::{needs_workspace, substitute_workspace, WORKSPACE_PLACEHOLDER};
 
-pub fn run(checks: &[String], dump: bool) -> Result<()> {
-    let code = match attempt(checks, dump) {
+pub fn run(checks: &[String], dump: bool, workspace: Option<&str>) -> Result<()> {
+    let code = match attempt(checks, dump, workspace) {
         Ok(report) => {
             println!("{}", serde_json::to_string_pretty(&report)?);
             i32::from(!report.passed)
@@ -26,13 +29,30 @@ pub fn run(checks: &[String], dump: bool) -> Result<()> {
     std::process::exit(code)
 }
 
-fn attempt(checks: &[String], dump: bool) -> Result<Report> {
+fn attempt(checks: &[String], dump: bool, workspace: Option<&str>) -> Result<Report> {
     if checks.is_empty() {
         bail!("nothing to check — pass --check '<json>' (repeatable; an object or an array)");
     }
-    let mut parsed = Vec::new();
+    let mut declared = Vec::new();
     for raw in checks {
-        parsed.extend(Check::parse_many(raw)?);
+        declared.extend(Check::parse_many(raw)?);
     }
-    observe(&parsed, dump)
+    let observed = match workspace {
+        Some(dir) => declared
+            .iter()
+            .map(|check| substitute_workspace(check, Path::new(dir)))
+            .collect::<Result<Vec<_>>>()?,
+        None if declared.iter().any(needs_workspace) => bail!(
+            "a file_exists path names {WORKSPACE_PLACEHOLDER} — pass --workspace <dir>, the \
+             throwaway workspace the step ran in"
+        ),
+        None => declared.clone(),
+    };
+    let mut report = observe(&observed, dump)?;
+    // Report each check as the step declares it, so the record matches
+    // the package; `observed` carries the concrete path.
+    for (entry, check) in report.checks.iter_mut().zip(declared) {
+        entry.check = check;
+    }
+    Ok(report)
 }

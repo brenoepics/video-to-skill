@@ -28,6 +28,7 @@ fn step() -> Step {
         preconditions: vec![],
         parameters: vec![],
         postcondition: None,
+        checks: vec![],
         failure_notes: vec![],
         usage_count: 0,
         verdict: None,

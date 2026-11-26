@@ -68,22 +68,29 @@ pub fn portable_basename(reference: &str) -> Result<&str> {
 }
 
 fn validate_bundle_reference(reference: &str) -> Result<()> {
-    if reference.is_empty() || reference.contains('\\') || reference.starts_with('/') {
+    if !is_portable_relative(reference) {
         bail!("frame '{reference}' must be a safe bundle-relative path using '/' separators");
     }
-    for component in reference.split('/') {
-        if component.is_empty()
-            || component == "."
-            || component == ".."
-            || component.ends_with('.')
-            || component.ends_with(' ')
-            || invalid_windows_chars(component)
-            || windows_reserved(component)
-        {
-            bail!("frame '{reference}' must be a safe bundle-relative path using '/' separators");
-        }
-    }
     Ok(())
+}
+
+/// Whether `reference` is a relative path every OS reads the same way:
+/// non-empty `/`-separated components, none of them `.`, `..`, a
+/// reserved Windows name, or a name Windows would refuse or rewrite.
+#[must_use]
+pub fn is_portable_relative(reference: &str) -> bool {
+    !reference.is_empty()
+        && !reference.contains('\\')
+        && !reference.starts_with('/')
+        && reference.split('/').all(|component| {
+            !(component.is_empty()
+                || component == "."
+                || component == ".."
+                || component.ends_with('.')
+                || component.ends_with(' ')
+                || invalid_windows_chars(component)
+                || windows_reserved(component))
+        })
 }
 
 fn is_kebab(value: &str) -> bool {
