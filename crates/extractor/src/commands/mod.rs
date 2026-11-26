@@ -1,3 +1,4 @@
+pub mod actions;
 pub mod bench;
 pub mod check;
 pub mod compile;

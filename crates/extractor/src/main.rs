@@ -29,6 +29,9 @@ enum Command {
         /// List every artifact this platform could download, then exit
         #[arg(long)]
         print_downloads: bool,
+        /// Also cover the opt-in action-labelling weights (33.2 GB)
+        #[arg(long)]
+        actions: bool,
     },
     /// Run the full extraction pipeline on a video file or URL
     Extract {
@@ -37,6 +40,13 @@ enum Command {
         /// Output directory for the extraction bundle
         #[arg(long, default_value = "extraction")]
         out: String,
+        /// Also label GUI actions on screen-recording segments with the
+        /// VideoAgentTrek models (opt-in: needs `check --fix --actions`)
+        #[arg(long, requires = "actions_runner")]
+        actions: bool,
+        /// Program that runs the models (protocol: scripts/idm-runner.py)
+        #[arg(long, value_name = "PROGRAM", requires = "actions")]
+        actions_runner: Option<String>,
     },
     /// Export frames at the given timestamps (seconds or MM:SS) for agent inspection
     FrameAt {
@@ -200,8 +210,19 @@ fn main() -> Result<()> {
             fix,
             yes,
             print_downloads,
-        } => commands::check::run(fix, yes, print_downloads),
-        Command::Extract { input, out } => commands::extract::run(&input, &out),
+            actions,
+        } => commands::check::run(&commands::check::Args {
+            fix,
+            yes,
+            print_downloads,
+            actions,
+        }),
+        Command::Extract {
+            input,
+            out,
+            actions_runner,
+            ..
+        } => commands::extract::run(&input, &out, actions_runner.as_deref()),
         Command::FrameAt { bundle, timestamps } => commands::frame::frame_at(&bundle, &timestamps),
         Command::Compile { bundle, ir, out } => commands::compile::run(&bundle, &ir, &out),
         Command::Install {

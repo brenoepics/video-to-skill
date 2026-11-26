@@ -3,12 +3,16 @@
 //! Every entry pins an exact version and the sha256 of its artifact —
 //! "latest" URLs are never used, so an upstream release can't change what
 //! we install. All sources are public and ungated (no accounts, no tokens).
-//! The whisper model is chosen per compute device in `registry::whisper`.
+//! The whisper model is chosen per compute device in `registry::whisper`;
+//! the opt-in inverse-dynamics weights are pinned in `registry::idm` and
+//! stay out of [`inventory`].
 
+mod idm;
 mod whisper;
 
 use super::bootstrap::{Archive, ArchiveMember, ToolSpec};
 use super::Tool;
+pub use idm::{idm_models, IdmFile, IdmModel, IDM_DETECTOR, IDM_PARAMETERIZER};
 pub use whisper::{default_whisper_model, whisper_model_for, whisper_model_spec, WhisperModel};
 
 // Gyan's essentials build as a GitHub release asset: gyan.dev drops old

@@ -11,10 +11,10 @@ use vts_extract::timeline;
 use vts_extract::tools::Toolchain;
 
 /// The full extraction pipeline: ingest → transcript → frames → screen
-/// text → timeline.
+/// text → (opt-in, with an `actions_runner`) GUI actions → timeline.
 /// A failed optional stage (e.g. missing whisper model) degrades with a
 /// warning instead of aborting — the timeline records the gap.
-pub fn run(input: &str, out: &str) -> Result<()> {
+pub fn run(input: &str, out: &str, actions_runner: Option<&str>) -> Result<()> {
     let env = Env::from_system();
     let tools = Toolchain::resolve(&env)?;
     let bundle_dir = Path::new(out);
@@ -66,6 +66,9 @@ pub fn run(input: &str, out: &str) -> Result<()> {
     );
 
     screen_text_stage(bundle_dir, m.source.title.as_deref());
+    if let Some(runner) = actions_runner {
+        super::actions::extract_stage(bundle_dir, &tools, &env, runner);
+    }
 
     let started = Instant::now();
     let tl = timeline::assemble(bundle_dir)?;
