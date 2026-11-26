@@ -16,8 +16,9 @@ consecutive hyphens, at most 64 characters), empty or oversized
 descriptions, `compatibility` over 500 characters, steps without
 evidence, unknown confidence values, frame references that don't exist
 in the bundle, undeclared or unused parameters, repairs that cite no
-external signal. Fix the IR and re-run — compilation is pure and
-repeatable.
+external signal, checks that `vts-extract observe` would refuse or that
+use a placeholder other than a leading `{workspace}` in a `file_exists`
+path. Fix the IR and re-run — compilation is pure and repeatable.
 
 ## Shape
 
@@ -47,6 +48,7 @@ repeatable.
                                                             // with parameters as {name}
       "success_criteria": "The cursor sits on the first match.",
       "postcondition": "`:echo line('.')` prints a line containing the term.",  // checkable (v2)
+      "checks": [],                       // read-only state checks the video shows (v2; below)
       "confidence": "high",               // high | medium | low
       "caveats": null,                    // optional string; repairs go here (see below)
       "failure_notes": [],                // what failed before and what fixed it (v2)
@@ -113,6 +115,42 @@ These are what make a step reusable rather than a replay of one video
   that exists, a state the application reports. `success_criteria`
   stays the human contract; the postcondition is its oracle. When
   nothing checkable exists, omit it rather than restating the criteria.
+- `checks` — structured, read-only postconditions in the vocabulary of
+  `vts-extract observe --check` (the table under "GUI-observed tier" in
+  `verification-protocol.md`): `window_title_contains`,
+  `element_exists`, `element_value_equals`, `checkbox_state`,
+  `file_exists`, `menu_item_enabled`. Where `postcondition` is prose the
+  verifier turns into a command, a check *is* the command: the step file
+  renders each one under the success criteria as a `Checkable:` line —
+  a sentence, then the exact JSON — and the verifier runs that JSON.
+  Write a check **only when the video shows the resulting state** — the
+  window title after the save, the checkbox after the click, the menu
+  item that became enabled — with the spelling the frame shows. Never
+  infer one from what the step ought to do; no check is better than a
+  guessed one, which turns a correct step into a `fail`. The compiler
+  holds checks to `observe`'s rules (an element needs a `title` or an
+  `identifier`; no empty text, path or menu entry; unknown kinds and
+  fields are refused) and to two of its own:
+  - a check is literal text — parameters are never substituted in it;
+  - `{workspace}` is the only placeholder, and only as the start of a
+    `file_exists` path: `{workspace}/<relative path>`, `/` separators,
+    no `..`. The verifier replaces it with the throwaway workspace the
+    step ran in; a file anywhere else is not where a sandboxed step
+    could have written it.
+
+  Every string in a check (app, text, role, title, identifier, value,
+  menu entry, path) is shown to the agent, so the secret and injection
+  rules below apply to it like to any other prose. For a step whose
+  script writes `notes.txt` into the working directory and whose frames
+  then show TextEdit's window titled with it:
+
+  ```json
+  "checks": [
+    { "check": "window_title_contains", "app": "TextEdit", "text": "notes.txt" },
+    { "check": "file_exists", "path": "{workspace}/notes.txt" }
+  ]
+  ```
+
 - `failure_notes` — what went wrong in earlier runs and what fixed it,
   one entry each, so the next agent does not rediscover it. Repairs
   during verification go into `caveats` as `Repair N: … Signal: …`

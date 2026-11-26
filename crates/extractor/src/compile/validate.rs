@@ -5,7 +5,7 @@ use std::path::Path;
 
 use anyhow::{bail, Result};
 
-use super::{repairs, safety, ProcedureIr, Step, SCHEMA_VERSION};
+use super::{checks, repairs, safety, ProcedureIr, Step, SCHEMA_VERSION};
 
 /// Agent Skills spec limits on frontmatter fields.
 const MAX_NAME_LENGTH: usize = 64;
@@ -43,6 +43,7 @@ pub(super) fn validate(ir: &ProcedureIr, bundle_dir: &Path, out_dir: &Path) -> R
             );
         }
         validate_parameters(step)?;
+        checks::validate(step)?;
         if let Err(line) = repairs::cited_signals(step.caveats.as_deref().unwrap_or("")) {
             bail!(
                 "step '{}': a repair in caveats cites no external signal ('{line}') — write \
@@ -158,7 +159,7 @@ fn validate_parameters(step: &Step) -> Result<()> {
 
 /// Hyphenated `{kebab-case}` placeholders in `text`, skipping shell
 /// expansions (`${…}`).
-fn placeholders(text: &str) -> Vec<String> {
+pub(super) fn placeholders(text: &str) -> Vec<String> {
     let mut found = Vec::new();
     for (open, _) in text.match_indices('{') {
         if text[..open].ends_with('$') {

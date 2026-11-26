@@ -165,6 +165,10 @@ enum Command {
         /// Also print the accessibility tree(s) that were read
         #[arg(long)]
         dump: bool,
+        /// The verifier's throwaway workspace (the one given to `sandbox`):
+        /// replaces `{workspace}` in `file_exists` paths
+        #[arg(long)]
+        workspace: Option<String>,
     },
     /// Print on-screen text read from the keyframes, one `t=<secs>\t<frame>\t<text>` line each
     Text {
@@ -241,7 +245,11 @@ fn main() -> Result<()> {
             print_policy,
             command,
         } => commands::sandbox::run(&workspace, &command, print_policy),
-        Command::Observe { check, dump } => commands::observe::run(&check, dump),
+        Command::Observe {
+            check,
+            dump,
+            workspace,
+        } => commands::observe::run(&check, dump, workspace.as_deref()),
         Command::Text { bundle, grep } => commands::text::run(&bundle, grep.as_deref()),
         Command::Clip {
             bundle,

@@ -2,6 +2,7 @@
 //! the analyzing agent and this tool) compiled into an installable
 //! agent-skills package. Pure: same IR + bundle → byte-identical output.
 
+pub mod checks;
 mod emit;
 pub mod frontmatter;
 pub mod graph;
@@ -15,6 +16,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+pub use crate::a11y::check::Check;
 pub use graph::{TaskGraph, Transition};
 
 /// The current Procedure IR schema. v1 IRs still compile (see
@@ -122,6 +124,12 @@ pub struct Step {
     /// run or a state to observe — unlike the prose `success_criteria`.
     #[serde(default)]
     pub postcondition: Option<String>,
+    /// Structured, read-only postconditions (v2) in the vocabulary
+    /// `vts-extract observe --check` takes — window titles, elements,
+    /// checkboxes, menu items, files under `{workspace}` — rendered as
+    /// "Checkable:" lines. Only for state the video shows.
+    #[serde(default)]
+    pub checks: Vec<Check>,
     /// Past failures and the corrections learned (v2); `vts-extract
     /// verify` appends unsolved failures.
     #[serde(default)]
@@ -210,7 +218,7 @@ pub fn deprecation_note(ir: &ProcedureIr) -> Option<String> {
         format!(
             "note: Procedure IR schema v{} is deprecated — it still compiles, and the package \
              is written as v{SCHEMA_VERSION}, but v2 adds per-step preconditions, \
-             parameters, postcondition, failure_notes and usage_count (see \
+             parameters, postcondition, checks, failure_notes and usage_count (see \
              references/ir-format.md)",
             ir.schema_version
         )

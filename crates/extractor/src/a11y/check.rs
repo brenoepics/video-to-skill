@@ -194,7 +194,9 @@ impl Check {
         }
     }
 
-    fn validate(&self) -> Result<()> {
+    /// The rules [`Check::parse`] applies after deserialising, for checks
+    /// that arrive inside another document (a Procedure IR step).
+    pub fn validate(&self) -> Result<()> {
         let kind = self.kind();
         if let Some(locator) = self.locator() {
             if locator.role.trim().is_empty() {

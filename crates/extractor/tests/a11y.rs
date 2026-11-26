@@ -109,6 +109,25 @@ fn observe_exits_zero_on_pass_one_on_fail_and_two_when_it_cannot_observe() {
     assert!(stderr.contains("teleport"), "{stderr}");
 }
 
+#[test]
+fn observe_substitutes_the_workspace_placeholder_and_reports_the_check_as_declared() {
+    let dir = scratch("workspace");
+    fs::write(dir.join("notes.txt"), "x").unwrap();
+    let declared = r#"{"check":"file_exists","path":"{workspace}/notes.txt"}"#;
+
+    let workspace = dir.to_str().unwrap();
+    let (code, stdout, _) = observe_cli(&["--workspace", workspace, "--check", declared]);
+    assert_eq!(code, 0, "{stdout}");
+    let report: Report = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(report.checks[0].check, Check::parse(declared).unwrap());
+    assert!(report.checks[0].observed.contains(workspace), "{stdout}");
+
+    let (code, stdout, stderr) = observe_cli(&["--check", declared]);
+    assert_eq!(code, 2, "an unsubstituted placeholder cannot be observed");
+    assert!(stdout.trim().is_empty(), "{stdout}");
+    assert!(stderr.contains("--workspace"), "{stderr}");
+}
+
 #[cfg(target_os = "macos")]
 #[test]
 fn gui_checks_either_observe_or_explain_the_missing_permission() {
