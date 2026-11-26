@@ -118,6 +118,15 @@ jobs:
       - name: Install FFmpeg (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install --yes ffmpeg
+      # The AT-SPI observe test builds a private desktop: a session bus,
+      # an Xvfb display, at-spi2-core's accessibility bus and a GTK 3
+      # probe window driven by PyGObject. VTS_REQUIRE_ATSPI (Test step)
+      # turns a missing piece into a failure instead of a skip.
+      - name: Install the AT-SPI test desktop (Linux)
+        if: runner.os == 'Linux'
+        run: >-
+          sudo apt-get install --yes --no-install-recommends
+          dbus-daemon at-spi2-core xvfb python3-gi gir1.2-gtk-3.0
       - name: Install pinned FFmpeg (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -140,4 +149,6 @@ jobs:
       - name: Lint (compiles all targets)
         run: cargo clippy --all-targets --locked -- -D warnings
       - name: Test (all unit + integration)
+        env:
+          VTS_REQUIRE_ATSPI: ${{ runner.os == 'Linux' && '1' || '' }}
         run: cargo test --locked

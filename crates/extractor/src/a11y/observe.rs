@@ -110,7 +110,12 @@ mod backend {
     pub use crate::a11y::windows::{snapshot as read, SUBSTRATE};
 }
 
-#[cfg(not(any(target_os = "macos", windows)))]
+#[cfg(target_os = "linux")]
+mod backend {
+    pub use crate::a11y::atspi::{snapshot as read, SUBSTRATE};
+}
+
+#[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
 mod backend {
     use anyhow::{bail, Result};
 
@@ -120,9 +125,8 @@ mod backend {
 
     pub fn read(_app: Option<&str>) -> Result<Snapshot> {
         bail!(
-            "GUI observation has no backend on this platform yet (macOS AXUIElement and \
-             Windows UI Automation only; AT-SPI is designed in issue #37) — mark the step \
-             unverifiable with this reason"
+            "GUI observation has no backend on this platform (macOS AXUIElement, Windows UI \
+             Automation and Linux AT-SPI only) — mark the step unverifiable with this reason"
         )
     }
 }
