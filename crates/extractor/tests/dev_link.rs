@@ -200,3 +200,36 @@ fn a_pin_mismatch_fails_before_linking_and_names_the_pin_to_update() {
         "the checkout must not be linked while its SKILL.md disagrees with the build"
     );
 }
+
+#[test]
+fn chat_refuses_an_inherited_data_dir_where_a_release_would_win() {
+    let Some(sandbox) = sandbox("inherited") else {
+        return;
+    };
+    sandbox.plant_fake_claude();
+    let real_cache = sandbox.home.join(".vts");
+    let release = real_cache.join(format!("bin/vts-extract-{VERSION}"));
+    fs::create_dir_all(release.parent().unwrap()).unwrap();
+    fs::write(&release, "cached release binary").unwrap();
+
+    let output = sandbox.run_with_env(&["--no-build"], &[("VTS_DATA_DIR", &real_cache)]);
+
+    assert!(
+        !output.status.success(),
+        "a chat that would run the release instead of the build must not start"
+    );
+    let err = stderr(&output);
+    assert!(
+        err.contains(release.to_str().unwrap()) && err.contains("--data-dir"),
+        "must name the release binary and the way out:\n{err}"
+    );
+    assert!(
+        !sandbox.home.join("claude-run").exists(),
+        "claude must not be launched"
+    );
+    assert_eq!(
+        fs::read_to_string(&release).unwrap(),
+        "cached release binary",
+        "the release binary must be left alone"
+    );
+}

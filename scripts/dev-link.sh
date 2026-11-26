@@ -20,13 +20,19 @@
 # ever fetched (and where this script links the build as that first candidate)
 # makes the dev build the only vts-extract the skill can find.
 #
+# If the data dir (an exported VTS_DATA_DIR counts) already holds a cached
+# release bin/vts-extract-<version>, the script stops before linking
+# anything: the skill would run that release, not the build.
+#
 #   --data-dir DIR  dev data dir (default: $VTS_DATA_DIR if set, else ~/.vts-dev)
-#   --force         move a real ~/.claude/skills/video-to-skill directory aside
+#   --force         move a real ~/.claude/skills/video-to-skill directory aside,
+#                   to ~/.claude/video-to-skill.bak-<timestamp>
 #   --no-build      reuse target/release/vts-extract instead of building
 #   --no-chat       build + link, then print the export line instead of
 #                   launching claude (CI, scripts, the test)
 #   --unlink        point the skill back at the npx skills install (or remove
-#                   the link when there is none); the data dir is left alone
+#                   the link when there is none) and say where any --force
+#                   backup is; the data dir is left alone
 set -eu
 
 say() { printf '%s\n' "$@"; }
@@ -59,6 +65,8 @@ checkout="$(cd "$(dirname "$0")/.." && pwd -P)"
 [ -f "$checkout/SKILL.md" ] || die "no SKILL.md beside $checkout/scripts; run me from a checkout"
 skills_dir="$HOME/.claude/skills"
 link="$skills_dir/video-to-skill"
+# Outside skills_dir: Claude Code would load a backup there as a second skill.
+backup_prefix="$HOME/.claude/video-to-skill.bak-"
 npx_install="$HOME/.agents/skills/video-to-skill"
 
 # --unlink: give ~/.claude/skills/video-to-skill back to `npx skills add`.
@@ -71,12 +79,18 @@ if [ "$unlink" = 1 ]; then
   fi
   if [ -d "$npx_install" ]; then
     # The same relative link `npx skills add` creates.
+    mkdir -p "$skills_dir"
     ln -s ../../.agents/skills/video-to-skill "$link"
     say "restored $link -> $npx_install"
   else
     say "no npx skills install at $npx_install; to reinstall it:" \
         "  npx skills@latest add brenoepics/video-to-skill"
   fi
+  for backup in "$backup_prefix"*; do
+    [ -e "$backup" ] || continue
+    say "the directory --force moved aside is still at $backup" \
+        "  move it back to $link yourself if you want it instead"
+  done
   exit 0
 fi
 
@@ -113,13 +127,23 @@ built_version="$("$candidate" --version | sed 's/^vts-extract //')"
 pin="$(sed -n 's/^## 1\. Locate the extractor (requires vts-extract \([0-9][^)]*\)).*/\1/p' "$checkout/SKILL.md")"
 [ -n "$pin" ] || die "SKILL.md has no '## 1. Locate the extractor (requires vts-extract X.Y.Z)' heading"
 if [ "$pin" != "$built_version" ]; then
-  mentions="$(grep -c "$pin" "$checkout/SKILL.md" || true)"
+  mentions="$(grep -cF "$pin" "$checkout/SKILL.md" || true)"
   die "SKILL.md pins vts-extract $pin but target/release/vts-extract reports $built_version" \
       "  update the pin: replace every '$pin' in SKILL.md ($mentions mentions) with '$built_version'," \
       "  starting with '## 1. Locate the extractor (requires vts-extract $built_version)'" \
       "  (or bump Cargo.toml's workspace version to $pin and rebuild if the build is the stale one)"
 fi
 say "SKILL.md pins vts-extract $pin — matches the build"
+
+# A cached release in the data dir is what SKILL.md step 1 picks first, so
+# with it there the skill would never run the build. Stop before linking.
+case "$data_dir" in /*) ;; *) data_dir="$PWD/$data_dir" ;; esac
+cached="$data_dir/bin/vts-extract-$built_version"
+if [ -e "$cached" ] && [ ! -L "$cached" ]; then
+  die "$cached is a cached release binary, and SKILL.md step 1 picks it" \
+      "  over the dev build (VTS_DATA_DIR=$data_dir)." \
+      "  Pass --data-dir ~/.vts-dev (or unset VTS_DATA_DIR) to test the build."
+fi
 
 # 3. ~/.claude/skills/video-to-skill -> this checkout.
 mkdir -p "$skills_dir"
@@ -135,8 +159,8 @@ if [ -L "$link" ]; then
   fi
 elif [ -e "$link" ]; then
   [ "$force" = 1 ] || die "$link is a real directory, not a symlink" \
-      "  re-run with --force to move it aside as $link.bak-<timestamp>"
-  backup="$link.bak-$(date +%Y%m%d%H%M%S)"
+      "  re-run with --force to move it aside as ${backup_prefix}<timestamp>"
+  backup="$backup_prefix$(date +%Y%m%d%H%M%S)"
   mv "$link" "$backup"
   ln -s "$checkout" "$link"
   say "moved $link aside to $backup" "linked $link -> $checkout"
@@ -147,18 +171,10 @@ fi
 
 # 4. The dev data dir, with the build as the first thing SKILL.md step 1
 #    finds there. The skill's own `check --fix` fills in the tools.
-case "$data_dir" in /*) ;; *) data_dir="$PWD/$data_dir" ;; esac
-mkdir -p "$data_dir"
-cached="$data_dir/bin/vts-extract-$built_version"
-if [ -L "$cached" ] || [ ! -e "$cached" ]; then
-  mkdir -p "$data_dir/bin"
-  rm -f "$cached"
-  ln -s "$candidate" "$cached"
-  say "linked $cached -> $candidate (SKILL.md step 1, candidate 1)"
-else
-  say "warning: $cached is a cached release binary; SKILL.md step 1 picks it" \
-      "  over the dev build. Use another --data-dir, or remove it, to test the build."
-fi
+mkdir -p "$data_dir/bin"
+rm -f "$cached"
+ln -s "$candidate" "$cached"
+say "linked $cached -> $candidate (SKILL.md step 1, candidate 1)"
 
 # 5. Chat here with the dev data dir set, or say how to.
 if [ "$chat" = 1 ]; then

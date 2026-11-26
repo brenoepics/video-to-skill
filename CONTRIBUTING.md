@@ -54,9 +54,13 @@ SKILL.md step 1 looks for `<data-dir>/bin/vts-extract-<version>` *before*
 `target/release/vts-extract`, and a release you once fetched carries the
 same pinned version as your build, so with the default data dir the
 cached release wins and your changes never run. The script sets
-`VTS_DATA_DIR` to `~/.vts-dev` (`--data-dir DIR` moves it), where no
-release was ever fetched, and links the build there as that first
-candidate, so both candidates resolve to it. It also refuses to link
+`VTS_DATA_DIR` to `~/.vts-dev` (`--data-dir DIR` moves it, and so does
+an exported `VTS_DATA_DIR`), where no release was ever fetched, and links
+the build there as that first candidate, so both candidates resolve to
+it. If the data dir already holds a cached release
+`bin/vts-extract-<version>` — say your exported `VTS_DATA_DIR` is the
+real cache — it stops before linking anything and asks for another
+`--data-dir`. It also refuses to link
 while SKILL.md pins a version other than the one `vts-extract --version`
 reports, and names the pin to update.
 
@@ -65,7 +69,9 @@ reports, and names the pin to update.
 `--no-chat` builds and links, then prints the export line instead of
 launching claude — for CI, scripts, and the test (`--no-build` reuses the
 last build; `--force` moves a real `~/.claude/skills/video-to-skill`
-directory aside). With that export in place, headless Claude Code drives
+directory aside to `~/.claude/video-to-skill.bak-<timestamp>`, outside the
+skills dir so it never loads as a second skill; `--unlink` says where it
+is). With that export in place, headless Claude Code drives
 the same skill from a script. A `-p` run denies, instead of prompting
 for, every shell command no allow rule covers, and the skill drives
 `vts-extract` through Bash — so pre-approve the build at the path the
@@ -90,7 +96,7 @@ target/release/vts-extract bench                                      # speed su
 ```
 
 `cargo test` runs the script itself against a throwaway HOME with a
-recording `claude` on PATH (`tests/dev_link.rs`); Windows skips it.
+recording `claude` on PATH (`crates/extractor/tests/dev_link.rs`); Windows skips it.
 
 ## Layout
 

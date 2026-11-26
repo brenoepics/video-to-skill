@@ -62,20 +62,38 @@ fn refuses_to_clobber_a_real_directory_without_force() {
         fs::read_link(&link).unwrap(),
         sandbox.checkout.canonicalize().unwrap()
     );
-    let moved_aside = fs::read_dir(link.parent().unwrap())
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .find(|path| {
-            path.file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .starts_with("video-to-skill.bak")
-        })
+    let backups = |dir: &std::path::Path| -> Vec<std::path::PathBuf> {
+        fs::read_dir(dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| {
+                path.file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .starts_with("video-to-skill.bak")
+            })
+            .collect()
+    };
+    assert!(
+        backups(link.parent().unwrap()).is_empty(),
+        "a backup inside ~/.claude/skills would load as a duplicate skill"
+    );
+    let moved_aside = backups(&sandbox.home.join(".claude"))
+        .pop()
         .expect("--force moves the directory aside instead of deleting it");
     assert_eq!(
         fs::read_to_string(moved_aside.join("SKILL.md")).unwrap(),
         "hand-copied install"
+    );
+
+    let unlinked = sandbox.run(&["--unlink"]);
+
+    assert!(unlinked.status.success(), "stderr:\n{}", stderr(&unlinked));
+    let out = stdout(&unlinked);
+    assert!(
+        out.contains(moved_aside.to_str().unwrap()),
+        "--unlink must say where the moved-aside directory is:\n{out}"
     );
 }
 
@@ -120,5 +138,23 @@ fn unlink_without_an_npx_install_removes_the_link_and_says_how_to_reinstall() {
         stdout(&output).contains("npx skills"),
         "must say how to reinstall:\n{}",
         stdout(&output)
+    );
+}
+
+#[test]
+fn unlink_restores_the_npx_install_even_without_a_skills_dir() {
+    let Some(sandbox) = sandbox("unlink-no-skills-dir") else {
+        return;
+    };
+    fs::create_dir_all(sandbox.npx_install()).unwrap();
+    fs::write(sandbox.npx_install().join("SKILL.md"), "npx copy").unwrap();
+
+    let output = sandbox.run(&["--unlink"]);
+
+    assert!(output.status.success(), "stderr:\n{}", stderr(&output));
+    assert_eq!(
+        fs::read_to_string(sandbox.skill_link().join("SKILL.md")).unwrap(),
+        "npx copy",
+        "the link must point back at ~/.agents/skills/video-to-skill"
     );
 }

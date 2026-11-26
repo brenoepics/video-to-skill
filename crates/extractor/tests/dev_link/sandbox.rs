@@ -108,6 +108,11 @@ impl Sandbox {
     /// Run the script from HOME with `VTS_DATA_DIR` unset and a PATH that
     /// holds only the system tools and the sandbox's own bin.
     pub fn run(&self, args: &[&str]) -> Output {
+        self.run_with_env(args, &[])
+    }
+
+    /// `run`, plus the given variables, as if exported by the caller.
+    pub fn run_with_env(&self, args: &[&str], vars: &[(&str, &Path)]) -> Output {
         Command::new("sh")
             .arg(self.checkout.join("scripts/dev-link.sh"))
             .args(args)
@@ -115,6 +120,7 @@ impl Sandbox {
             .env_clear()
             .env("HOME", &self.home)
             .env("PATH", format!("{}:/usr/bin:/bin", self.bin.display()))
+            .envs(vars.iter().copied())
             .output()
             .unwrap()
     }
