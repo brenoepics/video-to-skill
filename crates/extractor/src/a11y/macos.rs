@@ -70,6 +70,7 @@ pub fn snapshot(app: Option<&str>) -> Result<Snapshot> {
         app: name,
         pid: Some(pid),
         truncated: budget == 0,
+        timed_out: false,
         root,
     })
 }

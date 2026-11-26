@@ -285,7 +285,8 @@ fn menu_item_enabled(snapshot: &Snapshot, menu: &[String], expected: bool) -> Ve
 
 fn truncation_note(snapshot: &Snapshot, observed: String) -> String {
     if snapshot.truncated {
-        format!("{observed} (tree truncated at the node budget; unread elements may exist)")
+        let budget = if snapshot.timed_out { "time" } else { "node" };
+        format!("{observed} (tree truncated at the {budget} budget; unread elements may exist)")
     } else {
         observed
     }
