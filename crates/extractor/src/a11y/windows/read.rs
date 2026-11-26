@@ -84,6 +84,7 @@ fn read(app: Option<&str>) -> Result<Snapshot> {
         app: name,
         pid: sole_pid(&owners),
         truncated: budget == 0,
+        timed_out: false,
         root,
     })
 }

@@ -46,6 +46,7 @@ fn text_edit() -> Snapshot {
         app: "TextEdit".into(),
         pid: Some(4242),
         truncated: false,
+        timed_out: false,
         root: Node::new("AXApplication")
             .with_title("TextEdit")
             .with_child(Node::new("AXMenuBar").with_child(file_menu))
@@ -213,5 +214,23 @@ fn a_gui_check_without_a_snapshot_fails_loudly_instead_of_passing() {
         verdict.observed.contains("snapshot"),
         "{}",
         verdict.observed
+    );
+}
+
+#[test]
+fn a_truncated_tree_names_the_budget_that_cut_it() {
+    let missing = check(r#"{"check":"element_exists","role":"AXButton","title":"Nowhere"}"#);
+    let mut snapshot = text_edit();
+    snapshot.truncated = true;
+    let by_nodes = evaluate(&missing, Some(&snapshot)).observed;
+    assert!(
+        by_nodes.contains("truncated at the node budget"),
+        "{by_nodes}"
+    );
+    snapshot.timed_out = true;
+    let by_time = evaluate(&missing, Some(&snapshot)).observed;
+    assert!(
+        by_time.contains("truncated at the time budget"),
+        "{by_time}"
     );
 }

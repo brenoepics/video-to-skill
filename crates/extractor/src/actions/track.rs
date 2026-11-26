@@ -63,7 +63,9 @@ pub fn extract_action_track(
     let cutter = Cutter {
         tools,
         media: PathBuf::from(&manifest.source.media_path),
-        clips: bundle_dir.join(CLIPS_DIR),
+        // Absolute: the runner opens the clips from its own directory.
+        clips: std::path::absolute(bundle_dir.join(CLIPS_DIR))
+            .context("resolving the action clips directory")?,
         size: (manifest.media.width, manifest.media.height),
         fps: manifest.media.fps,
     };
@@ -88,7 +90,14 @@ pub fn extract_action_track(
             ));
             continue;
         };
-        let found = parse::detections(&text).unwrap_or_default();
+        // An answer without a readable array is not "no action here".
+        let Some(found) = parse::detections(&text) else {
+            notes.push(format!(
+                "unreadable detector answer for {:.1}-{:.1}s",
+                window.start_secs, window.end_secs
+            ));
+            continue;
+        };
         for (j, detection) in found.into_iter().enumerate() {
             pending.push(cutter.action_clip(i, j, window, detection)?);
         }
@@ -250,6 +259,13 @@ fn run(
         bail!(
             "the {stage:?} backend answered {} of {} clips",
             answers.len(),
+            requests.len()
+        );
+    }
+    // A runner that answered nothing failed, whatever its exit status.
+    if answers.iter().all(Option::is_none) {
+        bail!(
+            "the {stage:?} runner answered none of its {} clips",
             requests.len()
         );
     }
