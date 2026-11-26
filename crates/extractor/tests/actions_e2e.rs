@@ -154,13 +154,17 @@ fn a_relative_out_dir_still_sends_the_runner_absolute_clip_paths() {
     );
 
     let batches = fs::read_to_string(dir.join("batches.jsonl")).unwrap();
+    // The child resolves its working directory through symlinks (macOS
+    // TMPDIR is under /var, a link to /private/var), so compare against
+    // the canonical scratch dir.
+    let root = fs::canonicalize(&dir).unwrap();
     let mut clips = 0;
     for line in batches.lines() {
         let batch: serde_json::Value = serde_json::from_str(line).unwrap();
         for request in batch["requests"].as_array().unwrap() {
             let clip = Path::new(request["clip"].as_str().unwrap());
             assert!(clip.is_absolute(), "{}", clip.display());
-            assert!(clip.starts_with(&dir), "{}", clip.display());
+            assert!(clip.starts_with(&root), "{}", clip.display());
             assert!(clip.is_file(), "{}", clip.display());
             clips += 1;
         }
