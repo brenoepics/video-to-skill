@@ -11,8 +11,10 @@ use super::bootstrap::{Archive, ArchiveMember, ToolSpec};
 use super::Tool;
 pub use whisper::{default_whisper_model, whisper_model_for, whisper_model_spec, WhisperModel};
 
+// Gyan's essentials build as a GitHub release asset: gyan.dev drops old
+// versions from its packages directory, the release keeps the same bytes.
 const WINDOWS_FFMPEG_URL: &str =
-    "https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-essentials_build.zip";
+    "https://github.com/GyanD/codexffmpeg/releases/download/8.1.2/ffmpeg-8.1.2-essentials_build.zip";
 const WINDOWS_FFMPEG_SHA256: &str =
     "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec";
 const WINDOWS_FFMPEG_ROOT: &str = "ffmpeg-8.1.2-essentials_build/bin";
@@ -28,9 +30,10 @@ const SILERO_VAD_REVISION: &str = "9ffd54a1e1ee413ddf265af9913beaf518d1639b";
 #[must_use]
 pub fn spec_for(tool: Tool) -> Option<ToolSpec> {
     match tool {
+        // Gyan's essentials archive (see WINDOWS_FFMPEG_URL) holds both tools.
+        Tool::Ffmpeg | Tool::Ffprobe if windows_x64() => Some(windows_ffmpeg_bundle(tool)),
         // Static build from Martin Riedl's ffmpeg build server, pinned to
         // 8.1.2; checksum cross-verified against the published .sha256.
-        Tool::Ffmpeg | Tool::Ffprobe if windows_x64() => Some(windows_ffmpeg_bundle(tool)),
         Tool::Ffmpeg => macos_arm64().then(|| macos_ffmpeg(tool)),
         // Same pinned build as ffmpeg above; checksum from the published .sha256.
         Tool::Ffprobe => macos_arm64().then(|| macos_ffprobe(tool)),
@@ -191,6 +194,22 @@ mod tests {
         let spec = spec_for(Tool::WhisperModel).expect("whisper weights are platform-independent");
         assert!(spec.url.ends_with(default.file_name), "{}", spec.url);
         assert_eq!(spec.sha256, default.sha256);
+    }
+
+    #[test]
+    fn windows_ffmpeg_is_pinned_to_the_publishers_github_release() {
+        // gyan.dev prunes old builds from its packages directory (issue
+        // #73); the publisher's GitHub release keeps the same bytes.
+        let spec = windows_ffmpeg_bundle(Tool::Ffmpeg);
+        assert_eq!(
+            spec.url,
+            "https://github.com/GyanD/codexffmpeg/releases/download/\
+             8.1.2/ffmpeg-8.1.2-essentials_build.zip"
+        );
+        assert_eq!(
+            spec.sha256,
+            "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec"
+        );
     }
 
     #[test]
