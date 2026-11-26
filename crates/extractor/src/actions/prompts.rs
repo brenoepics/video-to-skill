@@ -6,6 +6,10 @@
 //! `smart_resize` from its `utils/qwen_vl_utils.py`, Python's banker's
 //! rounding included.
 
+use std::path::PathBuf;
+
+use super::backend::{ClipRequest, Stage};
+
 /// Stage 1, system turn.
 pub const DETECTOR_SYSTEM: &str = "You are a helpful assistant. you can identify all user \
 interface interactions in this video, providing their action types and timestamps and output \
@@ -27,6 +31,30 @@ const PARAMETERIZER_MAX_FRAMES: f64 = 20.0;
 
 /// Both stages generate at most this many tokens.
 pub const MAX_NEW_TOKENS: u32 = 256;
+
+/// A clip request for `stage`, with that stage's prompts.
+pub(super) fn request(
+    id: String,
+    clip: PathBuf,
+    fps: f64,
+    (resized_width, resized_height): (u32, u32),
+    stage: Stage,
+) -> ClipRequest {
+    let (system, prompt) = match stage {
+        Stage::Detect => (DETECTOR_SYSTEM, DETECTOR_PROMPT),
+        Stage::Identify => (PARAMETERIZER_SYSTEM, PARAMETERIZER_PROMPT),
+    };
+    ClipRequest {
+        id,
+        clip,
+        fps,
+        resized_width,
+        resized_height,
+        system,
+        prompt,
+        max_new_tokens: MAX_NEW_TOKENS,
+    }
+}
 
 /// Upstream's fallback size when its resize fails (width, height).
 const FALLBACK_SIZE: (u32, u32) = (896, 672);

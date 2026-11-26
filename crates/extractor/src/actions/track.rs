@@ -3,6 +3,7 @@
 //! `actions.json`. The clips stay in the bundle's `actions/` directory
 //! (rebuilt on each run) so a runner can be re-run by hand.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -12,8 +13,7 @@ use anyhow::{bail, Context, Result};
 use super::backend::{Batch, ClipRequest, IdmBackend, Stage};
 use super::parse::{self, Detection};
 use super::prompts::{
-    detector_request_size, dynamic_fps, parameterizer_request_size, DETECTOR_FPS, DETECTOR_PROMPT,
-    DETECTOR_SYSTEM, MAX_NEW_TOKENS, PARAMETERIZER_PROMPT, PARAMETERIZER_SYSTEM,
+    detector_request_size, dynamic_fps, parameterizer_request_size, request, DETECTOR_FPS,
 };
 use super::{gate, save_actions, Action, ActionEvent, ActionTrack, Window, ACTIONS_FILE};
 use crate::bundle::{load_manifest, save_manifest};
@@ -231,23 +231,6 @@ fn round_ms(secs: f64) -> f64 {
     (secs * 1000.0).round() / 1000.0
 }
 
-fn request(id: String, clip: PathBuf, fps: f64, size: (u32, u32), stage: Stage) -> ClipRequest {
-    let (system, prompt) = match stage {
-        Stage::Detect => (DETECTOR_SYSTEM, DETECTOR_PROMPT),
-        Stage::Identify => (PARAMETERIZER_SYSTEM, PARAMETERIZER_PROMPT),
-    };
-    ClipRequest {
-        id,
-        clip,
-        fps,
-        resized_width: size.0,
-        resized_height: size.1,
-        system,
-        prompt,
-        max_new_tokens: MAX_NEW_TOKENS,
-    }
-}
-
 /// One batch per stage; an empty stage runs nothing.
 fn run(
     backend: &dyn IdmBackend,
@@ -279,9 +262,7 @@ fn cut(tools: &Toolchain, media: &Path, start: f64, end: f64, dest: &Path) -> Re
     let output = Command::new(&tools.ffmpeg)
         .args(["-nostdin", "-y", "-loglevel", "error", "-ss"])
         .arg(format!("{start:.3}"))
-        .arg("-i")
-        .arg(media)
-        .arg("-t")
+        .args([OsStr::new("-i"), media.as_os_str(), OsStr::new("-t")])
         .arg(format!("{:.3}", end - start))
         .args(["-an", "-c:v", "mpeg4", "-q:v", "2"])
         .arg(dest)

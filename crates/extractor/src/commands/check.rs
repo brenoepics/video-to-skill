@@ -3,6 +3,15 @@ use std::path::Path;
 use anyhow::{bail, Result};
 use vts_extract::deps::{self, fetch::HttpFetcher, registry, Env, Presence, Tool, ToolStatus};
 
+/// `check`'s flags.
+#[allow(clippy::struct_excessive_bools)] // four independent CLI switches
+pub struct Args {
+    pub fix: bool,
+    pub yes: bool,
+    pub print_downloads: bool,
+    pub actions: bool,
+}
+
 /// Dependency doctor: report every managed tool, and with `fix` bootstrap
 /// the missing ones into the app data dir (never a system location).
 /// Plain `check` never touches the network.
@@ -10,7 +19,16 @@ use vts_extract::deps::{self, fetch::HttpFetcher, registry, Env, Presence, Tool,
 /// Downloading is consent-gated: `--fix` alone discloses exactly what
 /// would be fetched and stops. Nothing leaves or enters the machine
 /// until the user has seen the inventory and `--yes` is passed.
-pub fn run(fix: bool, yes: bool, print_downloads: bool) -> Result<()> {
+///
+/// The VideoAgentTrek weights (33.2 GB) are only probed, disclosed and
+/// fetched with `actions`; without it the output is what it always was.
+pub fn run(args: &Args) -> Result<()> {
+    let &Args {
+        fix,
+        yes,
+        print_downloads,
+        actions,
+    } = args;
     let exe = std::env::current_exe().ok();
     println!("{}", identity_line(exe.as_deref()));
     let env = Env::from_system();
@@ -18,6 +36,7 @@ pub fn run(fix: bool, yes: bool, print_downloads: bool) -> Result<()> {
 
     if print_downloads {
         print_inventory(&registry::inventory());
+        super::actions::print_downloads();
         return Ok(());
     }
 
@@ -28,13 +47,19 @@ pub fn run(fix: bool, yes: bool, print_downloads: bool) -> Result<()> {
             missing.push(status);
         }
     }
+    let missing_models = if actions {
+        super::actions::report(&env)
+    } else {
+        Vec::new()
+    };
+    let flags = if actions { " --actions" } else { "" };
 
-    if missing.is_empty() {
+    if missing.is_empty() && missing_models.is_empty() {
         println!("\nAll dependencies ready.");
         return Ok(());
     }
     if !fix {
-        println!("\nRun `vts-extract check --fix` to see what it would download.");
+        println!("\nRun `vts-extract check --fix{flags}` to see what it would download.");
         return Ok(());
     }
 
@@ -50,9 +75,16 @@ pub fn run(fix: bool, yes: bool, print_downloads: bool) -> Result<()> {
         {
             println!("  {} requires a manual platform install", label(tool));
         }
+        if !missing_models.is_empty() {
+            println!(
+                "\nand the opt-in action models, {}:\n",
+                super::actions::total(&missing_models)
+            );
+            super::actions::print_inventory(&missing_models);
+        }
         println!(
             "\nNothing was downloaded. Show this list to the user, then re-run with\n\
-             `vts-extract check --fix --yes` to approve it. Existing ffmpeg/ffprobe\n\
+             `vts-extract check --fix{flags} --yes` to approve it. Existing ffmpeg/ffprobe\n\
              executables and yt-dlp builds with the required hardening flags on PATH\n\
              are never downloaded."
         );
@@ -75,6 +107,7 @@ pub fn run(fix: bool, yes: bool, print_downloads: bool) -> Result<()> {
             failures.push(format!("{}: {error:#}", provided_label(spec)));
         }
     }
+    failures.extend(super::actions::install(&missing_models, &env));
     if !failures.is_empty() {
         bail!(
             "dependency setup incomplete:\n  - {}",
