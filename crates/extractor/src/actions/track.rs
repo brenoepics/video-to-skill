@@ -63,7 +63,9 @@ pub fn extract_action_track(
     let cutter = Cutter {
         tools,
         media: PathBuf::from(&manifest.source.media_path),
-        clips: bundle_dir.join(CLIPS_DIR),
+        // Absolute: the runner opens the clips from its own directory.
+        clips: std::path::absolute(bundle_dir.join(CLIPS_DIR))
+            .context("resolving the action clips directory")?,
         size: (manifest.media.width, manifest.media.height),
         fps: manifest.media.fps,
     };

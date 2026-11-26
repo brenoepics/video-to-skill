@@ -25,6 +25,7 @@ Usage: vts-extract extract <video> --actions --actions-runner scripts/idm-runner
 """
 
 import json
+import os
 import sys
 
 PROTOCOL = 1
@@ -42,7 +43,10 @@ def messages_for(request):
             "content": [
                 {
                     "type": "video",
-                    "video": "file://" + request["clip"],
+                    # A plain absolute path, as vts-extract sends it: the
+                    # video readers hand `file://` URLs to FFmpeg, which
+                    # strips the scheme and opens `//…` as another path.
+                    "video": request["clip"],
                     "fps": request["fps"],
                     "resized_height": request["resized_height"],
                     "resized_width": request["resized_width"],
@@ -53,7 +57,19 @@ def messages_for(request):
     ]
 
 
+def reserve_stdout():
+    """Keep the real stdout for the JSON answer and point file descriptor
+    1 (Python's and native libraries' prints alike) at stderr, so no stray
+    progress line can corrupt the protocol."""
+    sys.stdout.flush()
+    answer = os.fdopen(os.dup(1), "w", encoding="utf-8")
+    os.dup2(2, 1)
+    sys.stdout = sys.stderr
+    return answer
+
+
 def main():
+    answer_out = reserve_stdout()
     batch = json.load(sys.stdin)
     if batch.get("protocol") != PROTOCOL:
         log(f"unsupported protocol {batch.get('protocol')!r}, expected {PROTOCOL}")
@@ -97,7 +113,8 @@ def main():
         except Exception as error:  # one bad clip must not lose the batch
             log(f"{request['id']}: {error}")
 
-    json.dump({"responses": responses}, sys.stdout)
+    json.dump({"responses": responses}, answer_out)
+    answer_out.flush()
     return 0
 
 
