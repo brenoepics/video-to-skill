@@ -39,6 +39,8 @@ pub struct CheckReport {
 
 /// Observe `checks` with this platform's backend.
 pub fn observe(checks: &[Check], dump: bool) -> Result<Report> {
+    #[cfg(windows)]
+    crate::a11y::windows::refuse_unobservable(checks)?;
     observe_with(checks, dump, backend::read)
 }
 
@@ -103,7 +105,12 @@ mod backend {
     pub use crate::a11y::macos::{snapshot as read, SUBSTRATE};
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(windows)]
+mod backend {
+    pub use crate::a11y::windows::{snapshot as read, SUBSTRATE};
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 mod backend {
     use anyhow::{bail, Result};
 
@@ -113,8 +120,8 @@ mod backend {
 
     pub fn read(_app: Option<&str>) -> Result<Snapshot> {
         bail!(
-            "GUI observation has no backend on this platform yet (macOS AXUIElement only; \
-             Windows UI Automation and AT-SPI are designed in issue #37) — mark the step \
+            "GUI observation has no backend on this platform yet (macOS AXUIElement and \
+             Windows UI Automation only; AT-SPI is designed in issue #37) — mark the step \
              unverifiable with this reason"
         )
     }
