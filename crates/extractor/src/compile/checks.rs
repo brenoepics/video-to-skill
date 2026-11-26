@@ -2,8 +2,9 @@
 //! `vts-extract observe` ([`Check`]) carried in the Procedure IR.
 //!
 //! The compiler holds each check to the rules [`Check::parse`] applies,
-//! and to one of its own: a check is literal text, except for
-//! `{workspace}`, which may only begin a `file_exists` path. The verifier
+//! and to one of its own: a check is literal text — no parameter, declared
+//! or hyphenated, is ever substituted — except for `{workspace}`, which
+//! may only begin a `file_exists` path. The verifier
 //! replaces it with its throwaway workspace (`vts-extract observe
 //! --workspace <dir>`, the directory it gave `sandbox`). A file a step
 //! writes can only be checked there — the sandbox grants nothing else —
@@ -33,22 +34,28 @@ pub const WORKSPACE_PLACEHOLDER: &str = "{workspace}";
 /// substitution nothing performs.
 pub(super) fn validate(step: &Step) -> Result<()> {
     for (index, check) in step.checks.iter().enumerate() {
-        validate_one(check)
+        validate_one(check, step)
             .map_err(|error| anyhow!("step '{}' check {}: {error:#}", step.id, index + 1))?;
     }
     Ok(())
 }
 
-fn validate_one(check: &Check) -> Result<()> {
+fn validate_one(check: &Check, step: &Step) -> Result<()> {
     check.validate()?;
     if let Check::FileExists { path } = check {
         return validate_workspace_path(path);
     }
     for (name, text) in strings(check) {
+        // `placeholders` only sees hyphenated names (so code braces pass
+        // elsewhere); the step's own parameters count whatever their shape.
         let placeholder = if text.contains(WORKSPACE_PLACEHOLDER) {
             Some(WORKSPACE_PLACEHOLDER.to_string())
         } else {
-            placeholders(text).first().map(|p| format!("{{{p}}}"))
+            step.parameters
+                .iter()
+                .map(|p| format!("{{{}}}", p.name))
+                .find(|p| text.contains(p.as_str()))
+                .or_else(|| placeholders(text).first().map(|p| format!("{{{p}}}")))
         };
         if let Some(placeholder) = placeholder {
             bail!(

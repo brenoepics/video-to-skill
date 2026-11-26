@@ -229,3 +229,24 @@ fn placeholders_are_not_substituted_outside_file_exists_paths() {
     let braces = json!([{"check": "window_title_contains", "text": "{draft}"}]);
     compiled(&dir, &ir(&braces)).unwrap();
 }
+
+#[test]
+fn a_declared_parameter_is_never_substituted_into_a_check() {
+    // A one-word name is kebab-case too: `{query}` is the step's own
+    // parameter, not braces, and the check would run with it verbatim.
+    let dir = scratch("parameter");
+    let mut ir = ir(&json!([
+        {"check": "window_title_contains", "text": "{query}"}
+    ]));
+    let mut step = serde_json::to_value(&ir.steps[0]).unwrap();
+    step["actions"] = json!("Type {query} into the search field.");
+    step["parameters"] = json!([
+        {"name": "query", "description": "What to search for", "example": "notes"}
+    ]);
+    ir.steps[0] = serde_json::from_value(step).unwrap();
+    let err = compiled(&dir, &ir).unwrap_err().to_string();
+    assert!(
+        err.contains("step '01-save'") && err.contains("literal") && err.contains("{query}"),
+        "{err}"
+    );
+}
