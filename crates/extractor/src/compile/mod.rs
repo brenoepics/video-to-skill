@@ -2,8 +2,8 @@
 //! the analyzing agent and this tool) compiled into an installable
 //! agent-skills package. Pure: same IR + bundle → byte-identical output.
 
-mod cleanup;
 pub mod checks;
+mod cleanup;
 mod emit;
 pub mod frontmatter;
 pub mod graph;
