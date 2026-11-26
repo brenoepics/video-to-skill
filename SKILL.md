@@ -25,7 +25,7 @@ frames you choose to read enter context.
 - **update**: fold a new video into an existing generated skill —
   see step 7 below.
 
-## 1. Locate the extractor (requires vts-extract 0.3.0)
+## 1. Locate the extractor (requires vts-extract 0.4.0)
 
 The binary is cached **globally** so every project that carries this
 skill shares one copy. The cache lives in the app data dir — the same
@@ -37,18 +37,18 @@ data dir joined with `video-to-skill` (Windows:
 
 Resolve the binary in this order and retain its **absolute path** as
 `VTS_EXTRACT` on POSIX or `$vtsExtract` in PowerShell. Execute that path
-with `--version` and require **0.3.0**. A wrong-version binary is ignored
+with `--version` and require **0.4.0**. A wrong-version binary is ignored
 (never deleted; versioned filenames let versions coexist), so move to the
 next candidate or refetch rather than proceeding:
 
-1. Global cache: `<data-dir>/bin/vts-extract-0.3.0` (or
-   `vts-extract-0.3.0.exe` on Windows; versioned filename).
+1. Global cache: `<data-dir>/bin/vts-extract-0.4.0` (or
+   `vts-extract-0.4.0.exe` on Windows; versioned filename).
 2. Dev clones only: `target/release/vts-extract` beside this file
    (`target/release/vts-extract.exe` on Windows).
 3. Fetch the matching prebuilt binary into the global cache. On macOS or
    Linux x64, this selects the correct data directory and release asset:
    ```sh
-   version=0.3.0
+   version=0.4.0
    case "$(uname -s):$(uname -m)" in
      Darwin:arm64) asset=macos-arm64; data_root="${VTS_DATA_DIR:-$HOME/Library/Application Support/video-to-skill}" ;;
      Darwin:x86_64) asset=macos-x86_64; data_root="${VTS_DATA_DIR:-$HOME/Library/Application Support/video-to-skill}" ;;
@@ -70,7 +70,7 @@ next candidate or refetch rather than proceeding:
    ```
    On Windows x64, use PowerShell and preserve the `.exe` suffix:
    ```powershell
-   $version = '0.3.0'
+   $version = '0.4.0'
    $dataRoot = if ($env:VTS_DATA_DIR) { $env:VTS_DATA_DIR } else { Join-Path $env:LOCALAPPDATA 'video-to-skill' }
    $vtsBin = Join-Path $dataRoot 'bin'
    $download = Join-Path ([IO.Path]::GetTempPath()) "vts-$([guid]::NewGuid())"
