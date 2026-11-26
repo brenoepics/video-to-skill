@@ -175,8 +175,10 @@ Rules:
 
 A third tier between "executed in the sandbox" and `unverifiable`: the
 step's **postcondition** is read from the application's accessibility
-tree — macOS `AXUIElement` today; Windows UI Automation and Linux
-AT-SPI are designed but not shipped — with a small read-only vocabulary:
+tree — macOS `AXUIElement` and Windows UI Automation today (on Windows a
+`menu_item_enabled` path below the menu bar exits 2: a closed menu's
+entries are not readable); Linux AT-SPI is designed but not shipped —
+with a small read-only vocabulary:
 
 | Check                  | Holds when                                                                 |
 | ---------------------- | -------------------------------------------------------------------------- |
