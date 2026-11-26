@@ -74,6 +74,9 @@ pub struct Tracks {
     pub transcript: Option<String>,
     pub frames: Option<String>,
     pub timeline: Option<String>,
+    /// The opt-in action track; absent (not `null`) unless it was built.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actions: Option<String>,
 }
 
 /// Load the manifest of an existing bundle.

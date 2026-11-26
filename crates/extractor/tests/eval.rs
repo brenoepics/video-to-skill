@@ -140,6 +140,7 @@ fn perfect_extraction(video: &GoldVideo) -> (Timeline, Transcript) {
             cursor_presence: None,
             cursor: None,
             speech: vec![],
+            actions: vec![],
         })
         .collect();
     let transcript = Transcript {

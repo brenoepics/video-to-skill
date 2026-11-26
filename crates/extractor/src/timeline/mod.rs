@@ -15,11 +15,12 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+use crate::actions::{load_actions, ActionEvent};
 use crate::bundle::{
     load_manifest, load_transcript, load_transcript_source, save_manifest, Chapter, SkipRange,
     TranscriptSource,
 };
-use crate::frames::{load_frame_track, ChangedRegion, CursorEvidence};
+use crate::frames::{load_frame_track, ChangedRegion, CursorEvidence, Keyframe, Shot};
 
 pub const TIMELINE_FILE: &str = "timeline.json";
 
@@ -74,6 +75,11 @@ pub struct TimelineSegment {
     #[serde(default)]
     pub cursor: Option<CursorEvidence>,
     pub speech: Vec<SpeechSpan>,
+    /// Typed GUI events from the opt-in action track that start inside
+    /// the segment: evidence of what was done, never a step's
+    /// coordinates. Absent unless the bundle has an action track.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actions: Vec<ActionEvent>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -115,34 +121,7 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
 
     // Segment skeleton: from shots when available, else one whole-video span.
     let segments_base: Vec<TimelineSegment> = match &frame_shots {
-        Some(shots) => shots
-            .iter()
-            .map(|s| TimelineSegment {
-                index: s.index,
-                start_secs: s.start_secs,
-                end_secs: s.end_secs,
-                skip: None,
-                motion_density: Some(s.motion_density),
-                keyframe: Some(KeyframeRef {
-                    path: s.keyframe.path.clone(),
-                    native_path: s.keyframe.native_path.clone(),
-                    timestamp_secs: s.keyframe.timestamp_secs,
-                }),
-                interior_keyframes: s
-                    .interior_keyframes
-                    .iter()
-                    .map(|kf| KeyframeRef {
-                        path: kf.path.clone(),
-                        native_path: kf.native_path.clone(),
-                        timestamp_secs: kf.timestamp_secs,
-                    })
-                    .collect(),
-                changed_region: s.changed_region.clone(),
-                cursor_presence: s.cursor_presence,
-                cursor: s.cursor.clone(),
-                speech: Vec::new(),
-            })
-            .collect(),
+        Some(shots) => shots.iter().map(segment_of).collect(),
         None => vec![TimelineSegment {
             index: 0,
             start_secs: 0.0,
@@ -155,6 +134,7 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
             cursor_presence: None,
             cursor: None,
             speech: Vec::new(),
+            actions: Vec::new(),
         }],
     };
 
@@ -187,6 +167,10 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
         }
     }
 
+    if let Ok(track) = load_actions(bundle_dir) {
+        assign_actions(&mut segments, track.events);
+    }
+
     let timeline = Timeline {
         schema_version: 1,
         duration_secs: duration,
@@ -204,4 +188,41 @@ pub fn assemble(bundle_dir: &Path) -> Result<Timeline> {
     manifest.tracks.timeline = Some(TIMELINE_FILE.to_string());
     save_manifest(bundle_dir, &manifest)?;
     Ok(timeline)
+}
+
+/// A screen state's segment, before speech and events are assigned.
+fn segment_of(s: &Shot) -> TimelineSegment {
+    let keyframe = |kf: &Keyframe| KeyframeRef {
+        path: kf.path.clone(),
+        native_path: kf.native_path.clone(),
+        timestamp_secs: kf.timestamp_secs,
+    };
+    TimelineSegment {
+        index: s.index,
+        start_secs: s.start_secs,
+        end_secs: s.end_secs,
+        skip: None,
+        motion_density: Some(s.motion_density),
+        keyframe: Some(keyframe(&s.keyframe)),
+        interior_keyframes: s.interior_keyframes.iter().map(keyframe).collect(),
+        changed_region: s.changed_region.clone(),
+        cursor_presence: s.cursor_presence,
+        cursor: s.cursor.clone(),
+        speech: Vec::new(),
+        actions: Vec::new(),
+    }
+}
+
+/// Each event goes to the segment its start falls in (the last segment
+/// keeps one that starts at the very end).
+fn assign_actions(segments: &mut [TimelineSegment], events: Vec<ActionEvent>) {
+    for event in events {
+        let index = segments
+            .iter()
+            .position(|s| event.start_secs < s.end_secs)
+            .or(segments.len().checked_sub(1));
+        if let Some(segment) = index.and_then(|i| segments.get_mut(i)) {
+            segment.actions.push(event);
+        }
+    }
 }
