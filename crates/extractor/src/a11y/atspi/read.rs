@@ -6,7 +6,9 @@ use std::time::Instant;
 use anyhow::{bail, Context, Result};
 
 use super::bus::{self, explain, Bus, Object};
-use super::mapping::{self, is_app_named, state, text_value, toggle_value, MAX_TEXT_CHARS};
+use super::mapping::{
+    self, is_app_named, reads_text, state, text_value, toggle_value, MAX_TEXT_CHARS,
+};
 use super::{MAX_DEPTH, MAX_NODES, WALK_LIMIT};
 use crate::a11y::tree::{Node, Snapshot};
 
@@ -51,7 +53,7 @@ fn process_names(pid: u32) -> Vec<String> {
 
 fn applications(bus: &mut Bus) -> Result<Vec<App>> {
     let mut apps = Vec::new();
-    for root in bus.children(&Object::desktop())? {
+    for root in bus.applications()? {
         // The bus daemon answers for the pid, so a failure here is the
         // connection's. The name comes from the application: one that hangs
         // must not stop every other application from being observed.
@@ -124,9 +126,13 @@ pub fn snapshot(app: Option<&str>) -> Result<Snapshot> {
         budget: MAX_NODES,
         started: Instant::now(),
         cut: false,
+        timed_out: false,
     };
     let mut roots = Vec::new();
     for candidate in &chosen {
+        if walk.out_of_time() {
+            break;
+        }
         if let Err(error) = bus.role_name(&candidate.root)? {
             bail!(
                 "{}",
@@ -152,7 +158,8 @@ pub fn snapshot(app: Option<&str>) -> Result<Snapshot> {
     Ok(Snapshot {
         app: label,
         pid,
-        truncated: walk.cut,
+        truncated: walk.cut || walk.timed_out,
+        timed_out: walk.timed_out,
         root,
     })
 }
@@ -160,13 +167,25 @@ pub fn snapshot(app: Option<&str>) -> Result<Snapshot> {
 struct Walk {
     budget: usize,
     started: Instant,
-    /// Set when the node budget or the time limit stopped the walk.
+    /// Set when the node budget stopped the walk.
     cut: bool,
+    /// Set when the time limit stopped the walk.
+    timed_out: bool,
 }
 
 impl Walk {
+    fn out_of_time(&mut self) -> bool {
+        if self.started.elapsed() > WALK_LIMIT {
+            self.timed_out = true;
+        }
+        self.timed_out
+    }
+
     fn may_descend(&mut self, depth: usize) -> bool {
-        if self.budget == 0 || self.started.elapsed() > WALK_LIMIT {
+        if self.out_of_time() {
+            return false;
+        }
+        if self.budget == 0 {
             self.cut = true;
             return false;
         }
@@ -185,7 +204,9 @@ fn read_node(
     walk: &mut Walk,
 ) -> Result<Node> {
     walk.budget = walk.budget.saturating_sub(1);
-    let atspi_role = bus.role_name(object)?.unwrap_or_default();
+    // `None` when the element did not say: then its text is never read.
+    let read_role = bus.role_name(object)?.ok();
+    let atspi_role = read_role.clone().unwrap_or_default();
     let states = bus.states(object)?;
     let mut node = Node::new(&mapping::role(
         &atspi_role,
@@ -201,9 +222,12 @@ fn read_node(
         None => bus.id_attribute(object)?,
     };
     node.enabled = states.and_then(mapping::States::enabled_reading);
+    if walk.out_of_time() {
+        return Ok(node);
+    }
     node.value = match states.and_then(|s| toggle_value(&atspi_role, s)) {
         Some(toggle) => Some(toggle),
-        None => value(bus, object, &atspi_role)?,
+        None => value(bus, object, read_role.as_deref())?,
     };
     if walk.may_descend(depth) {
         for child in bus.children(object)? {
@@ -218,11 +242,11 @@ fn read_node(
 }
 
 /// A slider's or spinner's number, else an element's text — never a
-/// password field's.
+/// password field's, nor one whose role could not be read.
 fn value(
     bus: &mut Bus,
     object: &Object,
-    atspi_role: &str,
+    atspi_role: Option<&str>,
 ) -> Result<Option<crate::a11y::tree::Scalar>> {
     let interfaces = bus.interfaces(object)?;
     let has = |name: &str| interfaces.iter().any(|i| i == name);
@@ -235,7 +259,7 @@ fn value(
             return Ok(Some(crate::a11y::tree::Scalar::Number(number)));
         }
     }
-    if has("org.a11y.atspi.Text") && atspi_role != "password text" {
+    if has("org.a11y.atspi.Text") && reads_text(atspi_role) {
         let limit = i32::try_from(MAX_TEXT_CHARS + 1).unwrap_or(i32::MAX);
         return Ok(bus.text(object, limit)?.and_then(text_value));
     }

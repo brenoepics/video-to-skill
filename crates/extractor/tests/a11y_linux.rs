@@ -4,7 +4,7 @@
 //!
 //! Without a desktop session every GUI check ends in "could not observe"
 //! with the reason (exit 2, never a false fail); a session bus without an
-//! accessibility bus is named as such, and observing never starts one.
+//! accessibility bus is named as such, and observing does not activate one.
 //!
 //! The live test builds a private desktop — its own session bus, an Xvfb
 //! display and a GTK 3 probe window — and observes the window title, a
@@ -95,6 +95,25 @@ fn a_session_without_an_accessibility_bus_is_named_and_none_is_started() {
     );
 }
 
+#[test]
+fn an_accessibility_bus_without_the_registry_is_named() {
+    // A plain session bus standing in for the accessibility bus: it
+    // answers, but no AT-SPI registry runs on it.
+    let Some(desktop) = Desktop::bus_only("no-registry") else {
+        return;
+    };
+    let session = desktop.session.clone();
+
+    let (code, stdout, stderr) = desktop.observe_with(
+        &["--check", &title_check("gedit", "x")],
+        &[("AT_SPI_BUS_ADDRESS", &session)],
+    );
+
+    assert_eq!(code, 2, "{stdout}{stderr}");
+    assert!(stderr.contains("registry"), "{stderr}");
+    assert!(!stderr.contains("registered: []"), "{stderr}");
+}
+
 /// Observe until it exits 0 or ten seconds pass (an application
 /// registers with the accessibility bus asynchronously after it shows).
 fn poll(desktop: &Desktop, args: &[&str]) -> (i32, String, String) {
@@ -115,7 +134,8 @@ fn a_gtk_window_checkbox_entry_button_and_menu_are_observable_live() {
         return;
     };
     let app = "vts-atspi-probe";
-    let pid = desktop.launch_probe(app, "vts-atspi-probe window");
+    let secret = "vts-hunter2-secret";
+    let pid = desktop.launch_probe(app, "vts-atspi-probe window", secret);
     let checks = serde_json::json!([
         {"check": "window_title_contains", "app": app, "text": "probe window"},
         {"check": "element_exists", "app": app, "role": "AXButton", "title": "Save copy"},
@@ -141,6 +161,16 @@ fn a_gtk_window_checkbox_entry_button_and_menu_are_observable_live() {
     assert_eq!(snapshot.pid, Some(i32::try_from(pid).unwrap()));
     assert!(!snapshot.truncated);
     assert_eq!(snapshot.root.role, "Application");
+    // A password field is dumped by role and name, never by its text.
+    let password = snapshot
+        .root
+        .descendants()
+        .into_iter()
+        .find(|node| node.title.as_deref() == Some("Password"))
+        .unwrap();
+    assert_eq!(password.role, "PasswordText");
+    assert_eq!(password.value, None);
+    assert!(!stdout.contains(secret), "the password leaked: {stdout}");
 
     // A check that does not hold is a fail (exit 1) quoting what was seen.
     let unchecked =

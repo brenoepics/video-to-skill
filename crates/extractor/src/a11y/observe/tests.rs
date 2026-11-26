@@ -11,6 +11,7 @@ fn snapshot(app: &str, window: &str) -> Snapshot {
         app: app.into(),
         pid: None,
         truncated: false,
+        timed_out: false,
         root: Node::new("AXApplication")
             .with_title(app)
             .with_child(Node::new("AXWindow").with_title(window)),

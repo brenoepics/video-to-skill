@@ -10,9 +10,12 @@ use std::fs;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdout, Command, Stdio};
+use std::sync::mpsc;
+use std::time::Duration;
 
-/// The GTK 3 probe: a window with a menu bar, a checkbox, an entry and a
-/// button, each with known state, then a line on stdout once shown.
+/// The GTK 3 probe: a window with a menu bar, a checkbox, an entry, a
+/// password entry holding `argv[3]` and a button, each with known state,
+/// then a line on stdout once shown.
 const PROBE: &str = r#"
 import sys
 import gi
@@ -39,6 +42,11 @@ entry = Gtk.Entry()
 entry.set_text("hello")
 entry.get_accessible().set_name("Greeting")
 box.pack_start(entry, False, False, 0)
+secret = Gtk.Entry()
+secret.set_text(sys.argv[3])
+secret.set_visibility(False)
+secret.get_accessible().set_name("Password")
+box.pack_start(secret, False, False, 0)
 box.pack_start(Gtk.Button(label="Save copy"), False, False, 0)
 window.add(box)
 window.connect("destroy", Gtk.main_quit)
@@ -93,7 +101,12 @@ fn missing<T>(what: &str) -> Option<T> {
     None
 }
 
-/// Start `command` and return it with the first line it prints.
+/// How long a helper may take to print its first line.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(20);
+
+/// Start `command` and return it with the first line it prints; a helper
+/// that prints nothing in time is killed and fails the test instead of
+/// hanging it.
 fn spawn_reading_line(mut command: Command) -> (Child, BufReader<ChildStdout>, String) {
     let mut child = command
         .stdout(Stdio::piped())
@@ -101,8 +114,17 @@ fn spawn_reading_line(mut command: Command) -> (Child, BufReader<ChildStdout>, S
         .spawn()
         .unwrap();
     let mut stdout = BufReader::new(child.stdout.take().unwrap());
-    let mut line = String::new();
-    stdout.read_line(&mut line).unwrap();
+    let (sender, receiver) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut line = String::new();
+        let read = stdout.read_line(&mut line);
+        let _ = sender.send((read.map(|_| line), stdout));
+    });
+    let Ok((Ok(line), stdout)) = receiver.recv_timeout(STARTUP_TIMEOUT) else {
+        child.kill().ok();
+        child.wait().ok();
+        panic!("{command:?} printed nothing within {STARTUP_TIMEOUT:?}");
+    };
     (child, stdout, line.trim().to_string())
 }
 
@@ -188,11 +210,11 @@ impl Desktop {
     }
 
     /// Show the probe window; returns its pid once it is on screen.
-    pub fn launch_probe(&mut self, prgname: &str, title: &str) -> u32 {
+    pub fn launch_probe(&mut self, prgname: &str, title: &str, secret: &str) -> u32 {
         let script = self.dir.join("probe.py");
         fs::write(&script, PROBE).unwrap();
         let mut command = Command::new(self.python.as_ref().unwrap());
-        command.arg(&script).args([prgname, title]);
+        command.arg(&script).args([prgname, title, secret]);
         self.environment(&mut command);
         let (child, stdout, line) = spawn_reading_line(command);
         assert_eq!(line, "ready", "the probe window did not come up");
@@ -203,9 +225,15 @@ impl Desktop {
 
     /// `vts-extract observe <args>` inside the private session.
     pub fn observe(&self, args: &[&str]) -> (i32, String, String) {
+        self.observe_with(args, &[])
+    }
+
+    /// The same, with `extra` variables set on top of the session's.
+    pub fn observe_with(&self, args: &[&str], extra: &[(&str, &str)]) -> (i32, String, String) {
         let mut command = Command::new(env!("CARGO_BIN_EXE_vts-extract"));
         command.arg("observe").args(args);
         self.environment(&mut command);
+        command.envs(extra.iter().copied());
         let output = command.output().unwrap();
         (
             output.status.code().unwrap(),
