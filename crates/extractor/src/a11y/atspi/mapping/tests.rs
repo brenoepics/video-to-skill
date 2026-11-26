@@ -1,5 +1,6 @@
 use super::{
-    describe_remote, is_app_named, role, state, text_value, toggle_value, States, MAX_TEXT_CHARS,
+    describe_remote, is_app_named, reads_text, role, state, text_value, toggle_value, States,
+    MAX_TEXT_CHARS,
 };
 use crate::a11y::tree::{normalize_role, Scalar};
 
@@ -148,4 +149,15 @@ fn remote_errors_say_what_they_mean_for_the_verifier() {
 
     let other = describe_remote("reading x", "com.example.Odd", "it broke");
     assert_eq!(other, "reading x failed: it broke (com.example.Odd)");
+}
+
+#[test]
+fn text_is_read_only_from_a_known_role_that_is_not_a_password() {
+    assert!(reads_text(Some("text")));
+    assert!(reads_text(Some("label")));
+    assert!(!reads_text(Some("password text")));
+    // A role that could not be read might be a password field: fail closed.
+    assert!(!reads_text(None));
+    assert!(!reads_text(Some("")));
+    assert!(!reads_text(Some("unknown")));
 }

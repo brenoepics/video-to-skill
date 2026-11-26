@@ -170,6 +170,10 @@ pub struct Snapshot {
     /// absent element may simply be unread.
     #[serde(default)]
     pub truncated: bool,
+    /// True when it was the backend's time budget, not its node budget,
+    /// that stopped the read.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub timed_out: bool,
     pub root: Node,
 }
 

@@ -133,6 +133,16 @@ pub fn toggle_value(atspi: &str, states: States) -> Option<Scalar> {
     Some(Scalar::Number(reading))
 }
 
+/// Whether an element's text may be read as its value: only when its
+/// role was read and is neither a password field nor unknown. A role
+/// that could not be read might be a password field, so this fails
+/// closed.
+#[must_use]
+pub fn reads_text(atspi_role: Option<&str>) -> bool {
+    atspi_role
+        .is_some_and(|role| !matches!(role.trim(), "" | "unknown" | "invalid" | "password text"))
+}
+
 /// A text read with `GetText(0, MAX_TEXT_CHARS + 1)`: kept only when
 /// it is the whole text.
 #[must_use]

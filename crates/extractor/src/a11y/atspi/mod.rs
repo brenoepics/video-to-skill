@@ -9,10 +9,15 @@
 //! `observe` reads as "not registered" and never switches on.
 //!
 //! Only getters are called (the `bus` module lists them), and every call
-//! carries `NO_AUTO_START`: if the accessibility bus is not running, the
-//! answer is exit 2 with that reason, and nothing is started. Reading
-//! needs no permission beyond being in the user's session, since the bus
-//! only admits its own user.
+//! carries `NO_AUTO_START`, so D-Bus never activates a service to answer
+//! one: a session without the accessibility bus launcher is exit 2 with
+//! that reason. A launcher that is already running but has not started
+//! its bus yet starts it when asked for the address — the request every
+//! accessible application makes at startup; `observe` starts no process
+//! itself. A reply counts only from the peer that was called (its
+//! `SENDER`, set by the bus daemon), so another application cannot answer
+//! in its place. Reading needs no permission beyond being in the user's
+//! session, since the bus only admits its own user.
 //!
 //! The snapshot mirrors the other backends: the application's root
 //! (role `Application`, titled with its accessible name) whose children
