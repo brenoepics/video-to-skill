@@ -74,13 +74,8 @@ pub fn total(models: &[IdmModel]) -> String {
 
 /// Download every missing file of `models`; one failure per model.
 pub fn install(models: &[IdmModel], env: &Env) -> Vec<String> {
-    let largest = models
-        .iter()
-        .flat_map(|m| m.files.iter().map(|f| f.size))
-        .max()
-        .unwrap_or(0);
+    // Each file is capped at its own pinned size (`fetch_sized`).
     let fetcher = LargeFileFetcher {
-        max_bytes: largest,
         timeout: SHARD_TIMEOUT,
     };
     let mut failures = Vec::new();

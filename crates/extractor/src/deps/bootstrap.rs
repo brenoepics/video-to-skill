@@ -67,6 +67,14 @@ impl ToolSpec {
 /// Transport seam: tests supply deterministic bytes and failures.
 pub trait Fetcher {
     fn fetch(&self, url: &str, dest: &Path) -> Result<()>;
+
+    /// [`Fetcher::fetch`] for an artifact pinned at exactly `size` bytes:
+    /// a fetcher that can see the size may refuse anything else early.
+    /// The checksum decides either way.
+    fn fetch_sized(&self, url: &str, dest: &Path, size: u64) -> Result<()> {
+        let _ = size;
+        self.fetch(url, dest)
+    }
 }
 
 /// Download, verify, and install `spec` into `data_dir`.
