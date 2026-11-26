@@ -2,6 +2,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
+use vts_extract::actions;
 use vts_extract::asr::{self, whisper::WhisperEngine};
 use vts_extract::bundle::{self, Transcript, YtdlpDownloader};
 use vts_extract::deps::{self, Env, Presence, Tool};
@@ -65,6 +66,9 @@ pub fn run(input: &str, out: &str, actions_runner: Option<&str>) -> Result<()> {
         started.elapsed().as_secs_f32()
     );
 
+    // Optional tracks are this run's or absent, never an earlier run's.
+    ocr::discard_track(bundle_dir)?;
+    actions::discard_track(bundle_dir)?;
     screen_text_stage(bundle_dir, m.source.title.as_deref());
     if let Some(runner) = actions_runner {
         super::actions::extract_stage(bundle_dir, &tools, &env, runner);

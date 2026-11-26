@@ -22,7 +22,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 pub use engines::{platform_engine, NoEngine};
-pub use track::{extract_text_track, record_unavailable};
+pub use track::{discard_track, extract_text_track, record_unavailable};
 
 pub const SCREEN_TEXT_FILE: &str = "screen_text.json";
 

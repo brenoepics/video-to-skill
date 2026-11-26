@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 pub use backend::{Batch, ClipRequest, IdmBackend, Stage, SubprocessRunner};
 pub use gate::{screen_recording_windows, MAX_WINDOW_SECS};
 pub use prompts::{detector_request_size, dynamic_fps, parameterizer_request_size};
-pub use track::{extract_action_track, record_unavailable, Models};
+pub use track::{discard_track, extract_action_track, record_unavailable, Models};
 
 pub const ACTIONS_FILE: &str = "actions.json";
 

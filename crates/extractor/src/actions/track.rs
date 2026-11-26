@@ -16,7 +16,7 @@ use super::prompts::{
     detector_request_size, dynamic_fps, parameterizer_request_size, request, DETECTOR_FPS,
 };
 use super::{gate, save_actions, Action, ActionEvent, ActionTrack, Window, ACTIONS_FILE};
-use crate::bundle::{load_manifest, save_manifest};
+use crate::bundle::{discard_track as discard_track_files, load_manifest, save_manifest, Tracks};
 use crate::deps::registry::{IDM_DETECTOR, IDM_PARAMETERIZER};
 use crate::frames::load_frame_track;
 use crate::tools::Toolchain;
@@ -112,11 +112,20 @@ pub fn extract_action_track(
     Ok(track)
 }
 
+const NOTE_PREFIX: &str = "actions: ";
+
+/// Drop the action track, clips and note an earlier run left, before
+/// this run labels the bundle (or, without `--actions`, does not).
+pub fn discard_track(bundle_dir: &Path) -> Result<()> {
+    let clear = |tracks: &mut Tracks| tracks.actions = None;
+    discard_track_files(bundle_dir, NOTE_PREFIX, clear, &[ACTIONS_FILE, CLIPS_DIR])
+}
+
 /// Record in the manifest why an opted-in bundle has no action track;
 /// returns the note. Idempotent.
 pub fn record_unavailable(bundle_dir: &Path, reason: &str) -> Result<String> {
     let mut manifest = load_manifest(bundle_dir)?;
-    let note = format!("actions: {reason}");
+    let note = format!("{NOTE_PREFIX}{reason}");
     if !manifest.notes.contains(&note) {
         manifest.notes.push(note.clone());
         save_manifest(bundle_dir, &manifest)?;

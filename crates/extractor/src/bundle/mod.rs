@@ -96,6 +96,39 @@ pub fn save_manifest(bundle_dir: &Path, manifest: &Manifest) -> Result<()> {
     Ok(())
 }
 
+/// Forget an optional track an earlier run built: its manifest slot and
+/// note, then its files and directories. The manifest is saved only
+/// when it changed, so a bundle without the track stays byte-identical.
+pub(crate) fn discard_track(
+    bundle_dir: &Path,
+    note_prefix: &str,
+    clear_slot: impl FnOnce(&mut Tracks),
+    paths: &[&str],
+) -> Result<()> {
+    let mut manifest = load_manifest(bundle_dir)?;
+    let before = manifest.clone();
+    clear_slot(&mut manifest.tracks);
+    manifest.notes.retain(|note| !note.starts_with(note_prefix));
+    if manifest != before {
+        save_manifest(bundle_dir, &manifest)?;
+    }
+    for path in paths {
+        let path = bundle_dir.join(path);
+        let removed = if path.is_dir() {
+            fs::remove_dir_all(&path)
+        } else {
+            fs::remove_file(&path)
+        };
+        match removed {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                return Err(error).with_context(|| format!("removing {}", path.display()));
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -16,7 +16,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use vts_extract::actions::{load_actions, Action, Button};
+use vts_extract::actions::{load_actions, Action, Button, ACTIONS_FILE};
+use vts_extract::bundle::load_manifest;
 use vts_extract::deps::idm::{model_dir, model_ready};
 use vts_extract::deps::registry::idm_models;
 use vts_extract::deps::verification_marker;
@@ -59,6 +60,96 @@ fn runner(dir: &Path) -> PathBuf {
     path
 }
 
+/// `vts-extract extract` into `bundle`, with `--actions` when given a
+/// runner; the run must succeed.
+fn extract(video: &Path, bundle: &Path, data: &Path, runner: Option<&Path>) {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_vts-extract"));
+    command
+        .args(["extract", video.to_str().unwrap(), "--out"])
+        .arg(bundle)
+        .env("VTS_DATA_DIR", data);
+    if let Some(runner) = runner {
+        command.arg("--actions").arg("--actions-runner").arg(runner);
+    }
+    let out = command.output().unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// Nothing of an action track anywhere in the bundle: no artifact, no
+/// clips, no manifest slot, no event in the timeline.
+fn assert_no_action_track(bundle: &Path) {
+    assert!(!bundle.join(ACTIONS_FILE).exists(), "stale actions.json");
+    assert!(!bundle.join("actions").exists(), "stale action clips");
+    assert_eq!(load_manifest(bundle).unwrap().tracks.actions, None);
+    let timeline = load_timeline(bundle).unwrap();
+    assert!(
+        timeline.segments.iter().all(|s| s.actions.is_empty()),
+        "stale events in the timeline: {timeline:?}"
+    );
+}
+
+/// A first run with `--actions` that put one click in the timeline.
+fn labelled_walkthrough(name: &str) -> Option<(PathBuf, PathBuf, PathBuf, PathBuf)> {
+    if !fixture::has_libx264() {
+        eprintln!("skipping: ffmpeg has no libx264 encoder");
+        return None;
+    }
+    let dir = fixture::scratch(name);
+    let video = fixture::walkthrough_fixture(&dir);
+    let data = dir.join("data");
+    fake_install(&data);
+    let runner = runner(&dir);
+    let bundle = dir.join("bundle");
+    extract(&video, &bundle, &data, Some(&runner));
+    let timeline = load_timeline(&bundle).unwrap();
+    assert_eq!(timeline.segments[0].actions.len(), 1, "{timeline:?}");
+    Some((video, bundle, data, runner))
+}
+
+#[test]
+fn a_rerun_without_actions_drops_the_previous_track() {
+    let Some((video, bundle, data, _)) = labelled_walkthrough("actions-rerun-off") else {
+        return;
+    };
+
+    extract(&video, &bundle, &data, None);
+
+    assert_no_action_track(&bundle);
+}
+
+#[test]
+fn a_rerun_whose_action_stage_fails_keeps_only_its_note() {
+    let Some((video, bundle, data, runner)) = labelled_walkthrough("actions-rerun-fail") else {
+        return;
+    };
+    let empty = data.with_file_name("no-models");
+
+    extract(&video, &bundle, &empty, Some(&runner));
+
+    assert_no_action_track(&bundle);
+    let notes = load_manifest(&bundle).unwrap().notes;
+    let failures: Vec<&String> = notes
+        .iter()
+        .filter(|n| n.starts_with("actions: "))
+        .collect();
+    assert_eq!(failures.len(), 1, "{notes:?}");
+
+    extract(&video, &bundle, &data, Some(&runner));
+
+    let manifest = load_manifest(&bundle).unwrap();
+    assert!(
+        !manifest.notes.iter().any(|n| n.starts_with("actions: ")),
+        "a stale failure note beside a fresh track: {:?}",
+        manifest.notes
+    );
+    assert_eq!(manifest.tracks.actions.as_deref(), Some(ACTIONS_FILE));
+    assert_eq!(load_timeline(&bundle).unwrap().segments[0].actions.len(), 1);
+}
+
 #[test]
 fn a_click_in_a_gui_walkthrough_reaches_the_timeline() {
     if !fixture::has_libx264() {
@@ -72,20 +163,7 @@ fn a_click_in_a_gui_walkthrough_reaches_the_timeline() {
     let runner = runner(&dir);
     let bundle = dir.join("bundle");
 
-    let out = Command::new(env!("CARGO_BIN_EXE_vts-extract"))
-        .args(["extract", video.to_str().unwrap(), "--out"])
-        .arg(&bundle)
-        .arg("--actions")
-        .arg("--actions-runner")
-        .arg(&runner)
-        .env("VTS_DATA_DIR", &data)
-        .output()
-        .unwrap();
-    assert!(
-        out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    extract(&video, &bundle, &data, Some(&runner));
 
     let batches = fs::read_to_string(dir.join("batches.jsonl")).unwrap();
     let batches: Vec<serde_json::Value> = batches

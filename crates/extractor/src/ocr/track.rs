@@ -6,8 +6,10 @@ use std::sync::{Mutex, PoisonError};
 
 use anyhow::{Context, Result};
 
-use super::{save_screen_text, OcrEngine, Recognized, ScreenTextLine, ScreenTextTrack};
-use crate::bundle::{load_manifest, save_manifest};
+use super::{
+    save_screen_text, OcrEngine, Recognized, ScreenTextLine, ScreenTextTrack, SCREEN_TEXT_FILE,
+};
+use crate::bundle::{discard_track as discard_track_files, load_manifest, save_manifest};
 use crate::frames::export::worker_count;
 use crate::frames::{load_frame_track, FrameTrack};
 
@@ -51,16 +53,24 @@ pub fn extract_text_track(bundle_dir: &Path, engine: &dyn OcrEngine) -> Result<S
     Ok(track)
 }
 
+const NOTE_PREFIX: &str = "screen_text: ";
+
 /// Record in the manifest why the bundle has no screen text track;
 /// returns the note. Idempotent.
 pub fn record_unavailable(bundle_dir: &Path, reason: &str) -> Result<String> {
     let mut manifest = load_manifest(bundle_dir)?;
-    let note = format!("screen_text: {reason}");
+    let note = format!("{NOTE_PREFIX}{reason}");
     if !manifest.notes.contains(&note) {
         manifest.notes.push(note.clone());
         save_manifest(bundle_dir, &manifest)?;
     }
     Ok(note)
+}
+
+/// Drop the screen text track and note an earlier run left, before
+/// this run builds its own (or notes why it could not).
+pub fn discard_track(bundle_dir: &Path) -> Result<()> {
+    discard_track_files(bundle_dir, NOTE_PREFIX, |_| {}, &[SCREEN_TEXT_FILE])
 }
 
 /// The native still carries the most legible text, so it is read when
