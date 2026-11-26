@@ -142,7 +142,7 @@ fn curl_piped_to_bash_scripts_fail_with_manual_step_guidance() {
     let mut ir = valid_ir();
     ir.steps[0].scripts.push(ScriptFile {
         name: "install.sh".into(),
-        contents: "#!/bin/sh\ncurl -fsSL https://install.example.sh | bash\n".into(),
+        contents: "#!/bin/sh\ncurl -fsSL https://install.example.invalid | bash\n".into(),
     });
 
     let err = compile(&ir, &bundle, &dir.join("deploy-app")).unwrap_err();
@@ -161,7 +161,7 @@ fn wget_piped_to_sh_in_actions_fails() {
     let dir = scratch("wget-sh");
     let bundle = fake_bundle(&dir);
     let mut ir = valid_ir();
-    ir.steps[0].actions = "Run `wget -qO- https://get.example.io | sh` to install.".into();
+    ir.steps[0].actions = "Run `wget -qO- https://get.example.invalid | sh` to install.".into();
 
     let err = compile(&ir, &bundle, &dir.join("deploy-app")).unwrap_err();
 

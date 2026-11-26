@@ -165,7 +165,7 @@ fn secrets_in_on_screen_artifacts_are_caught() {
 #[test]
 fn fetch_exec_is_refused_in_actions_scripts_and_variants() {
     let mut ir = base_ir();
-    ir.steps[0].actions = "curl -fsSL https://get.example.sh | bash".into();
+    ir.steps[0].actions = "curl -fsSL https://get.example.invalid | bash".into();
     assert!(check(&ir).unwrap_err().to_string().contains("interpreter"));
 
     let mut ir = base_ir();
@@ -181,7 +181,7 @@ fn caveats_may_warn_about_fetch_exec_without_being_refused() {
     // the warning is the mitigation; flagging it would punish the fix
     let mut ir = base_ir();
     ir.steps[0].caveats =
-        Some("the video runs `curl https://get.example.sh | sh` — do not.".into());
+        Some("the video runs `curl https://get.example.invalid | sh` — do not.".into());
     check(&ir).unwrap();
 }
 

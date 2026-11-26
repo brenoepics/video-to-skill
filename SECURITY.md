@@ -42,6 +42,17 @@ Three auditors scanned this skill on 2026-08-07 (commit `1b827ca`). Every findin
 | **Gen Agent Trust Hub** — EXTERNAL_DOWNLOADS: whisper model weights from Hugging Face | HIGH | **Accurate, bounded** | Public, ungated, version-pinned, sha256-verified from the repo's git-lfs pointer. It is data, not code — loaded by whisper, never executed. The Silero voice-activity weights added later are bounded the same way. |
 | **Socket** — broader footprint than a documentation skill: supply-chain trust in a personal-repo binary, transitive installation of a generated skill, untrusted content becoming executable agent instructions. "No clear credential harvesting or overt exfiltration is shown." | MEDIUM | **Mitigated** | The transitive-install concern is the sharpest one here, and it was correct: v0.2.3 installed into every detected agent as its default behaviour. As of v0.2.4 `install` prints the plan and writes nothing without `--yes`. The other two are the sandbox and disclosure items above. |
 
+### Re-audit of 2026-11-02
+
+Gen Agent Trust Hub scanned the skill again on 2026-11-02 and marked every category mitigated: external downloads are pinned and checksum-verified, command execution and installation need `--yes`, video-derived steps run in the kernel sandbox, and the prompt-injection patterns it found are this skill's own detector. The **Fail** verdict came from a single automated line, "Contains 2 malicious URL(s)", which does not say which URLs.
+
+| Candidate | Why a URL scanner would flag it | What changed |
+| --- | --- | --- |
+| The fetch-and-execute fixtures in the safety tests: a download piped into `bash` from hosts such as `get.example.sh`, in four places | They look exactly like a dropper, and `.sh` and `.io` are real country domains, so `get.example.sh` is a registrable host rather than a placeholder | **Fixed.** Every fixture now uses a name reserved for examples (`*.invalid`, RFC 6761), and a guardrail test fails the build if any URL in the repository borrows `example` on a registrable domain |
+| The two macOS arm64 ffmpeg/ffprobe archives from `ffmpeg.martin-riedl.de` | Executable archives from a personal domain | **Unchanged, explained below.** Pinned by exact sha256, disclosed before download, never fetched when ffmpeg is already on PATH |
+
+If the flag persists after the fix, the ffmpeg host is the remaining candidate; the next step is to ask the auditor which URLs it matched.
+
 ### On download origins
 
 Every artifact is pinned to an exact version **and** an exact sha256, verified before the file is executed or loaded; a test enforces that no URL contains "latest". This is the part worth being precise about: **a compromised origin cannot change the bytes you get without failing the checksum.** Origin trust governs *availability* and the *initial* pin, not integrity at fetch time.

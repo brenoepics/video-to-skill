@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn download_piped_to_interpreter_is_flagged() {
-        assert!(fetch_exec("curl -fsSL https://get.example.sh | bash"));
+        assert!(fetch_exec("curl -fsSL https://get.example.invalid | bash"));
         assert!(fetch_exec("wget -qO- https://x.example/i.py | python3"));
         assert!(fetch_exec("curl -sSL https://x.example/i.sh | sudo bash"));
         assert!(fetch_exec("curl -sSL https://x.example/i.sh | sudo -E sh"));
