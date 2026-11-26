@@ -176,15 +176,26 @@ Rules:
   the same claim, never a license to check a lesser one. If the
   substrate can only check part of a criterion, the unproved remainder
   must be stated in the detail per rule (a).
+- **(d) The accessibility substrate reads, it never acts.** A
+  GUI-observed outcome rests on what the application's accessibility
+  tree *reports* — a title, a value, a toggle, an enabled flag — read
+  with getters only. It is the step's postcondition observed, not the
+  step executed: the badge counts such passes separately ("3 passed (1
+  GUI-observed)"), the observations are recorded with the step (see
+  **Record**), and a tree that does not report the state (an attribute
+  missing, a menu that lists nothing while closed, a truncated tree that
+  may hide the element) is `unverifiable` or a `fail` quoting
+  `observed`, never a pass inferred from what the screen probably
+  shows.
 
 ### GUI-observed tier
 
 A third tier between "executed in the sandbox" and `unverifiable`: the
 step's **postcondition** is read from the application's accessibility
-tree — macOS `AXUIElement` and Windows UI Automation today (on Windows a
+tree — macOS `AXUIElement`, Windows UI Automation (where a
 `menu_item_enabled` path below the menu bar exits 2: a closed menu's
-entries are not readable); Linux AT-SPI is designed but not shipped —
-with a small read-only vocabulary:
+entries are not readable) and Linux AT-SPI — with a small read-only
+vocabulary:
 
 | Check                  | Holds when                                                                 |
 | ---------------------- | -------------------------------------------------------------------------- |
@@ -202,7 +213,11 @@ vts-extract observe --check '{"check":"window_title_contains","app":"TextEdit","
 
 `app` is the process name; omit it to observe the frontmost
 application. Roles are the platform's names compared without the `AX`
-prefix and ignoring case (`button` matches `AXButton`); `--dump` prints
+prefix and ignoring case (`button` matches `AXButton`); on Linux the
+AT-SPI roles that have a macOS or UI Automation counterpart take its
+spelling (`frame` and `dialog` are `Window`, `push button` is `Button`,
+`check box` is `CheckBox`, `text` is `TextField`, a menu bar entry is
+`MenuBarItem`), so one check reads the same everywhere; `--dump` prints
 the tree that was read, which is how you discover roles, titles and
 identifiers before writing a check. `--workspace <dir>` replaces
 `{workspace}` at the start of a `file_exists` path, the form a
@@ -216,7 +231,7 @@ pass does `not_proved`. Exit codes:
 | ---- | --------------------------------------------------- | ---------------------------------- |
 | 0    | every check holds                                   | `pass` (per rule (a), see below)   |
 | 1    | a check was observed and does not hold              | `fail`, quoting `observed`         |
-| 2    | nothing could be observed (no Accessibility permission, app not running, no backend on this OS, invalid check) | `unverifiable`, quoting the stderr reason |
+| 2    | nothing could be observed (no Accessibility permission, app not running, no session or accessibility bus, no backend on this OS, invalid check) | `unverifiable`, quoting the stderr reason |
 
 A GUI-observed pass names the substrate and copies the tool's
 `not_proved` sentence into the detail, for example:
@@ -247,6 +262,24 @@ on the host stays `unverifiable`, with that reason, until the VM tier
 lands. Accessibility permission is a host setting the user grants;
 `observe` never prompts for it and never asks the agent to change
 Privacy & Security settings — exit 2 is the honest answer.
+
+**Per platform.**
+
+| Backend | Substrate name | `app` matches | Exit 2 when |
+| --- | --- | --- | --- |
+| macOS | `macOS AXUIElement (read-only)` | the process name (`pgrep -x`) | the host has not granted Accessibility permission |
+| Windows | `Windows UI Automation (read-only)` | the executable (`notepad`, `.exe` optional) | a submenu path is asked for; the app runs elevated |
+| Linux | `Linux AT-SPI (read-only)` | the process name, `argv[0]`'s basename or the accessible name, case ignored | no session bus (run inside the desktop session); no accessibility bus running; the app is not registered |
+
+On Linux `observe` talks to the AT-SPI accessibility bus that the
+session's `org.a11y.Bus` reports (or `AT_SPI_BUS_ADDRESS` names), and
+asks with `NO_AUTO_START`: if at-spi2-core's bus is not already
+running, that is the exit-2 reason and nothing is started. GTK
+applications register on their own; Qt and Chromium-based ones only
+while desktop accessibility is enabled, which is a user setting
+`observe` never changes — "not registered" is the honest answer. Without
+`app`, the application with an active window is read. A password
+field's text is never read.
 
 ## Repair loop (bounded: max 2 repairs)
 
@@ -313,7 +346,8 @@ Write the report (schema v1) and stamp it:
 
 A step whose outcome rests on `observe` records what it printed:
 `substrate` names the substrate (the entries' `substrate`, e.g.
-`macOS AXUIElement (read-only)` or `filesystem`), and `observations`
+`macOS AXUIElement (read-only)`, `Windows UI Automation (read-only)`,
+`Linux AT-SPI (read-only)` or `filesystem`), and `observations`
 holds the entries of the report's `checks` array copied as printed —
 `check`, `substrate`, `passed`, `observed`, `not_proved` — so the outcome
 can be re-derived from the report alone and a repair can cite an
@@ -335,9 +369,11 @@ The tool validates step ids against the package, fills each step's
 `repairs` with the signals its caveats cite, writes the report, and
 stamps a badge into the generated SKILL.md: ✅ Verified by execution,
 🟡 Partially verified, or ⚠ NOT verified — "after N repairs" when
-`attempts` is above 1. It also updates the frontmatter's
-`video-to-skill/verified-steps` to `passed/total`, and writes each
-step's verdict into `provenance.json` (`steps[].verdict`: outcome,
+`attempts` is above 1, and "N passed (M GUI-observed)" when M passes
+cite an observation from a GUI substrate (a `filesystem` observation
+alone is a scriptable check, not the GUI-observed tier). It also
+updates the frontmatter's `video-to-skill/verified-steps` to
+`passed/total`, and writes each step's verdict into `provenance.json` (`steps[].verdict`: outcome,
 detail, repairs), adds one to `usage_count` for every step that ran
 (`pass` or `fail`), and appends `Unsolved: <detail>` to the
 `failure_notes` of every `fail`. A later fold clears the verdicts and

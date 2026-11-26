@@ -11,7 +11,7 @@ use std::path::Path;
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::a11y::observe::CheckReport;
+use crate::a11y::observe::{CheckReport, FILESYSTEM_SUBSTRATE};
 use crate::compile::{frontmatter, repairs, ProcedureIr, Verdict, SCHEMA_VERSION};
 
 pub const VERIFICATION_FILE: &str = "verification.json";
@@ -198,6 +198,16 @@ fn record_verdicts(provenance: &mut ProcedureIr, report: &VerificationReport) {
     provenance.schema_version = SCHEMA_VERSION;
 }
 
+/// A pass that rests on reading an application's accessibility tree:
+/// it cites an observation from a GUI substrate, not only the filesystem.
+fn is_gui_observed(step: &StepOutcome) -> bool {
+    step.outcome == "pass"
+        && step
+            .observations
+            .iter()
+            .any(|observation| observation.substrate != FILESYSTEM_SUBSTRATE)
+}
+
 fn stamp_badge(skill_md: &str, report: &VerificationReport) -> Result<String> {
     let counts = |outcome: &str| report.steps.iter().filter(|s| s.outcome == outcome).count();
     let any_failed = report.steps.iter().any(|s| s.outcome == "fail");
@@ -207,18 +217,21 @@ fn stamp_badge(skill_md: &str, report: &VerificationReport) -> Result<String> {
         1 => " after 1 repair".to_string(),
         n => format!(" after {n} repairs"),
     };
+    // The GUI-observed tier is named: such a pass read state, it ran nothing.
+    let passed = match report.steps.iter().filter(|s| is_gui_observed(s)).count() {
+        0 => format!("{} passed", counts("pass")),
+        gui => format!("{} passed ({gui} GUI-observed)", counts("pass")),
+    };
     let body = if report.verified {
         format!(
-            "> ✅ **Verified by execution**{repaired} — {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. Details: [verification.json](verification.json).",
-            counts("pass"),
+            "> ✅ **Verified by execution**{repaired} — {passed}, {} skipped by safety policy, {} unverifiable in a sandbox. Details: [verification.json](verification.json).",
             counts("skipped"),
             counts("unverifiable"),
         )
     } else if !any_failed {
         // Nothing that ran diverged; the skill is only partially exercised.
         format!(
-            "> 🟡 **Partially verified**{repaired} — no executed step failed: {} passed, {} skipped by safety policy, {} unverifiable in a sandbox. {}. Details: [verification.json](verification.json).",
-            counts("pass"),
+            "> 🟡 **Partially verified**{repaired} — no executed step failed: {passed}, {} skipped by safety policy, {} unverifiable in a sandbox. {}. Details: [verification.json](verification.json).",
             counts("skipped"),
             counts("unverifiable"),
             report.summary,

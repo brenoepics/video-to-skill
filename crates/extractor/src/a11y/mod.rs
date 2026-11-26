@@ -16,10 +16,13 @@
 //! on the host is still out of scope (see
 //! `references/verification-protocol.md`, "GUI-observed tier").
 //!
-//! Backends: macOS `AXUIElement` ([`macos`]) and Windows UI Automation
-//! ([`windows`]). AT-SPI is designed in issue #37 and not implemented
-//! yet; on Linux only `file_exists` can be observed.
+//! Backends: macOS `AXUIElement` ([`macos`]), Windows UI Automation
+//! ([`windows`]) and Linux AT-SPI ([`atspi`]). Elsewhere only
+//! `file_exists` can be observed.
 
+// Its bus half is Linux-only inside; the D-Bus wire format and the
+// mapping compile everywhere so their tests run on every OS.
+pub mod atspi;
 pub mod check;
 pub mod eval;
 #[cfg(target_os = "macos")]
