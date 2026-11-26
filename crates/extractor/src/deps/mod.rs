@@ -8,6 +8,7 @@
 
 pub mod bootstrap;
 pub mod fetch;
+pub mod idm;
 pub mod registry;
 
 mod archive;
