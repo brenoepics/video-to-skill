@@ -23,10 +23,15 @@ pub(super) struct Detection {
     pub end_secs: f64,
 }
 
-/// The detections in a stage-1 answer; `None` when it holds no array.
+/// The detections in a stage-1 answer: upstream's array of objects
+/// anywhere in the text, or an answer that is just an array (`[]`: no
+/// action). `None` when it holds no readable array.
 pub(super) fn detections(text: &str) -> Option<Vec<Detection>> {
-    let found = DETECTIONS.as_ref()?.find(text)?;
-    let items: Vec<Value> = serde_json::from_str(found.as_str()).ok()?;
+    let found = DETECTIONS
+        .as_ref()?
+        .find(text)
+        .map_or(text.trim(), |found| found.as_str());
+    let items: Vec<Value> = serde_json::from_str(found).ok()?;
     Some(
         items
             .iter()
@@ -168,6 +173,12 @@ mod tests {
             }]
         );
         assert_eq!(detections("no actions here"), None);
+        assert_eq!(detections(" [] "), Some(Vec::new()));
+        assert_eq!(
+            detections(r#"[{"action_type": "type"}] then [{"action_type": "key"}]"#),
+            None,
+            "two arrays are not one answer"
+        );
     }
 
     #[test]

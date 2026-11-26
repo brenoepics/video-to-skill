@@ -148,5 +148,8 @@ fn run(
         track.windows.len(),
         started.elapsed().as_secs_f32()
     );
+    for note in &track.notes {
+        println!("  ! {note}");
+    }
     Ok(())
 }

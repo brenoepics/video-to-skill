@@ -169,3 +169,54 @@ fn a_relative_out_dir_still_sends_the_runner_absolute_clip_paths() {
     let events = load_actions(&dir.join("rel/bundle")).unwrap().events;
     assert_eq!(events.len(), 1);
 }
+
+/// A runner that exits 0 but answers no clip (every request failed
+/// inside it) must not pass for a video with no actions.
+#[test]
+fn a_runner_that_answers_nothing_leaves_a_note_not_an_empty_track() {
+    if !fixture::has_libx264() {
+        eprintln!("skipping: ffmpeg has no libx264 encoder");
+        return;
+    }
+    let dir = fixture::scratch("actions-e2e-silent");
+    let video = fixture::walkthrough_fixture(&dir);
+    let data = dir.join("data");
+    fake_install(&data);
+    let runner = dir.join("silent-runner");
+    fs::write(
+        &runner,
+        "#!/bin/sh\ncat > /dev/null\nprintf '%s' '{\"responses\": []}'\n",
+    )
+    .unwrap();
+    fs::set_permissions(&runner, fs::Permissions::from_mode(0o755)).unwrap();
+    let bundle = dir.join("bundle");
+
+    let out = Command::new(env!("CARGO_BIN_EXE_vts-extract"))
+        .args(["extract", video.to_str().unwrap(), "--out"])
+        .arg(&bundle)
+        .arg("--actions")
+        .arg("--actions-runner")
+        .arg(&runner)
+        .env("VTS_DATA_DIR", &data)
+        .output()
+        .unwrap();
+
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!bundle.join("actions.json").exists());
+    let notes = vts_extract::bundle::load_manifest(&bundle).unwrap().notes;
+    assert!(
+        notes
+            .iter()
+            .any(|n| n.starts_with("actions:") && n.contains("answered none")),
+        "{notes:?}"
+    );
+    assert!(
+        !String::from_utf8_lossy(&out.stdout).contains("events across"),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+}
