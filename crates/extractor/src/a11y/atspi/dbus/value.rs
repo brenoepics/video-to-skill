@@ -2,17 +2,24 @@
 //! carry. Everything a peer sends is checked against the specification's
 //! limits — lengths, nesting, NUL terminators, booleans, UTF-8 — before
 //! it is trusted, so a misbehaving application yields an error, never a
-//! panic or an unbounded allocation.
+//! panic or an unbounded allocation. A byte array stays bytes and one
+//! message decodes into at most [`MAX_VALUES`] values, so a reply cannot
+//! cost many times its own size in memory.
 
 use anyhow::{bail, Context, Result};
 
 pub use super::signature::split_signature;
-use super::signature::{alignment, complete_type_len, MAX_DEPTH};
+use super::signature::{alignment, complete_type_len, Nesting, MAX_DEPTH};
 
 /// The specification's largest array, in bytes.
 const MAX_ARRAY_BYTES: usize = 1 << 26;
+/// The most values one reader decodes. A real reply holds a few thousand
+/// (`GetChildren` of a large container); every value costs a few dozen
+/// bytes, so this bounds what any reply can cost.
+pub const MAX_VALUES: usize = 1 << 20;
 
-/// One decoded value. `s`, `o` and `g` all decode to [`Value::Str`].
+/// One decoded value. `s` and `o` decode to [`Value::Str`], `g` to
+/// [`Value::Signature`], and `ay` to [`Value::Bytes`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Byte(u8),
@@ -25,6 +32,8 @@ pub enum Value {
     U64(u64),
     Double(f64),
     Str(String),
+    Signature(String),
+    Bytes(Vec<u8>),
     /// A Unix file descriptor index (`h`); never used, only skipped.
     Fd(u32),
     Array(Vec<Value>),
@@ -46,7 +55,7 @@ impl Value {
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match self.inner() {
-            Self::Str(text) => Some(text),
+            Self::Str(text) | Self::Signature(text) => Some(text),
             _ => None,
         }
     }
@@ -82,6 +91,8 @@ pub struct Reader<'a> {
     buf: &'a [u8],
     pos: usize,
     big_endian: bool,
+    /// How many more values this reader may produce.
+    values: usize,
 }
 
 impl<'a> Reader<'a> {
@@ -96,6 +107,7 @@ impl<'a> Reader<'a> {
             buf,
             pos,
             big_endian,
+            values: MAX_VALUES,
         }
     }
 
@@ -158,6 +170,10 @@ impl<'a> Reader<'a> {
         if depth > MAX_DEPTH {
             bail!("a value is nested deeper than {MAX_DEPTH}");
         }
+        self.values = self
+            .values
+            .checked_sub(1)
+            .with_context(|| format!("a D-Bus message holds more than {MAX_VALUES} values"))?;
         let Some(&code) = ty.first() else {
             bail!("a type is missing");
         };
@@ -182,7 +198,7 @@ impl<'a> Reader<'a> {
             }
             b'g' => {
                 let len = usize::from(self.take(1)?[0]);
-                Value::Str(self.text(len)?)
+                Value::Signature(self.text(len)?)
             }
             b'v' => {
                 let len = usize::from(self.take(1)?[0]);
@@ -198,7 +214,7 @@ impl<'a> Reader<'a> {
                 let mut members = Vec::new();
                 let mut at = 1;
                 while ty.get(at).is_some_and(|&c| c != b')') {
-                    let len = complete_type_len(&ty[at..], depth + 1)?;
+                    let len = complete_type_len(&ty[at..], Nesting::default())?;
                     members.push(self.read(&ty[at..at + len], depth + 1)?);
                     at += len;
                 }
@@ -220,9 +236,14 @@ impl<'a> Reader<'a> {
             .checked_add(len)
             .filter(|&end| end <= self.buf.len())
             .context("an array runs past the end of the message")?;
+        if element == b"y" {
+            return Ok(Value::Bytes(self.take(len)?.to_vec()));
+        }
         let mut items = Vec::new();
         if first == b'{' {
-            let value_len = complete_type_len(&element[2..], depth + 1)?;
+            // The whole type was checked against the nesting limits when
+            // its signature was split; here only lengths are needed.
+            let value_len = complete_type_len(&element[2..], Nesting::default())?;
             while self.pos < end {
                 self.align(8)?;
                 let key = self.read(&element[1..2], depth + 1)?;
@@ -230,7 +251,7 @@ impl<'a> Reader<'a> {
                 items.push(Value::DictEntry(Box::new((key, value))));
             }
         } else {
-            let element_len = complete_type_len(element, depth + 1)?;
+            let element_len = complete_type_len(element, Nesting::default())?;
             while self.pos < end {
                 items.push(self.read(&element[..element_len], depth + 1)?);
             }

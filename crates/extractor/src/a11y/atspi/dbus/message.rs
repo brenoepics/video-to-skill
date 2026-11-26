@@ -3,9 +3,8 @@
 //!
 //! Only what a read-only accessibility client needs is encoded: method
 //! calls whose arguments are strings and 32-bit integers. Every call sets
-//! `NO_AUTO_START`, so asking the bus never activates a service — if the
-//! accessibility bus is not already running, the answer is "not
-//! available", and nothing is started on the user's behalf.
+//! `NO_AUTO_START`, so asking the bus never D-Bus-activates a service to
+//! answer it.
 
 use anyhow::{bail, Context, Result};
 
@@ -13,9 +12,11 @@ use super::value::{Reader, Value};
 
 /// Header flag: do not start the destination service to answer.
 pub const NO_AUTO_START: u8 = 0x2;
-/// No reply this client asks for comes near this; anything larger is
-/// refused before it is read.
-const MAX_MESSAGE_BYTES: usize = 1 << 25;
+/// The largest reply this client accepts, refused before it is read. Text
+/// is asked for 16 384 characters at most (64 KiB of UTF-8), so only
+/// `GetChildren` of a very large container comes near: 4 MiB holds some
+/// 50 000 children.
+const MAX_MESSAGE_BYTES: usize = 1 << 22;
 /// The fixed part every message starts with.
 pub const FIXED_HEADER_BYTES: usize = 16;
 
@@ -25,6 +26,7 @@ const FIELD_MEMBER: u8 = 3;
 const FIELD_ERROR_NAME: u8 = 4;
 const FIELD_REPLY_SERIAL: u8 = 5;
 const FIELD_DESTINATION: u8 = 6;
+const FIELD_SENDER: u8 = 7;
 const FIELD_SIGNATURE: u8 = 8;
 
 /// One method call.
@@ -35,6 +37,8 @@ pub struct Call<'a> {
     pub interface: &'a str,
     pub member: &'a str,
     pub args: Vec<Arg<'a>>,
+    /// The signature the reply must have; any other is not decoded.
+    pub reply: &'a str,
 }
 
 /// A call argument.
@@ -53,13 +57,29 @@ pub enum Kind {
     Signal,
 }
 
-/// A decoded message: the header fields a client acts on, and the body.
+/// The header fields a client acts on, and where the body starts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Header {
+    pub kind: Kind,
+    pub serial: u32,
+    pub reply_serial: Option<u32>,
+    pub error_name: Option<String>,
+    /// Set by the bus daemon on every message it routes; a peer cannot
+    /// forge it.
+    pub sender: Option<String>,
+    pub signature: String,
+    body_start: usize,
+    big_endian: bool,
+}
+
+/// A decoded message: its header fields and its body.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Message {
     pub kind: Kind,
     pub serial: u32,
     pub reply_serial: Option<u32>,
     pub error_name: Option<String>,
+    pub sender: Option<String>,
     pub signature: String,
     pub body: Vec<Value>,
 }
@@ -181,6 +201,22 @@ pub fn frame_length(fixed: &[u8]) -> Result<usize> {
 
 /// Decode one complete message.
 pub fn decode(bytes: &[u8]) -> Result<Message> {
+    let header = decode_header(bytes)?;
+    let body = header.body(bytes)?;
+    Ok(Message {
+        kind: header.kind,
+        serial: header.serial,
+        reply_serial: header.reply_serial,
+        error_name: header.error_name,
+        sender: header.sender,
+        signature: header.signature,
+        body,
+    })
+}
+
+/// Decode a complete message's header only, so a client can decide
+/// whether the body is worth decoding at all.
+pub fn decode_header(bytes: &[u8]) -> Result<Header> {
     if frame_length(bytes)? != bytes.len() {
         bail!("a D-Bus message's length does not match its header");
     }
@@ -198,13 +234,15 @@ pub fn decode(bytes: &[u8]) -> Result<Message> {
     let mut reader = Reader::at(bytes, 8, big);
     let serial = reader.u32()?;
     let fields = reader.read_all("a(yv)")?;
-    let mut message = Message {
+    let mut header = Header {
         kind,
         serial,
         reply_serial: None,
         error_name: None,
+        sender: None,
         signature: String::new(),
-        body: Vec::new(),
+        body_start: reader.position().next_multiple_of(8),
+        big_endian: big,
     };
     for field in fields.first().and_then(Value::items).unwrap_or_default() {
         let (Some(Value::Byte(code)), Some(value)) = (
@@ -213,21 +251,34 @@ pub fn decode(bytes: &[u8]) -> Result<Message> {
         ) else {
             bail!("a malformed D-Bus header field");
         };
-        match *code {
-            FIELD_REPLY_SERIAL => message.reply_serial = value.as_u32(),
-            FIELD_ERROR_NAME => message.error_name = value.as_str().map(str::to_string),
-            FIELD_SIGNATURE => message.signature = value.as_str().unwrap_or_default().into(),
+        let text = || value.as_str().map(str::to_string);
+        match (*code, value.inner()) {
+            (FIELD_REPLY_SERIAL, Value::U32(n)) => header.reply_serial = Some(*n),
+            (FIELD_ERROR_NAME, Value::Str(_)) => header.error_name = text(),
+            (FIELD_SENDER, Value::Str(_)) => header.sender = text(),
+            (FIELD_SIGNATURE, Value::Signature(signature)) => {
+                header.signature.clone_from(signature);
+            }
+            (FIELD_REPLY_SERIAL | FIELD_ERROR_NAME | FIELD_SENDER | FIELD_SIGNATURE, _) => {
+                bail!("a D-Bus header field {code} has the wrong type (SIGNATURE must be `g`)")
+            }
             _ => {}
         }
     }
-    let body_start = reader.position().next_multiple_of(8);
-    let body = bytes
-        .get(body_start..)
-        .context("a D-Bus message ends inside its header")?;
-    let mut body_reader = Reader::new(body, big);
-    message.body = body_reader.read_all(&message.signature)?;
-    if body_reader.position() != body.len() {
-        bail!("a D-Bus message's body is longer than its signature says");
+    Ok(header)
+}
+
+impl Header {
+    /// Decode the body of `bytes`, the message this header came from.
+    pub fn body(&self, bytes: &[u8]) -> Result<Vec<Value>> {
+        let body = bytes
+            .get(self.body_start..)
+            .context("a D-Bus message ends inside its header")?;
+        let mut reader = Reader::new(body, self.big_endian);
+        let values = reader.read_all(&self.signature)?;
+        if reader.position() != body.len() {
+            bail!("a D-Bus message's body is longer than its signature says");
+        }
+        Ok(values)
     }
-    Ok(message)
 }
