@@ -234,5 +234,14 @@ jobs:
           test -f dist/vts-extract-linux-x86_64.tar.gz.sha256
           test -f dist/vts-extract-windows-x86_64.zip
           test -f dist/vts-extract-windows-x86_64.zip.sha256
-          gh release delete "$TAG" --yes --cleanup-tag=false 2>/dev/null || true
+          # Releases are immutable: once one is published its tag can never
+          # be released again, even after the release is deleted. Only a
+          # leftover draft (a failed earlier run) may be replaced.
+          if draft=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$draft" != "true" ]; then
+              echo "release $TAG is already published and immutable; bump the version and tag again" >&2
+              exit 1
+            fi
+            gh release delete "$TAG" --yes --cleanup-tag=false
+          fi
           gh release create "$TAG" --verify-tag --generate-notes --title "$TAG" dist/*
