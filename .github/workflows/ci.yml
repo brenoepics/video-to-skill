@@ -117,7 +117,16 @@ jobs:
         run: brew install ffmpeg
       - name: Install FFmpeg (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --yes ffmpeg
+        # The runner image ships a packages.microsoft.com apt source; when
+        # it fails (403, "no longer signed") `apt-get update` aborts the
+        # job. Everything installed here comes from the Ubuntu archive, so
+        # drop third-party Microsoft sources before updating.
+        run: |
+          for f in $(grep -rl packages.microsoft.com /etc/apt/sources.list.d || true); do
+            sudo rm -f -- "$f"
+          done
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
       # The AT-SPI observe test builds a private desktop: a session bus,
       # an Xvfb display, at-spi2-core's accessibility bus and a GTK 3
       # probe window driven by PyGObject. VTS_REQUIRE_ATSPI (Test step)
